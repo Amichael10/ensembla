@@ -1,0 +1,480 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import Drawer from '../../components/admin/Drawer';
+import ConfirmModal from '../../components/admin/ConfirmModal';
+import SkeletonRow from '../../components/admin/SkeletonRow';
+
+export default function AdminPeople() {
+  const [people, setPeople] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [verifiedFilter, setVerifiedFilter] = useState('All'); // All, Verified, Unverified
+  const [sortBy, setSortBy] = useState('Most Popular'); // Most Popular, Most Credits, A-Z, Newest
+
+  // Modals/Drawers state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editingPerson, setEditingPerson] = useState(null);
+  const [deletingPerson, setDeletingPerson] = useState(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    bio: '',
+    photo_url: '',
+    date_of_birth: '',
+    gender: 'Prefer not to say',
+    nationality: 'Nigerian',
+    is_verified: false
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchPeople = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('people')
+        .select(`*, credits(count)`)
+        .order('popularity_score', { ascending: false });
+
+      if (error) throw error;
+      setPeople(data || []);
+    } catch (error) {
+      console.error('Error fetching people:', error);
+      toast.error('Failed to load people');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPeople();
+  }, []);
+
+  // Filtering and Sorting
+  let filteredPeople = people.filter(p => 
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (verifiedFilter === 'Verified') {
+    filteredPeople = filteredPeople.filter(p => p.is_verified);
+  } else if (verifiedFilter === 'Unverified') {
+    filteredPeople = filteredPeople.filter(p => !p.is_verified);
+  }
+
+  filteredPeople.sort((a, b) => {
+    if (sortBy === 'Most Popular') {
+      return (b.popularity_score || 0) - (a.popularity_score || 0);
+    } else if (sortBy === 'Most Credits') {
+      return (b.credits?.[0]?.count || 0) - (a.credits?.[0]?.count || 0);
+    } else if (sortBy === 'A-Z') {
+      return a.name.localeCompare(b.name);
+    } else if (sortBy === 'Newest') {
+      return new Date(b.created_at) - new Date(a.created_at);
+    }
+    return 0;
+  });
+
+  const handleToggleVerify = async (person) => {
+    try {
+      const newStatus = !person.is_verified;
+      const { error } = await supabase
+        .from('people')
+        .update({ is_verified: newStatus })
+        .eq('id', person.id);
+
+      if (error) throw error;
+      
+      setPeople(people.map(p => p.id === person.id ? { ...p, is_verified: newStatus } : p));
+      toast.success(newStatus ? 'Profile verified ✓' : 'Verification removed');
+    } catch (error) {
+      console.error('Error toggling verification:', error);
+      toast.error('Failed to update verification status');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deletingPerson) return;
+    try {
+      const { error } = await supabase
+        .from('people')
+        .delete()
+        .eq('id', deletingPerson.id);
+
+      if (error) throw error;
+
+      setPeople(people.filter(p => p.id !== deletingPerson.id));
+      toast.success('Person deleted');
+      setDeletingPerson(null);
+    } catch (error) {
+      console.error('Error deleting person:', error);
+      toast.error('Failed to delete person');
+    }
+  };
+
+  const openAddDrawer = () => {
+    setEditingPerson(null);
+    setFormData({
+      name: '',
+      bio: '',
+      photo_url: '',
+      date_of_birth: '',
+      gender: 'Prefer not to say',
+      nationality: 'Nigerian',
+      is_verified: false
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const openEditDrawer = (person) => {
+    setEditingPerson(person);
+    setFormData({
+      name: person.name || '',
+      bio: person.bio || '',
+      photo_url: person.photo_url || '',
+      date_of_birth: person.date_of_birth || '',
+      gender: person.gender || 'Prefer not to say',
+      nationality: person.nationality || 'Nigerian',
+      is_verified: person.is_verified || false
+    });
+    setIsDrawerOpen(true);
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      // Clean empty strings to null where appropriate
+      const dataToSave = {
+        ...formData,
+        date_of_birth: formData.date_of_birth || null,
+        photo_url: formData.photo_url || null,
+      };
+
+      if (editingPerson) {
+        const { error } = await supabase
+          .from('people')
+          .update(dataToSave)
+          .eq('id', editingPerson.id);
+        if (error) throw error;
+        toast.success('Profile updated');
+      } else {
+        const { error } = await supabase
+          .from('people')
+          .insert([dataToSave]);
+        if (error) throw error;
+        toast.success('Person added');
+      }
+      setIsDrawerOpen(false);
+      fetchPeople();
+    } catch (error) {
+      console.error('Error saving person:', error);
+      toast.error('Failed to save person');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const formatNumber = (num) => {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-text-primary">People</h1>
+          <span className="bg-surface-2 text-text-muted px-3 py-1 rounded-full text-sm font-medium">
+            {people.length}
+          </span>
+        </div>
+        <button
+          onClick={openAddDrawer}
+          className="bg-gold text-dark font-semibold px-4 py-2 rounded-xl hover:bg-gold/90 transition-colors"
+        >
+          + Add Person
+        </button>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="bg-[#13192B] p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between border border-border">
+        <div className="relative w-full md:w-96">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search people..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-bg border border-border text-text-primary rounded-xl pl-10 pr-4 py-2 text-sm focus:border-gold focus:outline-none"
+          />
+        </div>
+        
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <select
+            value={verifiedFilter}
+            onChange={(e) => setVerifiedFilter(e.target.value)}
+            className="bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none flex-1 md:flex-none"
+          >
+            <option value="All">All Status</option>
+            <option value="Verified">Verified</option>
+            <option value="Unverified">Unverified</option>
+          </select>
+          
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none flex-1 md:flex-none"
+          >
+            <option value="Most Popular">Most Popular</option>
+            <option value="Most Credits">Most Credits</option>
+            <option value="A-Z">A-Z</option>
+            <option value="Newest">Newest</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Data Table */}
+      <div className="bg-[#13192B] rounded-2xl border border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-text-muted uppercase bg-surface-2/50 border-b border-border">
+              <tr>
+                <th className="px-6 py-4 font-medium">Person</th>
+                <th className="px-6 py-4 font-medium">Nationality</th>
+                <th className="px-6 py-4 font-medium">Credits</th>
+                <th className="px-6 py-4 font-medium">Popularity</th>
+                <th className="px-6 py-4 font-medium">Verified</th>
+                <th className="px-6 py-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {isLoading ? (
+                Array(5).fill(0).map((_, i) => <SkeletonRow key={i} columns={6} />)
+              ) : filteredPeople.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-text-muted">
+                    No people found matching your criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredPeople.map((person) => (
+                  <tr key={person.id} className="hover:bg-surface-2/50 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {person.photo_url ? (
+                          <img src={person.photo_url} alt={person.name} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-dark font-bold">
+                            {getInitials(person.name)}
+                          </div>
+                        )}
+                        <Link to={`/people/${person.id}`} className="font-bold text-text-primary hover:text-gold transition-colors">
+                          {person.name}
+                        </Link>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-text-muted">
+                      {person.nationality || '—'}
+                    </td>
+                    <td className="px-6 py-4 text-text-primary">
+                      {person.credits?.[0]?.count || 0}
+                    </td>
+                    <td className="px-6 py-4 text-text-primary">
+                      {formatNumber(person.popularity_score)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {person.is_verified ? (
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gold/20 text-gold" title="Verified">
+                          ✓
+                        </span>
+                      ) : (
+                        <span className="text-text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleToggleVerify(person)}
+                          className="p-2 text-text-muted hover:text-gold hover:bg-surface rounded-lg transition-colors"
+                          title={person.is_verified ? "Remove Verification" : "Verify Profile"}
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => openEditDrawer(person)}
+                          className="p-2 text-text-muted hover:text-blue-400 hover:bg-surface rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => setDeletingPerson(person)}
+                          className="p-2 text-text-muted hover:text-red-400 hover:bg-surface rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Add/Edit Drawer */}
+      <Drawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        title={editingPerson ? "Edit Person" : "Add Person"}
+      >
+        <form onSubmit={handleSave} className="space-y-6">
+          {/* Photo Preview */}
+          <div className="flex flex-col items-center gap-4">
+            {formData.photo_url ? (
+              <img src={formData.photo_url} alt="Preview" className="w-20 h-20 rounded-full object-cover border-2 border-border" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gold flex items-center justify-center text-dark font-bold text-2xl">
+                {formData.name ? getInitials(formData.name) : '?'}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-1">Full Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-1">Photo URL</label>
+            <input
+              type="url"
+              value={formData.photo_url}
+              onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
+              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              placeholder="https://..."
+            />
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-1">
+              <label className="block text-sm font-medium text-text-muted">Bio</label>
+              <span className={`text-xs ${formData.bio.length > 500 ? 'text-red-400' : 'text-text-muted'}`}>
+                {formData.bio.length}/500
+              </span>
+            </div>
+            <textarea
+              value={formData.bio}
+              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              maxLength={500}
+              rows={4}
+              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none resize-none"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-1">Date of Birth</label>
+              <input
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-1">Gender</label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Non-binary">Non-binary</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-text-muted mb-1">Nationality</label>
+            <input
+              type="text"
+              value={formData.nationality}
+              onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-surface-2 rounded-xl border border-border">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Verified Profile</p>
+              <p className="text-xs text-text-muted">Show the gold verification badge</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, is_verified: !formData.is_verified })}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                formData.is_verified ? 'bg-gold' : 'bg-surface'
+              }`}
+            >
+              <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                formData.is_verified ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          <div className="pt-4 flex flex-col gap-3">
+            <button
+              type="submit"
+              disabled={isSaving || formData.bio.length > 500}
+              className="w-full bg-gold text-dark font-semibold py-3 rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(false)}
+              className="w-full text-text-muted hover:text-text-primary font-medium py-2 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </Drawer>
+
+      {/* Delete Confirmation Modal */}
+      {deletingPerson && (
+        <ConfirmModal
+          title="Delete Person"
+          message={`Are you sure you want to delete ${deletingPerson.name}? This will also remove all their credits.`}
+          confirmLabel="Delete"
+          confirmColor="bg-red-500 hover:bg-red-600"
+          onConfirm={handleDelete}
+          onCancel={() => setDeletingPerson(null)}
+        />
+      )}
+    </div>
+  );
+}

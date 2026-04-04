@@ -120,7 +120,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
           </div>
           <button
             onClick={handleSyncAll}
-            disabled={syncing || filmsWithYouTube.length === 0}
+            disabled={syncing || (filmsWithYouTube.length === 0 && channels.filter(c => c.is_active).length === 0)}
             className="flex items-center gap-2 bg-gold text-dark font-semibold px-6 py-3 rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
           >
             {syncing ? (
@@ -177,7 +177,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
         )}
 
         <p className="text-xs text-text-muted mt-3">
-          Uses ~{filmsWithYouTube.length} quota units 
+          Uses ~{filmsWithYouTube.length + (channels.filter(c => c.is_active).length * 2)} quota units 
           (free tier: 10,000/day)
         </p>
       </div>

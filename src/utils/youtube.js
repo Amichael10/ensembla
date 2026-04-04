@@ -219,33 +219,66 @@ export const batchFetchVideoStats = async (videoIds) => {
 // ─────────────────────────────────────────
 export const resolveChannelId = async (handleOrUrl) => {
   try {
-    // Extract handle from URL if full URL was pasted
-    // Handles: youtube.com/@handle OR youtube.com/channel/ID
-    let handle = handleOrUrl.trim()
-    
-    if (handle.includes('youtube.com/channel/')) {
-      // Already a channel ID URL — extract directly
-      const parts = handle.split('youtube.com/channel/')
-      return { 
-        channelId: parts[1].split('/')[0], 
-        resolvedFrom: 'url' 
-      }
-    }
-    
-    if (handle.includes('youtube.com/@')) {
-      handle = handle.split('@')[1].split('/')[0]
-    } else if (handle.startsWith('@')) {
-      handle = handle.slice(1)
+    if (!API_KEY || API_KEY === 'undefined') {
+      return { error: 'YouTube API Key is missing. Please add VITE_YOUTUBE_API_KEY in Settings.' }
     }
 
-    // Call API to resolve handle to channel ID
-    const res = await fetch(
-      `${BASE_URL}/channels?` +
-      `part=id,snippet,statistics` +
-      `&forHandle=${handle}` +
-      `&key=${API_KEY}`
-    )
-    const data = await res.json()
+    let input = handleOrUrl.trim()
+    let channelId = null
+    let username = null
+    let handle = null
+
+    if (input.includes('youtube.com/channel/')) {
+      channelId = input.split('youtube.com/channel/')[1].split('/')[0].split('?')[0]
+    } else if (input.includes('youtube.com/c/')) {
+      username = input.split('youtube.com/c/')[1].split('/')[0].split('?')[0]
+    } else if (input.includes('youtube.com/user/')) {
+      username = input.split('youtube.com/user/')[1].split('/')[0].split('?')[0]
+    } else if (input.includes('youtube.com/@')) {
+      handle = input.split('youtube.com/@')[1].split('/')[0].split('?')[0]
+    } else if (input.startsWith('@')) {
+      handle = input.slice(1)
+    } else {
+      // Assume it's a search query or a handle without @
+      handle = input
+    }
+
+    let apiUrl = `${BASE_URL}/channels?part=id,snippet,statistics&key=${API_KEY}`
+
+    if (channelId) {
+      apiUrl += `&id=${channelId}`
+    } else if (username) {
+      apiUrl += `&forUsername=${username}`
+    } else if (handle) {
+      apiUrl += `&forHandle=@${handle}`
+    }
+
+    let res = await fetch(apiUrl)
+    let data = await res.json()
+
+    if (data.error) {
+      console.error('YouTube API Error:', data.error)
+      return { error: `YouTube API Error: ${data.error.message}` }
+    }
+
+    // If forHandle/forUsername fails, fallback to search
+    if (!data.items || data.items.length === 0) {
+      const searchQuery = channelId || username || handle || input
+      const searchRes = await fetch(`${BASE_URL}/search?part=snippet&type=channel&q=${encodeURIComponent(searchQuery)}&maxResults=1&key=${API_KEY}`)
+      const searchData = await searchRes.json()
+      
+      if (searchData.error) {
+        console.error('YouTube Search API Error:', searchData.error)
+        return { error: `YouTube API Error: ${searchData.error.message}` }
+      }
+      
+      if (searchData.items && searchData.items.length > 0) {
+        const foundChannelId = searchData.items[0].snippet.channelId
+        // Fetch full details
+        const detailRes = await fetch(`${BASE_URL}/channels?part=id,snippet,statistics&id=${foundChannelId}&key=${API_KEY}`)
+        data = await detailRes.json()
+      }
+    }
 
     if (!data.items || data.items.length === 0) {
       return { error: 'Channel not found' }
@@ -258,7 +291,7 @@ export const resolveChannelId = async (handleOrUrl) => {
       thumbnail: channel.snippet.thumbnails.default?.url,
       subscriberCount: channel.statistics.subscriberCount,
       videoCount: channel.statistics.videoCount,
-      resolvedFrom: 'handle'
+      resolvedFrom: channelId ? 'url' : 'search'
     }
   } catch (error) {
     console.error('resolveChannelId error:', error)
@@ -267,9 +300,52 @@ export const resolveChannelId = async (handleOrUrl) => {
 }
 
 // ─────────────────────────────────────────
-// FUNCTION 5: Fetch comments for a film trailer
-// Returns top 10 most liked comments
+// FUNCTION 6: Fetch recent videos from a channel
+// Used to auto-sync new trailers from trusted channels
 // ─────────────────────────────────────────
+export const fetchRecentVideosFromChannel = async (channelId, maxResults = 10) => {
+  try {
+    // First get the uploads playlist ID for the channel
+    const channelRes = await fetch(
+      `${BASE_URL}/channels?part=contentDetails&id=${channelId}&key=${API_KEY}`
+    )
+    const channelData = await channelRes.json()
+    if (!channelData.items || channelData.items.length === 0) return []
+    
+    const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists?.uploads
+    if (!uploadsPlaylistId) return []
+    
+    // Fetch videos from the uploads playlist
+    const playlistRes = await fetch(
+      `${BASE_URL}/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=${maxResults}&key=${API_KEY}`
+    )
+    const playlistData = await playlistRes.json()
+    
+    if (!playlistData.items || playlistData.items.length === 0) return []
+    
+    const videoIds = playlistData.items.map(item => item.snippet.resourceId.videoId).join(',')
+    
+    // Get full details (duration, stats)
+    const detailRes = await fetch(
+      `${BASE_URL}/videos?part=snippet,contentDetails,statistics&id=${videoIds}&key=${API_KEY}`
+    )
+    const detailData = await detailRes.json()
+    
+    return (detailData.items || []).map(video => ({
+      videoId: video.id,
+      title: video.snippet.title,
+      description: video.snippet.description,
+      thumbnail: video.snippet.thumbnails.maxres?.url || video.snippet.thumbnails.high?.url || video.snippet.thumbnails.medium?.url,
+      publishedAt: video.snippet.publishedAt,
+      duration: parseDuration(video.contentDetails.duration),
+      viewCount: parseInt(video.statistics.viewCount || 0)
+    }))
+  } catch (error) {
+    console.error('fetchRecentVideosFromChannel error:', error)
+    return []
+  }
+}
+
 export const fetchTrailerComments = async (videoId, maxResults = 10) => {
   try {
     const res = await fetch(

@@ -6,6 +6,7 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { toast } from 'react-hot-toast';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import Home from './pages/Home';
@@ -17,7 +18,15 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import ProDashboard from './pages/ProDashboard';
 import ClaimProfile from './pages/ClaimProfile';
-import AdminPanel from './pages/AdminPanel';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminOverview from './pages/admin/AdminOverview';
+import AdminFilms from './pages/admin/AdminFilms';
+import AdminPeople from './pages/admin/AdminPeople';
+import AdminCredits from './pages/admin/AdminCredits';
+import AdminCompanies from './pages/admin/AdminCompanies';
+import AdminClaims from './pages/admin/AdminClaims';
+import AdminYouTube from './pages/admin/AdminYouTube';
+import AdminUsers from './pages/admin/AdminUsers';
 
 function BackToTop() {
   const [visible, setVisible] = useState(false);
@@ -51,6 +60,10 @@ function ProtectedRoute({ children, allowedRoles }: { children: ReactNode, allow
   }
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // We use a timeout to ensure the toast fires after the render cycle
+    setTimeout(() => {
+      toast.error("You don't have permission to access this page.");
+    }, 0);
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -101,10 +114,19 @@ export default function App() {
                 path="/admin" 
                 element={
                   <ProtectedRoute allowedRoles={['admin']}>
-                    <AdminPanel />
+                    <AdminLayout />
                   </ProtectedRoute>
                 } 
-              />
+              >
+                <Route index element={<AdminOverview />} />
+                <Route path="films" element={<AdminFilms />} />
+                <Route path="people" element={<AdminPeople />} />
+                <Route path="credits" element={<AdminCredits />} />
+                <Route path="companies" element={<AdminCompanies />} />
+                <Route path="claims" element={<AdminClaims />} />
+                <Route path="youtube" element={<AdminYouTube />} />
+                <Route path="users" element={<AdminUsers />} />
+              </Route>
             </Routes>
           </main>
           <Footer />
