@@ -11,6 +11,9 @@ export default function AdminFilms() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingFilm, setEditingFilm] = useState(null);
   const [deletingFilm, setDeletingFilm] = useState(null);
+  const [selectedFilmIds, setSelectedFilmIds] = useState([]);
+  const [filmBatchDeleteIds, setFilmBatchDeleteIds] = useState(null);
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Normalized Data State
@@ -59,6 +62,10 @@ export default function AdminFilms() {
     fetchCinemas();
     fetchGenres();
   }, []);
+
+  useEffect(() => {
+    setSelectedFilmIds([]);
+  }, [searchTerm, statusFilter, yearFilter]);
 
   const fetchGenres = async () => {
     const { data } = await supabase.from('genres').select('*').order('name');
@@ -386,6 +393,7 @@ export default function AdminFilms() {
       const { error } = await supabase.from('films').delete().eq('id', deletingFilm.id);
       if (error) throw error;
       toast.success('Film deleted');
+      setSelectedFilmIds((prev) => prev.filter((id) => id !== deletingFilm.id));
       fetchFilms();
       setDeletingFilm(null);
     } catch (error) {
@@ -399,6 +407,44 @@ export default function AdminFilms() {
     const matchesYear = yearFilter === 'all' || film.year?.toString() === yearFilter;
     return matchesSearch && matchesStatus && matchesYear;
   });
+
+  const toggleFilmSelect = (id) => {
+    setSelectedFilmIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const allFilteredFilmsSelected =
+    filteredFilms.length > 0 && filteredFilms.every((f) => selectedFilmIds.includes(f.id));
+
+  const toggleSelectAllFilteredFilms = () => {
+    if (allFilteredFilmsSelected) {
+      const filteredIds = new Set(filteredFilms.map((f) => f.id));
+      setSelectedFilmIds((prev) => prev.filter((id) => !filteredIds.has(id)));
+    } else {
+      setSelectedFilmIds((prev) => {
+        const next = new Set([...prev, ...filteredFilms.map((f) => f.id)]);
+        return [...next];
+      });
+    }
+  };
+
+  const handleConfirmBatchDeleteFilms = async () => {
+    if (!filmBatchDeleteIds?.length) return;
+    setIsBatchDeleting(true);
+    try {
+      const { error } = await supabase.from('films').delete().in('id', filmBatchDeleteIds);
+      if (error) throw error;
+      toast.success(`Deleted ${filmBatchDeleteIds.length} film${filmBatchDeleteIds.length === 1 ? '' : 's'}`);
+      setSelectedFilmIds((prev) => prev.filter((id) => !filmBatchDeleteIds.includes(id)));
+      setFilmBatchDeleteIds(null);
+      fetchFilms();
+    } catch (error) {
+      toast.error('Batch delete failed');
+    } finally {
+      setIsBatchDeleting(false);
+    }
+  };
 
   const uniqueYears = [...new Set(films.map(f => f.year))].filter(Boolean).sort((a, b) => b - a);
 
@@ -453,11 +499,36 @@ export default function AdminFilms() {
         </div>
       </div>
 
+      {selectedFilmIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-4 rounded-xl bg-surface-2 border border-border">
+          <span className="text-sm text-text-primary font-bold">
+            {selectedFilmIds.length} selected
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilmBatchDeleteIds([...selectedFilmIds])}
+            className="text-sm font-black uppercase tracking-wider px-4 py-2 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
+          >
+            Delete selected
+          </button>
+        </div>
+      )}
+
       <div className="bg-surface rounded-2xl overflow-hidden border border-border shadow-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
             <thead className="bg-[#0D1326] text-text-muted uppercase text-[10px] font-black tracking-widest">
               <tr>
+                <th className="pl-6 pr-2 py-4 w-12">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredFilmsSelected}
+                    onChange={toggleSelectAllFilteredFilms}
+                    disabled={loading || filteredFilms.length === 0}
+                    className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer disabled:opacity-40"
+                    title="Select all in this view"
+                  />
+                </th>
                 <th className="px-6 py-4">Title & Identity</th>
                 <th className="px-6 py-4">Release Status</th>
                 <th className="px-6 py-4">Internal Stats</th>
@@ -466,11 +537,20 @@ export default function AdminFilms() {
             </thead>
             <tbody className="divide-y divide-border/50">
               {loading ? (
-                <tr><td colSpan="4" className="p-12 text-center text-text-muted italic">Synchronizing database...</td></tr>
+                <tr><td colSpan="5" className="p-12 text-center text-text-muted italic">Synchronizing database...</td></tr>
               ) : filteredFilms.length === 0 ? (
-                <tr><td colSpan="4" className="p-12 text-center text-text-muted italic">No productions match your filters.</td></tr>
+                <tr><td colSpan="5" className="p-12 text-center text-text-muted italic">No productions match your filters.</td></tr>
               ) : filteredFilms.map(film => (
                 <tr key={film.id} className="hover:bg-surface-2/30 transition-colors group">
+                  <td className="pl-6 pr-2 py-4 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selectedFilmIds.includes(film.id)}
+                      onChange={() => toggleFilmSelect(film.id)}
+                      className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer"
+                      aria-label={`Select ${film.title}`}
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-16 bg-surface-2 rounded-lg border border-border overflow-hidden flex-shrink-0 shadow-md">
@@ -880,6 +960,17 @@ export default function AdminFilms() {
           title="Delete Film"
           message={`Are you sure you want to delete "${deletingFilm?.title}"? All related credits, genres, and showtimes will be permanently removed.`}
           confirmLabel="Delete Film"
+        />
+      )}
+
+      {filmBatchDeleteIds && (
+        <ConfirmModal
+          onCancel={() => !isBatchDeleting && setFilmBatchDeleteIds(null)}
+          onConfirm={handleConfirmBatchDeleteFilms}
+          title="Delete films"
+          message={`Delete ${filmBatchDeleteIds.length} film${filmBatchDeleteIds.length === 1 ? '' : 's'}? Related credits, genres, and showtimes will be removed if your database is set up to cascade or allow it.`}
+          confirmLabel="Delete selected"
+          isProcessing={isBatchDeleting}
         />
       )}
     </div>

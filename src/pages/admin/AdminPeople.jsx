@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import Drawer from '../../components/admin/Drawer';
 import ConfirmModal from '../../components/admin/ConfirmModal';
 import SkeletonRow from '../../components/admin/SkeletonRow';
-import { extractChannelIdentifier, fetchChannelData } from '../../lib/youtube';
+import { extractChannelIdentifier, fetchChannelData, getPersonYoutubeChannelUrl } from '../../lib/youtube';
 
 export default function AdminPeople() {
   const [people, setPeople] = useState([]);
@@ -18,6 +18,9 @@ export default function AdminPeople() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
   const [deletingPerson, setDeletingPerson] = useState(null);
+  const [selectedPersonIds, setSelectedPersonIds] = useState([]);
+  const [personBatchDeleteIds, setPersonBatchDeleteIds] = useState(null);
+  const [isBatchDeletingPeople, setIsBatchDeletingPeople] = useState(false);
   const [personCredits, setPersonCredits] = useState([]);
 
   // Form state
@@ -38,6 +41,8 @@ export default function AdminPeople() {
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  /** Single field: paste channel URL, @handle, or UC… id (parsed on save / fetch) */
+  const [youtubeChannelInput, setYoutubeChannelInput] = useState('');
 
   const fetchPeople = async () => {
     setIsLoading(true);
@@ -60,6 +65,10 @@ export default function AdminPeople() {
   useEffect(() => {
     fetchPeople();
   }, []);
+
+  useEffect(() => {
+    setSelectedPersonIds([]);
+  }, [search, verifiedFilter, sortBy]);
 
   // Filtering and Sorting
   let filteredPeople = people.filter(p => 
@@ -114,6 +123,7 @@ export default function AdminPeople() {
       if (error) throw error;
 
       setPeople(people.filter(p => p.id !== deletingPerson.id));
+      setSelectedPersonIds((prev) => prev.filter((id) => id !== deletingPerson.id));
       toast.success('Person deleted');
       setDeletingPerson(null);
     } catch (error) {
@@ -124,6 +134,7 @@ export default function AdminPeople() {
 
   const openAddDrawer = () => {
     setEditingPerson(null);
+    setYoutubeChannelInput('');
     setFormData({
       name: '',
       bio: '',
@@ -132,7 +143,12 @@ export default function AdminPeople() {
       gender: 'Prefer not to say',
       nationality: 'Nigerian',
       is_verified: false,
-      is_spotlight: false
+      is_spotlight: false,
+      popularity_score: 0,
+      tmdb_id: '',
+      youtube_channel_id: '',
+      youtube_handle: '',
+      youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null }
     });
     setIsDrawerOpen(true);
   };
@@ -148,8 +164,13 @@ export default function AdminPeople() {
       nationality: person.nationality || 'Nigerian',
       is_verified: person.is_verified || false,
       is_spotlight: person.is_spotlight || false,
-      popularity_score: person.popularity_score || 0
+      popularity_score: person.popularity_score || 0,
+      tmdb_id: person.tmdb_id || '',
+      youtube_channel_id: person.youtube_channel_id || '',
+      youtube_handle: person.youtube_handle || '',
+      youtube_stats: person.youtube_stats || { subscribers: '0', videos: '0', thumbnail: null, banner: null }
     });
+    setYoutubeChannelInput(getPersonYoutubeChannelUrl(person) || '');
     
     // Fetch credits for this person
     const { data: credits } = await supabase
@@ -220,17 +241,18 @@ export default function AdminPeople() {
   };
 
   const handleFetchYoutube = async () => {
-    const identifierRaw = formData.youtube_channel_id || formData.youtube_handle;
+    const identifierRaw =
+      youtubeChannelInput.trim() || formData.youtube_channel_id || formData.youtube_handle;
     if (!identifierRaw) {
-      toast.error('Enter a Channel ID, Handle, or URL first');
+      toast.error('Enter a channel URL, @handle, or channel ID first');
       return;
     }
 
     const t = toast.loading('Connecting to YouTube API...');
     try {
-      const ident = extractChannelIdentifier(identifierRaw);
+      const ident = extractChannelIdentifier(identifierRaw.trim());
       const ytData = await fetchChannelData(ident);
-      
+
       setFormData(prev => ({
         ...prev,
         youtube_channel_id: ytData.channelId,
@@ -243,6 +265,7 @@ export default function AdminPeople() {
           last_updated: ytData.lastUpdated
         }
       }));
+      setYoutubeChannelInput(`https://www.youtube.com/channel/${ytData.channelId}`);
       toast.success(`Fetched: ${ytData.title}`, { id: t });
     } catch (err) {
       toast.error(err.message || 'YouTube Fetch Failed', { id: t });
@@ -270,12 +293,33 @@ export default function AdminPeople() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      let youtube_channel_id = null;
+      let youtube_handle = null;
+      let youtube_stats = formData.youtube_stats;
+
+      if (youtubeChannelInput.trim()) {
+        const ident = extractChannelIdentifier(youtubeChannelInput.trim());
+        if (ident?.type === 'id') {
+          youtube_channel_id = ident.value;
+          youtube_handle = null;
+        } else if (ident?.type === 'handle') {
+          youtube_handle = String(ident.value).replace(/^@/, '');
+          youtube_channel_id = null;
+        }
+      } else {
+        youtube_stats = null;
+      }
+
       // Clean empty strings to null where appropriate
       const dataToSave = {
         ...formData,
         date_of_birth: formData.date_of_birth || null,
         photo_url: formData.photo_url || null,
-        popularity_score: parseInt(formData.popularity_score) || 0
+        popularity_score: parseInt(formData.popularity_score) || 0,
+        tmdb_id: formData.tmdb_id || null,
+        youtube_channel_id,
+        youtube_handle,
+        youtube_stats
       };
 
       if (editingPerson) {
@@ -327,6 +371,45 @@ export default function AdminPeople() {
   const getInitials = (name) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  const togglePersonSelect = (id) => {
+    setSelectedPersonIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const allFilteredPeopleSelected =
+    filteredPeople.length > 0 && filteredPeople.every((p) => selectedPersonIds.includes(p.id));
+
+  const toggleSelectAllFilteredPeople = () => {
+    if (allFilteredPeopleSelected) {
+      const filteredIds = new Set(filteredPeople.map((p) => p.id));
+      setSelectedPersonIds((prev) => prev.filter((id) => !filteredIds.has(id)));
+    } else {
+      setSelectedPersonIds((prev) => {
+        const next = new Set([...prev, ...filteredPeople.map((p) => p.id)]);
+        return [...next];
+      });
+    }
+  };
+
+  const handleConfirmBatchDeletePeople = async () => {
+    if (!personBatchDeleteIds?.length) return;
+    setIsBatchDeletingPeople(true);
+    try {
+      const { error } = await supabase.from('people').delete().in('id', personBatchDeleteIds);
+      if (error) throw error;
+      setPeople((prev) => prev.filter((p) => !personBatchDeleteIds.includes(p.id)));
+      setSelectedPersonIds((prev) => prev.filter((id) => !personBatchDeleteIds.includes(id)));
+      toast.success(`Deleted ${personBatchDeleteIds.length} people`);
+      setPersonBatchDeleteIds(null);
+    } catch (error) {
+      console.error('Error batch deleting people:', error);
+      toast.error('Batch delete failed');
+    } finally {
+      setIsBatchDeletingPeople(false);
+    }
   };
 
   return (
@@ -410,12 +493,37 @@ export default function AdminPeople() {
         </div>
       </div>
 
+      {selectedPersonIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-surface-2 border border-border">
+          <span className="text-sm text-text-primary font-bold">
+            {selectedPersonIds.length} selected
+          </span>
+          <button
+            type="button"
+            onClick={() => setPersonBatchDeleteIds([...selectedPersonIds])}
+            className="text-sm font-semibold px-4 py-2 rounded-xl bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
+          >
+            Delete selected
+          </button>
+        </div>
+      )}
+
       {/* Data Table */}
       <div className="bg-[#13192B] rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-text-muted uppercase bg-surface-2/50 border-b border-border">
               <tr>
+                <th className="pl-6 pr-2 py-4 w-12">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredPeopleSelected}
+                    onChange={toggleSelectAllFilteredPeople}
+                    disabled={isLoading || filteredPeople.length === 0}
+                    className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer disabled:opacity-40"
+                    title="Select all in this view"
+                  />
+                </th>
                 <th className="px-6 py-4 font-medium">Person</th>
                 <th className="px-6 py-4 font-medium">Nationality</th>
                 <th className="px-6 py-4 font-medium">Credits</th>
@@ -429,13 +537,22 @@ export default function AdminPeople() {
                 Array(5).fill(0).map((_, i) => <SkeletonRow key={i} columns={6} />)
               ) : filteredPeople.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-text-muted">
+                  <td colSpan="7" className="px-6 py-8 text-center text-text-muted">
                     No people found matching your criteria.
                   </td>
                 </tr>
               ) : (
                 filteredPeople.map((person) => (
                   <tr key={person.id} className="hover:bg-surface-2/50 transition-colors group">
+                    <td className="pl-6 pr-2 py-4 align-middle">
+                      <input
+                        type="checkbox"
+                        checked={selectedPersonIds.includes(person.id)}
+                        onChange={() => togglePersonSelect(person.id)}
+                        className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer"
+                        aria-label={`Select ${person.name}`}
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {person.photo_url ? (
@@ -606,6 +723,64 @@ export default function AdminPeople() {
             />
           </div>
 
+          <div className="space-y-3 p-4 rounded-2xl border border-border bg-surface-2/80">
+            <div>
+              <h3 className="text-xs font-black text-gold uppercase tracking-[0.2em] mb-1">YouTube channel</h3>
+              <p className="text-[11px] text-text-muted leading-relaxed mb-3">
+                Link this person’s official channel. Paste a full URL, <span className="text-text-primary/90">@handle</span>, or a{' '}
+                <span className="font-mono text-[10px]">UC…</span> channel ID. Saves to the database; “Fetch stats” uses your YouTube API key to pull subscribers and artwork.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-muted mb-1">Channel URL, @handle, or ID</label>
+              <input
+                type="text"
+                value={youtubeChannelInput}
+                onChange={(e) => setYoutubeChannelInput(e.target.value)}
+                placeholder="https://www.youtube.com/@… or youtube.com/channel/UC…"
+                className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none font-mono text-[13px]"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleFetchYoutube}
+                className="text-xs font-bold px-4 py-2 rounded-xl bg-[#FF0000]/15 text-[#ff4444] border border-[#FF0000]/25 hover:bg-[#FF0000]/25 transition-colors"
+              >
+                Fetch channel stats
+              </button>
+              {getPersonYoutubeChannelUrl({
+                youtube_channel_id: formData.youtube_channel_id,
+                youtube_handle: formData.youtube_handle
+              }) && (
+                <a
+                  href={
+                    getPersonYoutubeChannelUrl({
+                      youtube_channel_id: formData.youtube_channel_id,
+                      youtube_handle: formData.youtube_handle
+                    })
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold px-4 py-2 rounded-xl border border-border text-text-muted hover:text-gold hover:border-gold/40 transition-colors inline-flex items-center gap-1"
+                >
+                  Open in YouTube ↗
+                </a>
+              )}
+            </div>
+            {(formData.youtube_stats?.subscribers || formData.youtube_stats?.videos) && (
+              <p className="text-xs text-text-muted">
+                <span className="text-text-primary font-semibold">
+                  {formData.youtube_stats?.subscribers != null &&
+                    `${Number(formData.youtube_stats.subscribers).toLocaleString()} subscribers`}
+                </span>
+                {formData.youtube_stats?.videos != null && (
+                  <span className="ml-2">· {Number(formData.youtube_stats.videos).toLocaleString()} videos</span>
+                )}
+              </p>
+            )}
+          </div>
+
           <div className="flex flex-col gap-4 bg-surface-2 p-4 rounded-2xl border border-border">
             <div className="flex items-center justify-between">
               <div>
@@ -713,6 +888,18 @@ export default function AdminPeople() {
           confirmColor="bg-red-500 hover:bg-red-600"
           onConfirm={handleDelete}
           onCancel={() => setDeletingPerson(null)}
+        />
+      )}
+
+      {personBatchDeleteIds && (
+        <ConfirmModal
+          title="Delete people"
+          message={`Delete ${personBatchDeleteIds.length} ${personBatchDeleteIds.length === 1 ? 'person' : 'people'}? Their credits will be removed if your database allows it (e.g. cascade).`}
+          confirmLabel="Delete selected"
+          confirmColor="bg-red-500 hover:bg-red-600"
+          onConfirm={handleConfirmBatchDeletePeople}
+          onCancel={() => !isBatchDeletingPeople && setPersonBatchDeleteIds(null)}
+          isProcessing={isBatchDeletingPeople}
         />
       )}
     </div>

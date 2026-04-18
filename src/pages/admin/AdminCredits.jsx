@@ -109,6 +109,9 @@ export default function AdminCredits() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingCredit, setEditingCredit] = useState(null);
   const [deletingCredit, setDeletingCredit] = useState(null);
+  const [selectedCreditIds, setSelectedCreditIds] = useState([]);
+  const [creditBatchDeleteIds, setCreditBatchDeleteIds] = useState(null);
+  const [isBatchDeletingCredits, setIsBatchDeletingCredits] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -161,6 +164,10 @@ export default function AdminCredits() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setSelectedCreditIds([]);
+  }, [search, roleFilter]);
+
   // Filtering
   const filteredCredits = credits.filter(c => {
     const personName = c.people?.name?.toLowerCase() || '';
@@ -184,6 +191,7 @@ export default function AdminCredits() {
       if (error) throw error;
 
       setCredits(credits.filter(c => c.id !== deletingCredit.id));
+      setSelectedCreditIds((prev) => prev.filter((id) => id !== deletingCredit.id));
       toast.success('Credit removed');
       setDeletingCredit(null);
     } catch (error) {
@@ -291,6 +299,45 @@ export default function AdminCredits() {
   const peopleOptions = allPeople.map(p => ({ value: p.id, label: p.name, image: p.photo_url }));
   const filmOptions = allFilms.map(f => ({ value: f.id, label: f.title, image: f.poster_url }));
 
+  const toggleCreditSelect = (id) => {
+    setSelectedCreditIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const allFilteredCreditsSelected =
+    filteredCredits.length > 0 && filteredCredits.every((c) => selectedCreditIds.includes(c.id));
+
+  const toggleSelectAllFilteredCredits = () => {
+    if (allFilteredCreditsSelected) {
+      const filteredIds = new Set(filteredCredits.map((c) => c.id));
+      setSelectedCreditIds((prev) => prev.filter((id) => !filteredIds.has(id)));
+    } else {
+      setSelectedCreditIds((prev) => {
+        const next = new Set([...prev, ...filteredCredits.map((c) => c.id)]);
+        return [...next];
+      });
+    }
+  };
+
+  const handleConfirmBatchDeleteCredits = async () => {
+    if (!creditBatchDeleteIds?.length) return;
+    setIsBatchDeletingCredits(true);
+    try {
+      const { error } = await supabase.from('credits').delete().in('id', creditBatchDeleteIds);
+      if (error) throw error;
+      setCredits((prev) => prev.filter((c) => !creditBatchDeleteIds.includes(c.id)));
+      setSelectedCreditIds((prev) => prev.filter((id) => !creditBatchDeleteIds.includes(id)));
+      toast.success(`Removed ${creditBatchDeleteIds.length} credit${creditBatchDeleteIds.length === 1 ? '' : 's'}`);
+      setCreditBatchDeleteIds(null);
+    } catch (error) {
+      console.error('Error batch deleting credits:', error);
+      toast.error('Batch delete failed');
+    } finally {
+      setIsBatchDeletingCredits(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -341,12 +388,37 @@ export default function AdminCredits() {
         </div>
       </div>
 
+      {selectedCreditIds.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-surface-2 border border-border">
+          <span className="text-sm text-text-primary font-bold">
+            {selectedCreditIds.length} selected
+          </span>
+          <button
+            type="button"
+            onClick={() => setCreditBatchDeleteIds([...selectedCreditIds])}
+            className="text-sm font-semibold px-4 py-2 rounded-xl bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
+          >
+            Delete selected
+          </button>
+        </div>
+      )}
+
       {/* Data Table */}
       <div className="bg-[#13192B] rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-text-muted uppercase bg-surface-2/50 border-b border-border">
               <tr>
+                <th className="pl-6 pr-2 py-4 w-12">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredCreditsSelected}
+                    onChange={toggleSelectAllFilteredCredits}
+                    disabled={isLoading || filteredCredits.length === 0}
+                    className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer disabled:opacity-40"
+                    title="Select all in this view"
+                  />
+                </th>
                 <th className="px-6 py-4 font-medium">Person</th>
                 <th className="px-6 py-4 font-medium">Film</th>
                 <th className="px-6 py-4 font-medium">Role</th>
@@ -360,13 +432,22 @@ export default function AdminCredits() {
                 Array(5).fill(0).map((_, i) => <SkeletonRow key={i} columns={6} />)
               ) : filteredCredits.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-text-muted">
+                  <td colSpan="7" className="px-6 py-8 text-center text-text-muted">
                     No credits found matching your criteria.
                   </td>
                 </tr>
               ) : (
                 filteredCredits.map((credit) => (
                   <tr key={credit.id} className="hover:bg-surface-2/50 transition-colors group">
+                    <td className="pl-6 pr-2 py-4 align-middle">
+                      <input
+                        type="checkbox"
+                        checked={selectedCreditIds.includes(credit.id)}
+                        onChange={() => toggleCreditSelect(credit.id)}
+                        className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer"
+                        aria-label={`Select credit ${credit.people?.name} — ${credit.films?.title}`}
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {credit.people?.photo_url ? (
@@ -530,6 +611,18 @@ export default function AdminCredits() {
           confirmColor="bg-red-500 hover:bg-red-600"
           onConfirm={handleDelete}
           onCancel={() => setDeletingCredit(null)}
+        />
+      )}
+
+      {creditBatchDeleteIds && (
+        <ConfirmModal
+          title="Remove credits"
+          message={`Permanently remove ${creditBatchDeleteIds.length} credit row${creditBatchDeleteIds.length === 1 ? '' : 's'}?`}
+          confirmLabel="Remove selected"
+          confirmColor="bg-red-500 hover:bg-red-600"
+          onConfirm={handleConfirmBatchDeleteCredits}
+          onCancel={() => !isBatchDeletingCredits && setCreditBatchDeleteIds(null)}
+          isProcessing={isBatchDeletingCredits}
         />
       )}
     </div>

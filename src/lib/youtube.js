@@ -14,6 +14,22 @@ export const extractYoutubeId = (url) => {
 /**
  * Extracts Channel ID or Handle from a YouTube URL
  */
+/**
+ * Public profile / links: open the best URL for a person’s channel.
+ * Prefer stable channel ID URL when we have it; otherwise /@handle.
+ */
+export const getPersonYoutubeChannelUrl = (person) => {
+  if (!person) return null;
+  if (person.youtube_channel_id) {
+    return `https://www.youtube.com/channel/${person.youtube_channel_id}`;
+  }
+  if (person.youtube_handle) {
+    const h = String(person.youtube_handle).replace(/^@/, '');
+    return `https://www.youtube.com/@${h}`;
+  }
+  return null;
+};
+
 export const extractChannelIdentifier = (url) => {
   if (!url) return null;
   // Handle /channel/UC...

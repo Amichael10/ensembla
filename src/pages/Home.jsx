@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { getPersonYoutubeChannelUrl } from '../lib/youtube';
 import HeroSection from '../components/film/HeroSection';
 import FilmRow from '../components/film/FilmRow';
 import PersonCard from '../components/person/PersonCard';
@@ -189,7 +190,7 @@ export default function Home() {
                   return (
                     <a 
                       key={creator.id}
-                      href={creator.youtube_channel_id ? `https://www.youtube.com/channel/${creator.youtube_channel_id}` : `https://www.youtube.com/${creator.youtube_handle}`}
+                      href={getPersonYoutubeChannelUrl(creator) || '#'}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group relative bg-surface border border-border rounded-2xl overflow-hidden hover:border-gold/50 transition-all duration-500 shadow-lg hover:shadow-gold/5"
