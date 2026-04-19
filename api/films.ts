@@ -22,6 +22,11 @@ const FIELDS = [
   'nfvcb_rating',
   'status',
   'is_featured',
+  'synopsis',
+  'tagline',
+  'release_type',
+  'trailer_youtube_id',
+  'is_trending',
   'film_genres(genres(name))',
 ].join(', ');
 
