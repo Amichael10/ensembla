@@ -3,16 +3,20 @@
  * platform by EAD Systems).
  *
  * ─────────────────────────────────────────────────────────────────
- * HOW TO FIND THE CINESYNC API ENDPOINT FOR A NEW CINEMA
+ * ⚠️  CURRENT STATUS: STUB — Cinesync API uses encrypted payloads
  * ─────────────────────────────────────────────────────────────────
- * 1. Open the cinema's booking page in Chrome DevTools (Network tab)
- * 2. Click a "Buy Tickets" or "Book Now" button
- * 3. Look for XHR requests to a domain like:
- *      https://api.cinesync.io/...
- *      https://<chain>.cinesync.com/api/...
- *      https://filmhousecinemas.cinesync.com/api/...
- * 4. Copy the base URL, any auth headers (e.g. x-api-key), and the
- *    cinemaId / siteId parameter from the request.
+ * filmhouseng.com (correct URL as of 2026) proxies all booking calls
+ * through its own /api/external endpoint with AES-encrypted payloads.
+ * The encryption key is server-side only — we cannot reverse-engineer it.
+ *
+ * RECOMMENDED WORKAROUND: Use the firecrawl adapter instead.
+ * Set scrape_adapter='firecrawl' on each Filmhouse cinema row and set
+ * scrape_config.url to the per-location movies page, e.g.:
+ *   https://www.filmhouseng.com/en/cinemas/lekki/movies
+ *
+ * This adapter stub remains for the day when either:
+ *   a) Cinesync offers a public/partner API, or
+ *   b) Someone extracts the encryption key via a native app binary
  *
  * ─────────────────────────────────────────────────────────────────
  * CONFIGURATION (scrape_config JSON on the cinemas row)
@@ -21,7 +25,7 @@
  *     "apiBase":    "https://api.cinesync.io/v1",   // required
  *     "cinemaSlug": "filmhouse-lekki",              // required — site/cinema identifier
  *     "apiKey":     "pk_live_...",                  // if required by the platform
- *     "bookingBase":"https://filmhousecinemas.com"  // for ticket deep-links
+ *     "bookingBase":"https://www.filmhouseng.com"   // for ticket deep-links
  *   }
  *
  * ─────────────────────────────────────────────────────────────────

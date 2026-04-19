@@ -36,9 +36,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const app = new FirecrawlApp({ apiKey });
-    const result = await app.scrapeUrl(url, {
-      formats: ['markdown'],
-    });
+    const result = await (app as any).scrape(url, { formats: ['markdown'] });
 
     if (!result.success) {
       return res.status(502).json({ error: 'Firecrawl scrape failed' });

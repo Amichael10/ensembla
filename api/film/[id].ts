@@ -77,11 +77,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: 'Failed to fetch film' });
   }
 
+  const raw = data as any;
   const film = {
-    ...data,
+    ...raw,
     film_genres: undefined,
-    genres: data.film_genres?.map((fg: any) => fg.genres?.name).filter(Boolean) ?? [],
-    watch_links: (data as any).film_watch_links ?? [],
+    genres: raw.film_genres?.map((fg: any) => fg.genres?.name).filter(Boolean) ?? [],
+    watch_links: raw.film_watch_links ?? [],
     film_watch_links: undefined,
   };
 
