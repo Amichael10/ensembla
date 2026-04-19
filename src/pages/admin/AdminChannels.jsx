@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatViewCount } from '../../utils/youtube';
 
@@ -18,8 +18,99 @@ const EMPTY_FORM = {
   thumbnail_url: '',
   banner_url: '',
   is_featured: false,
-  owner_name: '',
 };
+
+// ── People search widget ──────────────────────────────────────────────────────
+function PeopleSearch({ value, onChange }) {
+  // value = { id, name, photo_url } | null
+  const [query,    setQuery]    = useState('');
+  const [results,  setResults]  = useState([]);
+  const [open,     setOpen]     = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!query.trim()) { setResults([]); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const res = await fetch(`/api/people?search=${encodeURIComponent(query)}&limit=8`);
+      const json = await res.json();
+      setResults(json.people || []);
+      setLoading(false);
+      setOpen(true);
+    }, 280);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const select = (person) => {
+    onChange(person);
+    setQuery('');
+    setResults([]);
+    setOpen(false);
+  };
+
+  const clear = () => { onChange(null); setQuery(''); };
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-[#7A8099] text-xs font-medium mb-1">
+        Channel Owner
+        <span className="ml-1 text-[#7A8099] font-normal">(links to person → auto producer credit on all their 30+ min films)</span>
+      </label>
+
+      {value ? (
+        // Selected person chip
+        <div className="flex items-center gap-3 bg-[#0A0F1E] border border-[#D4A017]/40 rounded-xl px-3 py-2">
+          {value.photo_url
+            ? <img src={value.photo_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+            : <div className="w-8 h-8 rounded-full bg-[#1C2440] flex items-center justify-center text-[#D4A017] font-bold text-sm flex-shrink-0">{value.name?.charAt(0)}</div>
+          }
+          <span className="text-[#F5F0E8] text-sm font-medium flex-1">{value.name}</span>
+          <button type="button" onClick={clear} className="text-[#7A8099] hover:text-red-400 text-lg leading-none transition-colors">✕</button>
+        </div>
+      ) : (
+        <>
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onFocus={() => results.length > 0 && setOpen(true)}
+            placeholder="Search people by name…"
+            className="w-full bg-[#0A0F1E] border border-[#252D45] rounded-xl px-3 py-2 text-[#F5F0E8] text-sm focus:border-[#D4A017] focus:outline-none placeholder-[#7A8099]"
+          />
+          {loading && <p className="text-[#7A8099] text-xs mt-1">Searching…</p>}
+          {open && results.length > 0 && (
+            <div className="absolute z-20 left-0 right-0 mt-1 bg-[#13192B] border border-[#252D45] rounded-xl overflow-hidden shadow-2xl">
+              {results.map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => select(p)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[#1C2440] text-left transition-colors"
+                >
+                  {p.photo_url
+                    ? <img src={p.photo_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                    : <div className="w-8 h-8 rounded-full bg-[#1C2440] flex items-center justify-center text-[#D4A017] font-bold text-sm flex-shrink-0">{p.name?.charAt(0)}</div>
+                  }
+                  <div className="min-w-0">
+                    <p className="text-[#F5F0E8] text-sm font-medium truncate">{p.name}</p>
+                    {p.known_for_department && <p className="text-[#7A8099] text-xs">{p.known_for_department}</p>}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 function ChannelModal({ channel, onSave, onClose }) {
   const [form, setForm] = useState(channel ? {
@@ -33,8 +124,15 @@ function ChannelModal({ channel, onSave, onClose }) {
     thumbnail_url: channel.thumbnail_url || '',
     banner_url: channel.banner_url || '',
     is_featured: channel.is_featured || false,
-    owner_name: channel.owner_name || '',
   } : { ...EMPTY_FORM });
+
+  // Owner is managed separately as a person object (not just a name string)
+  const [owner, setOwner] = useState(
+    channel?.owner_person_id
+      ? { id: channel.owner_person_id, name: channel.owner_name || '', photo_url: null }
+      : null,
+  );
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,6 +150,8 @@ function ChannelModal({ channel, onSave, onClose }) {
     const payload = {
       ...form,
       subscriber_count: form.subscriber_count === '' ? null : Number(form.subscriber_count),
+      owner_person_id: owner?.id ?? null,
+      owner_name:      owner?.name ?? null,
     };
 
     let err;
@@ -83,15 +183,17 @@ function ChannelModal({ channel, onSave, onClose }) {
             </div>
           )}
 
+          {/* Owner search — full width, on top */}
+          <PeopleSearch value={owner} onChange={setOwner} />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { label: 'Channel Name *', name: 'name', placeholder: 'e.g. Nollywood Inc.' },
-              { label: 'Handle', name: 'channel_handle', placeholder: '@channelhandle' },
-              { label: 'Channel URL', name: 'channel_url', placeholder: 'https://youtube.com/@...' },
-              { label: 'Owner Name', name: 'owner_name', placeholder: 'e.g. John Doe' },
-              { label: 'Thumbnail URL', name: 'thumbnail_url', placeholder: 'https://...' },
-              { label: 'Banner URL', name: 'banner_url', placeholder: 'https://...' },
-              { label: 'Country', name: 'country', placeholder: 'Nigeria' },
+              { label: 'Channel Name *',   name: 'name',             placeholder: 'e.g. Nollywood Inc.' },
+              { label: 'Handle',           name: 'channel_handle',   placeholder: '@channelhandle' },
+              { label: 'Channel URL',      name: 'channel_url',      placeholder: 'https://youtube.com/@...' },
+              { label: 'Thumbnail URL',    name: 'thumbnail_url',    placeholder: 'https://...' },
+              { label: 'Banner URL',       name: 'banner_url',       placeholder: 'https://...' },
+              { label: 'Country',          name: 'country',          placeholder: 'Nigeria' },
               { label: 'Subscriber Count', name: 'subscriber_count', placeholder: '0', type: 'number' },
             ].map(f => (
               <div key={f.name}>

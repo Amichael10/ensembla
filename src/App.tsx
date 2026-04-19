@@ -38,6 +38,7 @@ import AdminCinemas from './pages/admin/AdminCinemas';
 import Channels from './pages/Channels';
 import ChannelDetail from './pages/ChannelDetail';
 import AdminChannels from './pages/admin/AdminChannels';
+import AdminYouTubeVideos from './pages/admin/AdminYouTubeVideos';
 
 function BackToTop() {
   const [visible, setVisible] = useState(false);
@@ -197,6 +198,7 @@ export default function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="cinemas" element={<AdminCinemas />} />
               <Route path="channels" element={<AdminChannels />} />
+              <Route path="youtube-videos" element={<AdminYouTubeVideos />} />
             </Route>
 
           </Routes>

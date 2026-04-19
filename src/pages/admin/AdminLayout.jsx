@@ -15,6 +15,7 @@ export default function AdminLayout() {
     { path: '/admin/users', label: 'Users', icon: '👥' },
     { path: '/admin/cinemas', label: 'Cinemas', icon: '🎭' },
     { path: '/admin/channels', label: 'Channels', icon: '📺' },
+    { path: '/admin/youtube-videos', label: 'YT Videos', icon: '🎞️' },
   ];
 
   return (

@@ -12,7 +12,8 @@
  *   SUPABASE_SERVICE_ROLE_KEY
  */
 
-import * as XLSX from 'xlsx';
+import XLSXDefault from 'xlsx';
+const XLSX = XLSXDefault as any;
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
@@ -21,7 +22,14 @@ import { fileURLToPath } from 'url';
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MASTER_PATH = path.resolve(__dirname, '../../src/data/naijawood_master.xlsx');
+import { existsSync } from 'fs';
+const _masterCandidates = [
+  path.resolve(__dirname, '../src/data/naijawood_master.xlsx'),
+  path.resolve(__dirname, '../../src/data/naijawood_master.xlsx'),
+  path.resolve(process.cwd(), 'src/data/naijawood_master.xlsx'),
+  'C:/Users/User/lumi/src/data/naijawood_master.xlsx',
+];
+const MASTER_PATH_RESOLVED = _masterCandidates.find(p => existsSync(p)) ?? _masterCandidates[0];
 const BATCH_SIZE = 200;
 
 const supabaseUrl = (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)!;
@@ -72,22 +80,30 @@ async function upsertBatched(
 // ── Main ───────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log('Reading master spreadsheet…');
-  const wb = XLSX.readFile(MASTER_PATH);
+  console.log('Reading master spreadsheet from:', MASTER_PATH_RESOLVED);
+  const wb = XLSX.readFile(MASTER_PATH_RESOLVED);
   console.log('Sheets found:', wb.SheetNames.join(', '));
   console.log();
 
   // ── Films ──────────────────────────────────────────────────────────────
   console.log('▸ Films');
+  const VALID_STATUS = ['released', 'pre-production', 'production', 'post-production', 'cancelled'];
   const films = readSheet<any>(wb, 'Films').map(r => {
     const c = cleanRow(r);
+    if (!c.id) return null;
+    // Skip rows missing year (NOT NULL in some DBs); default language
+    const year = c.year ? Number(c.year) : null;
+    const language = (c.language as string) || 'English';
+    // Normalise status to valid enum values
+    let status = (c.status as string) || 'released';
+    if (!VALID_STATUS.includes(status)) status = 'released';
     return {
       id:                 c.id,
       title:              c.title,
-      year:               c.year ? Number(c.year) : null,
+      year,
       runtime_minutes:    c.runtime_minutes ? Number(c.runtime_minutes) : null,
-      language:           c.language,
-      status:             c.status,
+      language,
+      status,
       release_type:       c.release_type,
       synopsis:           c.synopsis,
       tagline:            c.tagline,
@@ -99,17 +115,18 @@ async function main() {
       tmdb_id:            c.tmdb_id ? Number(c.tmdb_id) : null,
       tmdb_rating:        c.tmdb_rating ? Number(c.tmdb_rating) : null,
     };
-  }).filter(r => r.id);
+  }).filter(Boolean) as Record<string, unknown>[];
   await upsertBatched('films', films);
 
   // ── People ─────────────────────────────────────────────────────────────
   console.log('▸ People');
   const people = readSheet<any>(wb, 'People').map(r => {
     const c = cleanRow(r);
+    if (!c.id) return null;
     return {
       id:                    c.id,
       name:                  c.name,
-      biography:             c.biography,
+      biography:             c.biography,   // added via setup-youtube.sql
       photo_url:             c.photo_url,
       known_for_department:  c.known_for_department,
       popularity_score:      c.popularity_score ? Number(c.popularity_score) : null,
@@ -117,22 +134,23 @@ async function main() {
       birth_date:            c.birth_date,
       birthplace:            c.birthplace,
     };
-  }).filter(r => r.id);
+  }).filter(Boolean) as Record<string, unknown>[];
   await upsertBatched('people', people);
 
   // ── Credits ────────────────────────────────────────────────────────────
   console.log('▸ Credits');
   const credits = readSheet<any>(wb, 'Credits').map(r => {
     const c = cleanRow(r);
+    if (!c.id || !c.film_id || !c.person_id) return null;
     return {
       id:             c.id,
       film_id:        c.film_id,
       person_id:      c.person_id,
       role:           c.role,
       character_name: c.character_name,
-      billing_order:  c.billing_order ? Number(c.billing_order) : null,
+      billing_order:  c.billing_order != null ? Number(c.billing_order) : 0,
     };
-  }).filter(r => r.id && r.film_id && r.person_id);
+  }).filter(Boolean) as Record<string, unknown>[];
   await upsertBatched('credits', credits);
 
   // ── Channels ───────────────────────────────────────────────────────────
@@ -174,6 +192,7 @@ async function main() {
   console.log('▸ Channel_Videos');
   const videos = readSheet<any>(wb, 'Channel_Videos').map(r => {
     const c = cleanRow(r);
+    if (!c.id || !c.channel_id || !c.video_id) return null;
     return {
       id:               c.id,
       channel_id:       c.channel_id,
@@ -182,26 +201,29 @@ async function main() {
       thumbnail_url:    c.thumbnail_url,
       published_at:     c.published_at,
       duration_seconds: c.duration_seconds ? Number(c.duration_seconds) : null,
-      film_id:          c.film_id,
+      film_id:          c.film_id || null,
       match_status:     c.match_status || 'unmatched',
-      match_confidence: c.match_confidence ? Number(c.match_confidence) : null,
+      // match_confidence added via setup-youtube.sql migration — omit until applied
+      // match_confidence: c.match_confidence ? Number(c.match_confidence) : null,
     };
-  }).filter(r => r.id && r.channel_id && r.video_id);
+  }).filter(Boolean) as Record<string, unknown>[];
   await upsertBatched('channel_videos', videos);
 
   // ── Cinemas ────────────────────────────────────────────────────────────
   console.log('▸ Cinemas');
   const cinemas = readSheet<any>(wb, 'Cinemas').map(r => {
     const c = cleanRow(r);
+    if (!c.id) return null;
     return {
       id:          c.id,
       name:        c.name,
       city:        c.city,
       location:    c.location,
       is_active:   c.is_active === 't' || c.is_active === true,
-      booking_url: c.booking_url,
+      // booking_url added via setup-youtube.sql migration — include once applied
+      // booking_url: c.booking_url,
     };
-  }).filter(r => r.id);
+  }).filter(Boolean) as Record<string, unknown>[];
   await upsertBatched('cinemas', cinemas);
 
   // ── Film_Watch_Links ───────────────────────────────────────────────────
