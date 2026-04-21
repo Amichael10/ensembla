@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/api/youtube", "destination": "/api/external?provider=youtube" },
+    { "source": "/api/tmdb", "destination": "/api/external?provider=tmdb" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
