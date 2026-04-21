@@ -142,14 +142,14 @@ export default function AdminCompanies() {
         </div>
         <button
           onClick={openAddDrawer}
-          className="bg-gold text-dark font-semibold px-4 py-2 rounded-xl hover:bg-gold/90 transition-colors"
+          className="bg-gold text-dark font-semibold px-4 py-2 rounded-md hover:bg-gold/90 transition-colors"
         >
           + Add Company
         </button>
       </div>
 
       {/* Data Table */}
-      <div className="bg-[#13192B] rounded-2xl border border-border overflow-hidden">
+      <div className="bg-surface rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-text-muted uppercase bg-surface-2/50 border-b border-border">
@@ -253,7 +253,7 @@ export default function AdminCompanies() {
               required
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              className="w-full bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
             />
           </div>
 
@@ -263,7 +263,7 @@ export default function AdminCompanies() {
               type="url"
               value={formData.logo_url}
               onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              className="w-full bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
               placeholder="https://..."
             />
           </div>
@@ -274,7 +274,7 @@ export default function AdminCompanies() {
               type="url"
               value={formData.website_url}
               onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              className="w-full bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
               placeholder="https://..."
             />
           </div>
@@ -287,7 +287,7 @@ export default function AdminCompanies() {
               max={new Date().getFullYear()}
               value={formData.founded_year}
               onChange={(e) => setFormData({ ...formData, founded_year: e.target.value })}
-              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              className="w-full bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
               placeholder="e.g. 2010"
             />
           </div>
@@ -298,7 +298,7 @@ export default function AdminCompanies() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={3}
-              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none resize-none"
+              className="w-full bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none resize-none"
             />
           </div>
 
@@ -306,7 +306,7 @@ export default function AdminCompanies() {
             <button
               type="submit"
               disabled={isSaving}
-              className="w-full bg-gold text-dark font-semibold py-3 rounded-xl hover:bg-gold/90 transition-colors disabled:opacity-50"
+              className="w-full bg-gold text-dark font-semibold py-3 rounded-md hover:bg-gold/90 transition-colors disabled:opacity-50"
             >
               {isSaving ? 'Saving...' : 'Save'}
             </button>

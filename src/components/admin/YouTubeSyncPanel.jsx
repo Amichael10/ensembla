@@ -153,7 +153,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
           { label: 'Missing Trailer', value: filmsMissingTrailer.length, color: 'text-amber-400' },
           { label: 'Active Channels', value: channels.filter(c => c.is_active).length, color: 'text-blue-400' }
         ].map(stat => (
-          <div key={stat.label} className="bg-surface rounded-2xl p-4">
+          <div key={stat.label} className="bg-surface rounded-lg p-4">
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
             <p className="text-text-muted text-sm mt-1">{stat.label}</p>
           </div>
@@ -161,7 +161,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
       </div>
 
       {/* ── Sync Button ── */}
-      <div className="bg-surface rounded-2xl p-6">
+      <div className="bg-surface rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-text-primary font-semibold text-lg">
@@ -176,7 +176,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
           <button
             onClick={handleSyncAll}
             disabled={syncing || (filmsWithYouTube.length === 0 && channels.filter(c => c.is_active).length === 0)}
-            className="flex items-center gap-2 bg-gold text-dark font-semibold px-6 py-3 rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 bg-gold text-dark font-semibold px-6 py-3 rounded-md hover:bg-gold/90 transition-all disabled:opacity-50"
           >
             {syncing ? (
               <>
@@ -191,7 +191,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
 
         {/* Warning when syncing */}
         {syncing && (
-          <div className="mb-4 p-3 bg-amber-900/30 border border-amber-800/50 rounded-xl flex items-start gap-3">
+          <div className="mb-4 p-3 bg-amber-900/30 border border-amber-800/50 rounded-md flex items-start gap-3">
             <span className="text-amber-400 text-xl">⚠️</span>
             <div>
               <p className="text-amber-400 font-medium text-sm">Please do not switch tabs or minimize the window</p>
@@ -226,7 +226,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
 
         {/* Sync result */}
         {syncResult && !syncing && (
-          <div className={`mt-4 p-3 rounded-xl text-sm ${
+          <div className={`mt-4 p-3 rounded-md text-sm ${
             syncResult.success 
               ? 'bg-green-900/30 text-green-400 border border-green-800'
               : 'bg-red-900/30 text-red-400 border border-red-800'
@@ -259,7 +259,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
       </div>
 
       {/* ── Films Table ── */}
-      <div className="bg-surface rounded-2xl overflow-hidden">
+      <div className="bg-surface rounded-lg overflow-hidden">
         <div className="p-4 border-b border-border">
           <h3 className="text-text-primary font-semibold">Films</h3>
         </div>
@@ -330,14 +330,14 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
       </div>
 
       {/* ── Channels ── */}
-      <div className="bg-surface rounded-2xl overflow-hidden">
+      <div className="bg-surface rounded-lg overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h3 className="text-text-primary font-semibold">
             Trusted Channels ({channels.length})
           </h3>
           <button
             onClick={() => setShowAddChannel(!showAddChannel)}
-            className="bg-gold text-dark text-sm font-semibold px-4 py-2 rounded-xl hover:bg-gold/90 transition-all"
+            className="bg-gold text-dark text-sm font-semibold px-4 py-2 rounded-md hover:bg-gold/90 transition-all"
           >
             + Add Channel
           </button>
@@ -430,7 +430,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
         {selectedChannel && (
           <div className="space-y-8">
             {/* Status Header */}
-            <div className="bg-surface-2 p-6 rounded-2xl border border-border flex items-center justify-between">
+            <div className="bg-surface-2 p-6 rounded-lg border border-border flex items-center justify-between">
               <div>
                 <p className="text-text-muted text-xs uppercase tracking-wider font-semibold">Current Status</p>
                 <div className="flex items-center gap-2 mt-1">
@@ -440,7 +440,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
               </div>
               <button
                 onClick={() => handleToggleChannel(selectedChannel.id, selectedChannel.is_active)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-all ${
                   selectedChannel.is_active 
                     ? 'bg-red-500/10 text-red-500 hover:bg-red-500/20' 
                     : 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
@@ -460,7 +460,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
                     required
                     value={editForm.name}
                     onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full bg-surface-2 border border-border text-text-primary rounded-xl px-4 py-3 focus:border-gold focus:outline-none transition-colors"
+                    className="w-full bg-surface-2 border border-border text-text-primary rounded-md px-4 py-3 focus:border-gold focus:outline-none transition-colors"
                   />
                 </div>
 
@@ -471,7 +471,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
                     required
                     value={editForm.channel_id}
                     onChange={e => setEditForm({ ...editForm, channel_id: e.target.value })}
-                    className="w-full bg-surface-2 border border-border text-text-primary rounded-xl px-4 py-3 focus:border-gold focus:outline-none transition-colors font-mono text-sm"
+                    className="w-full bg-surface-2 border border-border text-text-primary rounded-md px-4 py-3 focus:border-gold focus:outline-none transition-colors font-mono text-sm"
                   />
                   <p className="text-[10px] text-text-muted italic">Used by YouTube API to fetch trailers</p>
                 </div>
@@ -483,13 +483,13 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
                       type="url"
                       value={editForm.channel_url}
                       onChange={e => setEditForm({ ...editForm, channel_url: e.target.value })}
-                      className="flex-1 bg-surface-2 border border-border text-text-primary rounded-xl px-4 py-3 focus:border-gold focus:outline-none transition-colors text-sm"
+                      className="flex-1 bg-surface-2 border border-border text-text-primary rounded-md px-4 py-3 focus:border-gold focus:outline-none transition-colors text-sm"
                     />
                     <a
                       href={editForm.channel_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center p-3 rounded-xl bg-surface-2 border border-border text-text-muted hover:text-gold transition-colors"
+                      className="flex items-center justify-center p-3 rounded-md bg-surface-2 border border-border text-text-muted hover:text-gold transition-colors"
                     >
                       ↗
                     </a>
@@ -502,7 +502,7 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
                     rows={4}
                     value={editForm.description}
                     onChange={e => setEditForm({ ...editForm, description: e.target.value })}
-                    className="w-full bg-surface-2 border border-border text-text-primary rounded-xl px-4 py-3 focus:border-gold focus:outline-none transition-colors resize-none text-sm"
+                    className="w-full bg-surface-2 border border-border text-text-primary rounded-md px-4 py-3 focus:border-gold focus:outline-none transition-colors resize-none text-sm"
                     placeholder="Notes about this channel..."
                   />
                 </div>
@@ -512,14 +512,14 @@ const YouTubeSyncPanel = ({ currentUserId }) => {
                 <button
                   type="button"
                   onClick={() => handleDeleteChannel(selectedChannel.id)}
-                  className="px-6 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-500/10 transition-all"
+                  className="px-6 py-3 rounded-md text-sm font-semibold text-red-500 hover:bg-red-500/10 transition-all"
                 >
                   Delete Channel
                 </button>
                 <button
                   type="submit"
                   disabled={savingChannel}
-                  className="px-8 py-3 bg-gold text-dark font-bold rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
+                  className="px-8 py-3 bg-gold text-dark font-bold rounded-md hover:bg-gold/90 transition-all disabled:opacity-50"
                 >
                   {savingChannel ? 'Saving...' : 'Save Changes'}
                 </button>

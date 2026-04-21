@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { formatViewCount } from '../utils/youtube';
 
 const CATEGORIES = [
   'All', 'Movies', 'Comedy', 'Series', 'Yoruba', 'Faith',
-  'Celebrity', 'Network', 'Music', 'Studio', 'skit_maker',
+  'Celebrity', 'Network', 'Music', 'Studio', 'Skit Makers',
 ];
 
 const CATEGORY_LABELS = {
   skit_maker: 'Skit Makers',
+  'Skit Makers': 'Skit Makers',
   movie_channel: 'Movie Channels',
   Movies: 'Movies',
   Comedy: 'Comedy',
@@ -115,13 +117,23 @@ export default function Channels() {
   const fetchChannels = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '96' });
-      if (search) params.set('search', search);
-      if (activeCategory !== 'All') params.set('category', activeCategory);
+      let query = supabase
+        .from('channels')
+        .select('*')
+        .order('subscriber_count', { ascending: false, nullsFirst: false })
+        .limit(96);
 
-      const res = await fetch(`/api/channels?${params}`);
-      if (!res.ok) throw new Error(`${res.status}`);
-      const { channels: data } = await res.json();
+      if (search) {
+        query = query.ilike('name', `%${search}%`);
+      }
+
+      if (activeCategory !== 'All') {
+        const catVal = activeCategory === 'Skit Makers' ? 'skit_maker' : activeCategory;
+        query = query.eq('category', catVal);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
       setChannels(data || []);
     } catch (err) {
       console.error('channels fetch error:', err);

@@ -1,8 +1,32 @@
-import { Outlet, NavLink, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AdminLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('lumi_admin_collapsed') === 'true';
+  });
+  
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem('lumi_theme_mode') !== 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lumi_admin_collapsed', isCollapsed);
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem('lumi_theme_mode', isDark ? 'dark' : 'light');
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
 
   const navItems = [
     { path: '/admin', label: 'Overview', icon: '📊', exact: true },
@@ -11,7 +35,6 @@ export default function AdminLayout() {
     { path: '/admin/credits', label: 'Credits', icon: '🎭' },
     { path: '/admin/companies', label: 'Companies', icon: '🏢' },
     { path: '/admin/claims', label: 'Pending Claims', icon: '📋' },
-    { path: '/admin/youtube', label: 'Data Sources', icon: '💾' },
     { path: '/admin/users', label: 'Users', icon: '👥' },
     { path: '/admin/cinemas', label: 'Cinemas', icon: '🎭' },
     { path: '/admin/channels', label: 'Channels', icon: '📺' },
@@ -20,81 +43,142 @@ export default function AdminLayout() {
     { path: '/admin/cinema-scraping', label: 'Scraping', icon: '🔄' },
   ];
 
+  const currentPage = navItems.find(item => location.pathname === item.path) || 
+                      navItems.find(item => location.pathname.startsWith(item.path));
+
   return (
-    <div className="flex h-screen bg-bg overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-[260px] bg-[#0A0F1E] border-r border-border flex flex-col flex-shrink-0">
-        <div className="p-6">
-          <p className="text-gold text-xs font-bold uppercase tracking-wider mb-2">Admin Panel</p>
-          <div className="inline-flex items-center px-3 py-1 bg-[#C1440E] text-white text-sm font-medium rounded-full">
-            Reel9ja Admin
+    <div className={`flex h-screen overflow-hidden font-sans ${isDark ? 'dark' : 'light'} bg-bg transition-colors duration-300`}>
+      {/* Sidebar - Always Dark for Hybrid Look */}
+      <aside 
+        className={`bg-sidebar border-r border-sidebar-border flex flex-col flex-shrink-0 transition-all duration-300 ease-in-out relative z-30 ${
+          isCollapsed ? 'w-[72px]' : 'w-[260px]'
+        }`}
+      >
+        {/* Toggle Button */}
+        <button 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-8 w-6 h-6 bg-brand text-white rounded-full flex items-center justify-center shadow-lg z-40 hover:scale-110 transition-transform cursor-pointer border-2 border-sidebar"
+        >
+          {isCollapsed ? '›' : '‹'}
+        </button>
+
+        <div className={`h-16 flex items-center px-6 mb-4 ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand to-brand-hover flex items-center justify-center text-white font-black shadow-lg shadow-brand/20">
+              L
+            </div>
+            {!isCollapsed && (
+              <span className="text-text-primary font-bold text-lg tracking-tight">Lumi Admin</span>
+            )}
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-3 space-y-1 py-4 scrollbar-hide">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               end={item.exact}
+              title={isCollapsed ? item.label : ''}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative ${
                   isActive
-                    ? 'bg-[#D4A017]/10 text-gold border-l-4 border-gold'
-                    : 'text-text-muted hover:bg-surface hover:text-text-primary border-l-4 border-transparent'
-                }`
+                    ? 'bg-brand/10 text-brand font-bold'
+                    : 'text-sidebar-text hover:bg-surface-2 hover:text-text-primary'
+                } ${isCollapsed ? 'justify-center px-0' : ''}`
               }
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="font-medium">{item.label}</span>
+              {({ isActive }) => (
+                <>
+                  <span className={`text-xl transition-transform duration-200 ${isCollapsed ? 'scale-110' : ''}`}>
+                    {item.icon}
+                  </span>
+                  {!isCollapsed && (
+                    <span className="text-sm whitespace-nowrap">{item.label}</span>
+                  )}
+                  {/* Active Indicator Pip */}
+                  {!isCollapsed && (
+                    <div className={`ml-auto w-1 h-1 rounded-full bg-brand transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-0'}`} />
+                  )}
+                </>
+              )}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-border mt-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center text-gold font-bold text-lg">
+        {/* User Card */}
+        <div className="p-4 border-t border-sidebar-border bg-surface-2/30">
+          <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed ? 'justify-center gap-0' : ''}`}>
+            <div className="w-8 h-8 rounded-full bg-surface-2 border border-border flex flex-shrink-0 items-center justify-center text-brand font-bold text-sm">
               {user?.name?.charAt(0) || user?.email?.charAt(0) || 'A'}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-text-primary font-medium truncate">{user?.name || 'Admin User'}</p>
-              <p className="text-text-muted text-xs truncate">{user?.email}</p>
-            </div>
+            {!isCollapsed && (
+              <div className="overflow-hidden">
+                <p className="text-text-primary font-medium truncate text-xs">{user?.name || 'Admin User'}</p>
+                <p className="text-text-muted text-[10px] truncate">{user?.email}</p>
+              </div>
+            )}
           </div>
-          <Link
-            to="/"
-            className="block w-full text-center py-2 text-sm text-text-muted hover:text-gold transition-colors"
-          >
-            Exit Admin
-          </Link>
+          {!isCollapsed && (
+            
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                onClick={logout}
+                className="w-full text-center py-3 text-[10px] bg-red-500/10 rounded-md text-red-500 hover:text-white hover:bg-red-500 transition-all font-black uppercase tracking-wider flex items-center justify-center gap-2 border border-red-500/20"
+              >
+                <span>🚪</span> Sign Out
+              </button>
+              <Link
+                to="/"
+                className="w-full text-center py-2 text-[10px] bg-surface-2 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-3 transition-all font-medium uppercase tracking-wider"
+              >
+                Go to Website
+              </Link>
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#0A0F1E]">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header Bar */}
-        <header className="h-16 bg-[#13192B] border-b border-border flex items-center justify-between px-8 flex-shrink-0">
-          <h1 className="text-xl font-semibold text-text-primary">
-            {/* We could dynamically set this based on route, but for now it's fine */}
-            Dashboard
-          </h1>
-          <div className="flex items-center gap-6">
+        <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-8 flex-shrink-0 z-20">
+          <div className="flex items-center gap-4">
+            <h1 className="text-lg font-bold text-text-primary tracking-tight">
+              {currentPage?.label || 'Dashboard'}
+            </h1>
+            <div className="hidden md:flex ml-8 items-center bg-surface-2 rounded-lg px-3 py-1.5 border border-border group">
+              <span className="text-text-muted transition-colors group-focus-within:text-brand">🔍</span>
+              <input 
+                type="text" 
+                placeholder="Search resources..." 
+                className="bg-transparent border-none focus:ring-0 text-sm w-64 placeholder:text-text-muted ml-2 text-text-primary"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <button 
+              onClick={() => setIsDark(!isDark)}
+              className="p-2 rounded-lg bg-surface-2 border border-border text-text-muted hover:text-brand hover:border-brand/30 transition-all flex items-center justify-center shadow-sm"
+              title={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
+            >
+              {isDark ? '☀️' : '🌙'}
+            </button>
+
             <Link
               to="/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-text-muted hover:text-gold transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-surface-2 border border-border text-text-primary rounded-lg text-xs font-semibold hover:bg-surface-3 transition-all flex items-center gap-2 shadow-sm"
             >
-              View Site 
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-              </svg>
+              <span className="text-brand">●</span> View Site
             </Link>
-            <button className="relative text-text-muted hover:text-gold transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-              </svg>
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+            
+            <button className="relative w-10 h-10 rounded-lg bg-surface-2 border border-border text-text-muted hover:text-brand transition-all flex items-center justify-center shadow-sm">
+              <span className="text-lg">🔔</span>
+              <span className="absolute top-2 right-2 bg-brand text-white text-[8px] font-bold w-3 h-3 rounded-full flex items-center justify-center border border-surface ring-2 ring-transparent">
                 3
               </span>
             </button>
@@ -102,8 +186,10 @@ export default function AdminLayout() {
         </header>
 
         {/* Scrollable Content */}
-        <main className="flex-1 overflow-y-auto p-8">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto p-10 custom-scrollbar relative">
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

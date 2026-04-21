@@ -338,7 +338,7 @@ const TMDBSyncPanel = () => {
           { label: 'Imported from TMDB', value: stats.tmdbFilms, color: 'text-green-400' },
           { label: 'Manual / YouTube', value: stats.totalFilms - stats.tmdbFilms, color: 'text-blue-400' },
         ].map(stat => (
-          <div key={stat.label} className="bg-surface rounded-2xl p-4">
+          <div key={stat.label} className="bg-surface rounded-lg p-4">
             <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
             <p className="text-text-muted text-sm mt-1">{stat.label}</p>
           </div>
@@ -346,10 +346,10 @@ const TMDBSyncPanel = () => {
       </div>
 
       {/* Tab Switcher */}
-      <div className="flex gap-2 bg-surface rounded-2xl p-1.5">
+      <div className="flex gap-2 bg-surface rounded-lg p-1.5">
         <button
           onClick={() => setActiveTab('search')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all ${
             activeTab === 'search'
               ? 'bg-gold text-dark'
               : 'text-text-muted hover:text-text-primary'
@@ -359,7 +359,7 @@ const TMDBSyncPanel = () => {
         </button>
         <button
           onClick={() => setActiveTab('discover')}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex-1 py-2.5 rounded-md text-sm font-semibold transition-all ${
             activeTab === 'discover'
               ? 'bg-gold text-dark'
               : 'text-text-muted hover:text-text-primary'
@@ -371,19 +371,19 @@ const TMDBSyncPanel = () => {
 
       {/* ── Search Tab ── */}
       {activeTab === 'search' && (
-        <div className="bg-surface rounded-2xl p-6">
+        <div className="bg-surface rounded-lg p-6">
           <form onSubmit={handleSearch} className="flex gap-3 mb-6">
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search TMDB for a film title..."
-              className="flex-1 bg-surface-2 border border-border text-text-primary rounded-xl px-4 py-3 focus:border-gold focus:outline-none transition-colors"
+              className="flex-1 bg-surface-2 border border-border text-text-primary rounded-md px-4 py-3 focus:border-gold focus:outline-none transition-colors"
             />
             <button
               type="submit"
               disabled={searching || !searchQuery.trim()}
-              className="bg-gold text-dark font-semibold px-6 py-3 rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
+              className="bg-gold text-dark font-semibold px-6 py-3 rounded-md hover:bg-gold/90 transition-all disabled:opacity-50"
             >
               {searching ? 'Searching...' : 'Search'}
             </button>
@@ -395,7 +395,7 @@ const TMDBSyncPanel = () => {
               <button
                 onClick={handleBulkImport}
                 disabled={importingId !== null}
-                className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-4 py-2 rounded-xl hover:bg-green-500/20 transition-all disabled:opacity-50"
+                className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-4 py-2 rounded-md hover:bg-green-500/20 transition-all disabled:opacity-50"
               >
                 Import All New
               </button>
@@ -414,7 +414,7 @@ const TMDBSyncPanel = () => {
 
       {/* ── Discover Tab ── */}
       {activeTab === 'discover' && (
-        <div className="bg-surface rounded-2xl p-6">
+        <div className="bg-surface rounded-lg p-6">
           <div className="flex flex-wrap gap-3 mb-6">
             <input
               type="number"
@@ -423,12 +423,12 @@ const TMDBSyncPanel = () => {
               placeholder="Year (optional)"
               min="1990"
               max="2030"
-              className="w-36 bg-surface-2 border border-border text-text-primary rounded-xl px-4 py-3 focus:border-gold focus:outline-none transition-colors"
+              className="w-36 bg-surface-2 border border-border text-text-primary rounded-md px-4 py-3 focus:border-gold focus:outline-none transition-colors"
             />
             <button
               onClick={() => handleDiscover(1)}
               disabled={discovering}
-              className="bg-gold text-dark font-semibold px-6 py-3 rounded-xl hover:bg-gold/90 transition-all disabled:opacity-50"
+              className="bg-gold text-dark font-semibold px-6 py-3 rounded-md hover:bg-gold/90 transition-all disabled:opacity-50"
             >
               {discovering ? 'Loading...' : '🇳🇬 Discover'}
             </button>
@@ -436,7 +436,7 @@ const TMDBSyncPanel = () => {
               <button
                 onClick={handleBulkImport}
                 disabled={importingId !== null}
-                className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-4 py-2 rounded-xl hover:bg-green-500/20 transition-all disabled:opacity-50 ml-auto"
+                className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-4 py-2 rounded-md hover:bg-green-500/20 transition-all disabled:opacity-50 ml-auto"
               >
                 Import All New on Page
               </button>
@@ -478,7 +478,7 @@ const TMDBSyncPanel = () => {
 
       {/* Import Log */}
       {importLog.length > 0 && (
-        <div className="bg-surface rounded-2xl overflow-hidden">
+        <div className="bg-surface rounded-lg overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h3 className="text-text-primary font-semibold">Import Log</h3>
             <button
@@ -520,7 +520,7 @@ const MovieList = ({ movies, importedTmdbIds, importingId, importProgress, onImp
         return (
           <div
             key={movie.tmdbId}
-            className={`flex gap-4 p-4 rounded-xl border transition-all ${
+            className={`flex gap-4 p-4 rounded-md border transition-all ${
               isImported
                 ? 'bg-green-900/10 border-green-800/30'
                 : 'bg-surface-2 border-border hover:border-gold/30'

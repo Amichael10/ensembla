@@ -1,16 +1,6 @@
-/**
- * /admin/cinema-scraping
- *
- * Control panel for the cinema showtime scraper. Lists every cinema with
- * scrape status and lets the admin:
- *   • Toggle scrape_enabled per cinema
- *   • See last-fetched time, failure count, last error
- *   • Reset failure counter (un-quarantine cinemas past MAX_FAILURES)
- *   • Trigger a manual "sync now" call to /api/cron/refresh-showtimes
- */
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 const ADAPTER_LABELS = {
   reach_cinema: 'Reach Cinema (Viva/Ozone/KADA)',
@@ -18,6 +8,7 @@ const ADAPTER_LABELS = {
   cinesync:     'Cinesync (Filmhouse) ⚠️',
   bluepictures: 'Blue Pictures',
   firecrawl:    'Firecrawl (Genesis/fallback)',
+  manual:       'Manual Override',
 };
 
 function fmtWhen(iso) {
@@ -34,12 +25,50 @@ function fmtWhen(iso) {
 
 function HealthDot({ cinema }) {
   const { scrape_enabled, showtimes_last_fetched_at, scrape_failure_count, scrape_last_error } = cinema;
-  if (!scrape_enabled) return <span className="inline-block w-2 h-2 rounded-full bg-gray-500" title="Disabled" />;
-  if ((scrape_failure_count ?? 0) >= 5) return <span className="inline-block w-2 h-2 rounded-full bg-red-500" title="Quarantined" />;
-  if (scrape_last_error) return <span className="inline-block w-2 h-2 rounded-full bg-yellow-500" title={scrape_last_error} />;
-  if (!showtimes_last_fetched_at) return <span className="inline-block w-2 h-2 rounded-full bg-blue-400" title="Never fetched" />;
-  const stale = Date.now() - new Date(showtimes_last_fetched_at).getTime() > 48 * 3600 * 1000;
-  return <span className={`inline-block w-2 h-2 rounded-full ${stale ? 'bg-orange-400' : 'bg-green-500'}`} title={stale ? 'Stale' : 'Healthy'} />;
+  
+  if (!scrape_enabled) {
+    return (
+      <div className="relative group/health inline-block">
+        <span className="flex w-2.5 h-2.5 rounded-full bg-surface-3 transition-transform group-hover/health:scale-125" title="Scraping Disabled" />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-surface border border-border rounded text-[9px] font-black text-text-muted uppercase tracking-widest opacity-0 group-hover/health:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+          Disabled
+        </div>
+      </div>
+    );
+  }
+  
+  if ((scrape_failure_count ?? 0) >= 5) {
+    return (
+      <div className="relative group/health inline-block">
+        <span className="flex w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.4)] animate-pulse" title="Quarantined" />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-red-500 text-white rounded text-[9px] font-black uppercase tracking-widest opacity-0 group-hover/health:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+          Quarantined
+        </div>
+      </div>
+    );
+  }
+  
+  if (scrape_last_error) {
+    return (
+      <div className="relative group/health inline-block">
+        <span className="flex w-2.5 h-2.5 rounded-full bg-brand shadow-[0_0_12px_rgba(255,92,0,0.4)]" title="Error Reported" />
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-brand text-white rounded text-[9px] font-black uppercase tracking-widest opacity-0 group-hover/health:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+          Error
+        </div>
+      </div>
+    );
+  }
+  
+  const stale = showtimes_last_fetched_at && (Date.now() - new Date(showtimes_last_fetched_at).getTime() > 48 * 3600 * 1000);
+  
+  return (
+    <div className="relative group/health inline-block">
+      <span className={`flex w-2.5 h-2.5 rounded-full ${stale ? 'bg-orange-300 shadow-[0_0_12px_rgba(251,146,60,0.4)]' : 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.4)]'}`} title={stale ? 'Stale Data' : 'Healthy'} />
+      <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-surface border border-border rounded text-[9px] font-black uppercase tracking-widest opacity-0 group-hover/health:opacity-100 transition-all pointer-events-none whitespace-nowrap z-50">
+        <span className={stale ? 'text-orange-500' : 'text-green-500'}>{stale ? 'Latency High' : 'Synchronized'}</span>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminCinemaScraping() {
@@ -47,7 +76,7 @@ export default function AdminCinemaScraping() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
-  const [filter, setFilter] = useState('enabled'); // 'enabled' | 'disabled' | 'all'
+  const [filter, setFilter] = useState('enabled'); 
   const [search, setSearch] = useState('');
 
   const fetchCinemas = useCallback(async () => {
@@ -61,197 +90,214 @@ export default function AdminCinemaScraping() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { document.title = 'Admin | Cinema Scraping'; }, []);
-  useEffect(() => { fetchCinemas(); }, [fetchCinemas]);
-
-  const toggle = async (cinema) => {
-    const { error } = await supabase
-      .from('cinemas')
-      .update({ scrape_enabled: !cinema.scrape_enabled })
-      .eq('id', cinema.id);
-    if (error) return alert(error.message);
+  useEffect(() => {
     fetchCinemas();
+  }, [fetchCinemas]);
+
+  const toggleEnabled = async (id, current) => {
+    const { error } = await supabase.from('cinemas').update({ scrape_enabled: !current }).eq('id', id);
+    if (!error) {
+       setCinemas(prev => prev.map(c => c.id === id ? { ...c, scrape_enabled: !current } : c));
+       toast.success(`Broadcasting ${!current ? 'enabled' : 'isolated'}`);
+    } else {
+       toast.error('Failed to update cinema');
+    }
   };
 
   const resetFailures = async (id) => {
-    const { error } = await supabase
-      .from('cinemas')
-      .update({ scrape_failure_count: 0, scrape_last_error: null })
-      .eq('id', id);
-    if (error) return alert(error.message);
-    fetchCinemas();
+    const { error } = await supabase.from('cinemas').update({ scrape_failure_count: 0, scrape_last_error: null }).eq('id', id);
+    if (!error) {
+       setCinemas(prev => prev.map(c => c.id === id ? { ...c, scrape_failure_count: 0, scrape_last_error: null } : c));
+       toast.success('Errors cleared');
+    }
   };
 
-  const syncNow = async () => {
-    if (!confirm('Trigger a manual showtime sync? This hits the Vercel endpoint.')) return;
-    setSyncing(true); setSyncResult(null);
+  const triggerManualSync = async () => {
+    setSyncing(true);
+    setSyncResult(null);
     try {
-      const r = await fetch('/api/cron/refresh-showtimes', {
-        method: 'POST',
-        headers: { 'x-cron-secret': 'lumi-cron-pkenrm-2026', 'Content-Type': 'application/json' },
-        body: '{}',
-      });
-      const json = await r.json();
-      setSyncResult(json);
-    } catch (e) {
-      setSyncResult({ error: e.message });
+      const res = await fetch('/api/cron/refresh-showtimes', { method: 'GET' });
+      const data = await res.json();
+      setSyncResult(data);
+      toast.success('Starting sync...');
+      fetchCinemas();
+    } catch (err) {
+      console.error(err);
+      toast.error('Sync failed to start');
     } finally {
       setSyncing(false);
-      fetchCinemas();
     }
   };
 
   const filtered = cinemas.filter(c => {
-    if (filter === 'enabled'  && !c.scrape_enabled) return false;
-    if (filter === 'disabled' &&  c.scrape_enabled) return false;
-    if (search && !`${c.name} ${c.chain ?? ''} ${c.city ?? ''}`.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || (c.chain || '').toLowerCase().includes(search.toLowerCase());
+    if (filter === 'all') return matchesSearch;
+    if (filter === 'enabled') return matchesSearch && c.scrape_enabled;
+    if (filter === 'disabled') return matchesSearch && !c.scrape_enabled;
+    if (filter === 'failed') return matchesSearch && (c.scrape_failure_count ?? 0) > 0;
+    return matchesSearch;
   });
 
-  const stats = cinemas.reduce((s, c) => {
-    if (c.scrape_enabled)                     s.enabled++;
-    if ((c.scrape_failure_count ?? 0) >= 5)   s.quarantined++;
-    if (c.scrape_enabled && !c.showtimes_last_fetched_at) s.never++;
-    return s;
-  }, { enabled: 0, quarantined: 0, never: 0 });
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+    <div className="p-8 max-w-[1600px] mx-auto pb-24">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-8 mb-12">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">Cinema Scraping</h2>
-          <p className="text-text-muted mt-1">Control showtime scraping per cinema. Cron runs 1×/day at 7am WAT.</p>
+          <p className="text-brand text-[10px] font-black uppercase tracking-[0.4em] mb-2 italic">Cinema Scrapers</p>
+          <h1 className="text-4xl font-black text-text-primary tracking-tight mb-2">Manage Showtimes</h1>
+          <p className="text-text-muted text-sm max-w-2xl font-medium leading-relaxed">
+            Coordinating <span className="text-brand font-bold">{cinemas.filter(c => c.scrape_enabled).length} automated crawlers</span> across multiple theater networks. Real-time monitoring of facility infrastructure.
+          </p>
         </div>
         <button
-          onClick={syncNow}
+          onClick={triggerManualSync}
           disabled={syncing}
-          className="px-4 py-2 bg-[#D4A017] text-[#0A0F1E] rounded-xl text-sm font-semibold hover:bg-[#D4A017]/90 disabled:opacity-50">
-          {syncing ? 'Syncing…' : '↻ Sync now'}
+          className="group relative px-10 py-5 bg-brand text-white rounded-md text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-50"
+        >
+          <span className="relative z-10 flex items-center gap-3 font-black">
+             {syncing ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : <span className="text-lg">⚡</span>}
+             Start Manual Sync
+          </span>
+          <div className="absolute inset-0 bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
       </div>
 
-      {/* Sync result banner */}
       {syncResult && (
-        <div className={`rounded-xl p-4 text-sm ${syncResult.error ? 'bg-red-900/20 border border-red-900/40 text-red-400' : 'bg-green-900/20 border border-green-900/40 text-green-400'}`}>
-          {syncResult.error
-            ? <p>Sync failed: {syncResult.error}</p>
-            : (
-              <div>
-                <p className="font-semibold">Sync complete in {syncResult.total_ms}ms</p>
-                <p className="opacity-80 mt-1">
-                  {syncResult.successes}/{syncResult.cinemas_processed} cinemas succeeded ·&nbsp;
-                  {syncResult.total_showtimes_written} showtimes written ·&nbsp;
-                  {syncResult.total_unmatched_titles} unmatched titles for triage
-                </p>
-              </div>
-            )
-          }
+        <div className="card-cal mb-8 p-6 bg-surface-2 border-brand/20 animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-3">
+                <span className="text-xl">📡</span>
+                <p className="text-[10px] font-black text-text-primary uppercase tracking-widest">Sync Details</p>
+             </div>
+             <button onClick={() => setSyncResult(null)} className="text-text-muted hover:text-text-primary transition-colors">✕</button>
+          </div>
+          <pre className="text-[11px] font-mono text-brand/80 p-4 bg-surface rounded-md overflow-x-auto border border-border/50">
+            {JSON.stringify(syncResult, null, 2)}
+          </pre>
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Enabled',      val: stats.enabled,      color: 'text-green-400' },
-          { label: 'Quarantined',  val: stats.quarantined,  color: 'text-red-400' },
-          { label: 'Never fetched',val: stats.never,        color: 'text-blue-400' },
-          { label: 'Total',        val: cinemas.length,     color: 'text-gold' },
-        ].map(s => (
-          <div key={s.label} className="bg-surface border border-border rounded-xl p-4">
-            <p className="text-text-muted text-xs uppercase tracking-wide">{s.label}</p>
-            <p className={`text-2xl font-bold mt-1 ${s.color}`}>{s.val}</p>
-          </div>
-        ))}
+      {/* Control Module */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-10 items-end">
+        <div className="lg:col-span-8 flex items-center gap-4 overflow-x-auto pb-4 no-scrollbar">
+           {[
+             { id: 'all', label: 'All Cinemas' },
+             { id: 'enabled', label: 'Enabled' },
+             { id: 'disabled', label: 'Disabled' },
+             { id: 'failed', label: 'Errors' },
+           ].map(t => (
+             <button
+               key={t.id}
+               onClick={() => setFilter(t.id)}
+               className={`px-8 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap ${
+                 filter === t.id
+                   ? 'bg-text-primary border-text-primary text-surface shadow-xl'
+                   : 'bg-surface border-border text-text-muted hover:border-border-hover hover:text-text-primary'
+               }`}
+             >
+               {t.label}
+             </button>
+           ))}
+        </div>
+        <div className="lg:col-span-4 relative group">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search facility signature..."
+            className="w-full h-14 bg-surface border border-border rounded-md px-6 pl-14 text-text-primary text-sm focus:border-brand focus:outline-none transition-all placeholder:text-text-muted/30 shadow-xl group-hover:border-border-hover"
+          />
+          <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl opacity-30">🔍</span>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex bg-surface border border-border rounded-xl overflow-hidden">
-          {['enabled', 'disabled', 'all'].map(f => (
-            <button key={f} onClick={() => setFilter(f)}
-              className={`px-4 py-2 text-sm ${filter === f ? 'bg-[#D4A017] text-[#0A0F1E]' : 'text-text-muted hover:text-text-primary'}`}>
-              {f[0].toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search cinemas…"
-          className="flex-1 min-w-[200px] bg-surface border border-border rounded-xl px-4 py-2 text-sm text-text-primary placeholder-text-muted focus:border-gold focus:outline-none"
-        />
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <div className="text-center text-text-muted py-20">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center text-text-muted py-20">
-          <p className="text-3xl mb-2">🎭</p>
-          <p>No cinemas match.</p>
-        </div>
-      ) : (
-        <div className="bg-surface border border-border rounded-2xl overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-[#0A0F1E] text-xs uppercase text-text-muted">
-              <tr>
-                <th className="text-left px-4 py-3"></th>
-                <th className="text-left px-4 py-3">Cinema</th>
-                <th className="text-left px-4 py-3">Adapter</th>
-                <th className="text-left px-4 py-3">Last Fetched</th>
-                <th className="text-center px-4 py-3">Failures</th>
-                <th className="text-left px-4 py-3">Last Error</th>
-                <th className="text-right px-4 py-3">Actions</th>
+      {/* Grid Interface */}
+      <div className="card-cal overflow-hidden border border-border/50">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b border-border text-text-muted text-[10px] font-black uppercase tracking-[0.3em] bg-surface-2/50">
+                <th className="px-10 py-6">Cinema Location</th>
+                <th className="px-10 py-6">Sync Method</th>
+                <th className="px-10 py-6">Sync Status</th>
+                <th className="px-10 py-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {filtered.map(c => (
-                <tr key={c.id} className="border-t border-border hover:bg-[#0A0F1E]/50">
-                  <td className="px-4 py-3 align-top"><HealthDot cinema={c} /></td>
-                  <td className="px-4 py-3">
-                    <p className="text-text-primary font-medium">{c.name}</p>
-                    <p className="text-text-muted text-xs mt-0.5">{c.chain ?? '—'} · {c.city ?? '—'}</p>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-text-muted">
-                    {c.scrape_adapter
-                      ? ADAPTER_LABELS[c.scrape_adapter] ?? c.scrape_adapter
-                      : <span className="text-text-muted">— none —</span>}
-                    {c.scrape_config?.externalCinemaId && (
-                      <div className="text-[10px] mt-0.5 opacity-60">{c.scrape_config.externalCinemaId}</div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-text-muted">{fmtWhen(c.showtimes_last_fetched_at)}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`text-xs font-medium ${(c.scrape_failure_count ?? 0) >= 5 ? 'text-red-400' : 'text-text-muted'}`}>
-                      {c.scrape_failure_count ?? 0}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-red-400/80 max-w-[260px] truncate" title={c.scrape_last_error ?? ''}>
-                    {c.scrape_last_error ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="inline-flex gap-2">
-                      {(c.scrape_failure_count ?? 0) >= 5 && (
-                        <button onClick={() => resetFailures(c.id)}
-                          className="px-2 py-1 text-xs bg-yellow-900/40 text-yellow-400 hover:bg-yellow-900/60 rounded-lg">
-                          Reset
-                        </button>
-                      )}
-                      <button onClick={() => toggle(c)}
-                        className={`px-3 py-1.5 text-xs rounded-lg ${c.scrape_enabled
-                          ? 'bg-green-900/40 text-green-400 hover:bg-green-900/60'
-                          : 'bg-[#252D45] text-text-muted hover:text-text-primary'}`}>
-                        {c.scrape_enabled ? 'Enabled' : 'Disabled'}
-                      </button>
+            <tbody className="divide-y divide-border">
+              {loading ? (
+                 <tr><td colSpan="4" className="px-10 py-32 text-center text-[10px] font-black text-brand uppercase tracking-widest animate-pulse italic">Loading cinemas...</td></tr>
+              ) : filtered.length === 0 ? (
+                 <tr><td colSpan="4" className="px-10 py-32 text-center text-text-muted italic opacity-40 uppercase tracking-widest text-[10px] font-black">No cinemas found at this frequency.</td></tr>
+              ) : filtered.map(cinema => (
+                <tr key={cinema.id} className="group hover:bg-surface-2/50 transition-all duration-300">
+                  <td className="px-10 py-8">
+                    <div className="flex items-center gap-4">
+                      <HealthDot cinema={cinema} />
+                      <div className="min-w-0">
+                         <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-text-primary text-base font-black tracking-tight group-hover:text-brand transition-colors truncate">{cinema.name}</h3>
+                            <span className="bg-surface-3 text-text-muted text-[8px] font-black uppercase px-2 py-0.5 rounded-lg border border-border">{cinema.chain}</span>
+                         </div>
+                         <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest">{cinema.city}</p>
+                      </div>
                     </div>
+                  </td>
+                  <td className="px-10 py-8">
+                     <div className="flex flex-col">
+                        <span className="text-text-primary text-xs font-black italic">{ADAPTER_LABELS[cinema.scrape_adapter] || cinema.scrape_adapter}</span>
+                        <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest mt-1">Version 2.1 Mapped</span>
+                     </div>
+                  </td>
+                  <td className="px-10 py-8">
+                     <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-1">
+                           <span className="text-text-primary text-sm font-black italic tabular-nums">{fmtWhen(cinema.showtimes_last_fetched_at)}</span>
+                           {cinema.scrape_failure_count > 0 && (
+                              <span className="text-red-500 text-[10px] font-black">[{cinema.scrape_failure_count} Error Signals]</span>
+                           )}
+                        </div>
+                        <p className="text-[9px] text-text-muted font-bold uppercase tracking-widest truncate max-w-[200px]">
+                           {cinema.scrape_last_error ?? 'Healthy'}
+                        </p>
+                     </div>
+                  </td>
+                  <td className="px-10 py-8 text-right">
+                     <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                        {cinema.scrape_failure_count > 0 && (
+                          <button
+                            onClick={() => resetFailures(cinema.id)}
+                            className="w-10 h-10 rounded-md bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white border border-green-500/20 flex items-center justify-center transition-all shadow-md active:scale-90"
+                            title="Reset Errors"
+                          >
+                            ♻️
+                          </button>
+                        )}
+                        <button
+                          onClick={() => toggleEnabled(cinema.id, cinema.scrape_enabled)}
+                          className={`w-10 h-10 rounded-md flex items-center justify-center transition-all shadow-md active:scale-90 border overflow-hidden ${
+                            cinema.scrape_enabled 
+                            ? 'bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white border-orange-500/20' 
+                            : 'bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white border-green-500/20'
+                          }`}
+                          title={cinema.scrape_enabled ? 'Turn Off' : 'Turn On'}
+                        >
+                           {cinema.scrape_enabled ? '⏸' : '▶'}
+                        </button>
+                        <button
+                          onClick={() => window.open(`/admin/cinemas?edit=${cinema.id}`, '_blank')}
+                          className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-brand hover:border-brand/30 transition-all shadow-md active:scale-90"
+                          title="Edit Details"
+                        >
+                           🔍
+                        </button>
+                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </div>
   );
 }

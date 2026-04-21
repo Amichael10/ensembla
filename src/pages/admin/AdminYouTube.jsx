@@ -24,7 +24,7 @@ const AdminYouTube = () => {
       <div className="flex gap-2 mb-8">
         <button
           onClick={() => setActiveSource('tmdb')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold transition-all ${
             activeSource === 'tmdb'
               ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
               : 'bg-surface text-text-muted hover:text-text-primary border border-border'
@@ -35,7 +35,7 @@ const AdminYouTube = () => {
         </button>
         <button
           onClick={() => setActiveSource('youtube')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-semibold transition-all ${
             activeSource === 'youtube'
               ? 'bg-red-600 text-white shadow-lg shadow-red-500/20'
               : 'bg-surface text-text-muted hover:text-text-primary border border-border'

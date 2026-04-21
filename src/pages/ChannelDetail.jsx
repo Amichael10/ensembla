@@ -154,12 +154,16 @@ function VideoCard({ video }) {
 export default function ChannelDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
+  const [channel, setChannel] = useState(null);
+  const [videos, setVideos] = useState([]);
+  const [owner, setOwner] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFlag, setShowFlag] = useState(false);
-  const [liveVideos, setLiveVideos] = useState([]);
-  const [videosLoading, setVideosLoading] = useState(false);
+  
+  // Search & Filter
+  const [search, setSearch] = useState('');
+  const [onlyMovies, setOnlyMovies] = useState(false);
 
   useEffect(() => {
     fetchChannel();
@@ -169,74 +173,49 @@ export default function ChannelDetail() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/channel/${id}`);
-      if (res.status === 404) { setError('Channel not found'); setLoading(false); return; }
-      if (!res.ok) throw new Error(`${res.status}`);
-      const json = await res.json();
-      setData(json);
-      document.title = `Lumi | ${json.channel?.name || 'Channel'}`;
+      // 1. Fetch Channel
+      const { data: ch, error: chErr } = await supabase
+        .from('channels')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (chErr || !ch) throw new Error('Channel not found');
+      setChannel(ch);
+      document.title = `Lumi | ${ch.name}`;
 
-      // If we have a channel_handle, try fetching live videos from YouTube API
-      if (json.channel?.channel_handle || json.channel?.channel_url) {
-        fetchLiveVideos(json.channel);
+      // 2. Fetch Owner if linked
+      if (ch.owner_person_id) {
+        const { data: p } = await supabase
+          .from('people')
+          .select('id, name, photo_url, known_for_department')
+          .eq('id', ch.owner_person_id)
+          .single();
+        setOwner(p);
       }
+
+      // 3. Fetch Videos
+      let vidQuery = supabase
+        .from('channel_videos')
+        .select('id, video_id, title, thumbnail_url, published_at, duration_seconds, film_id, match_status')
+        .eq('channel_id', id)
+        .order('published_at', { ascending: false });
+
+      const { data: vids } = await vidQuery;
+      setVideos(vids || []);
+
     } catch (err) {
-      setError('Failed to load channel');
+      setError(err.message === 'Channel not found' ? 'Channel not found' : 'Failed to load channel');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchLiveVideos = async (channel) => {
-    setVideosLoading(true);
-    try {
-      // Extract handle from channel_handle or channel_url
-      const handle = channel.channel_handle?.replace('@', '') ||
-        channel.channel_url?.match(/\/@([\w-]+)/)?.[1];
-      if (!handle) return;
-
-      // Search for channel ID by handle
-      const searchRes = await fetch(
-        `/api/youtube?endpoint=channels&part=id,statistics,contentDetails&forHandle=@${encodeURIComponent(handle)}`
-      );
-      const searchData = await searchRes.json();
-      if (!searchData.items?.length) return;
-
-      const ytChannel = searchData.items[0];
-      const uploadsId = ytChannel.contentDetails?.relatedPlaylists?.uploads;
-      if (!uploadsId) return;
-
-      const playlistRes = await fetch(
-        `/api/youtube?endpoint=playlistItems&part=snippet&playlistId=${uploadsId}&maxResults=24`
-      );
-      const playlistData = await playlistRes.json();
-      if (!playlistData.items?.length) return;
-
-      const videoIds = playlistData.items.map(i => i.snippet.resourceId.videoId).join(',');
-      const detailRes = await fetch(
-        `/api/youtube?endpoint=videos&part=snippet,contentDetails,statistics&id=${videoIds}`
-      );
-      const detailData = await detailRes.json();
-
-      setLiveVideos(
-        (detailData.items || []).map(v => ({
-          video_id: v.id,
-          title: v.snippet?.title,
-          thumbnail_url: v.snippet?.thumbnails?.medium?.url || v.snippet?.thumbnails?.default?.url,
-          published_at: v.snippet?.publishedAt,
-          duration_seconds: (() => {
-            const d = parseDuration(v.contentDetails?.duration);
-            return d.totalSeconds;
-          })(),
-          film_id: null,
-        }))
-      );
-    } catch (err) {
-      console.error('live videos fetch error:', err);
-    } finally {
-      setVideosLoading(false);
-    }
-  };
+  const filteredVideos = videos.filter(v => {
+    if (search.trim() && !v.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (onlyMovies && v.duration_seconds < 1800) return false;
+    return true;
+  });
 
   if (loading) return (
     <div className="min-h-screen bg-[#0A0F1E] pt-20 animate-pulse">
@@ -248,7 +227,7 @@ export default function ChannelDetail() {
     </div>
   );
 
-  if (error || !data) return (
+  if (error || !channel) return (
     <div className="min-h-screen bg-[#0A0F1E] pt-20 flex items-center justify-center">
       <div className="text-center">
         <p className="text-5xl mb-4">📺</p>
@@ -260,8 +239,6 @@ export default function ChannelDetail() {
     </div>
   );
 
-  const { channel, videos: savedVideos, owner } = data;
-  const displayVideos = liveVideos.length > 0 ? liveVideos : savedVideos;
 
   return (
     <div className="min-h-screen bg-[#0A0F1E] pb-20">
@@ -385,45 +362,57 @@ export default function ChannelDetail() {
 
         {/* Videos section */}
         <div className="mt-10">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-[#F5F0E8] font-bold text-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+            <h2 className="text-[#F5F0E8] font-bold text-xl flex items-center gap-2">
               Videos
-              {videosLoading && (
-                <span className="ml-3 text-xs text-[#7A8099] font-normal animate-pulse">Loading latest…</span>
-              )}
+              <span className="text-xs font-normal text-[#7A8099] bg-[#1C2440] px-2 py-0.5 rounded-full">
+                {filteredVideos.length}
+              </span>
             </h2>
-            {channel.channel_url && (
-              <a href={`${channel.channel_url}/videos`} target="_blank" rel="noopener noreferrer"
-                className="text-[#D4A017] text-sm hover:underline">
-                View all on YouTube →
-              </a>
-            )}
+            
+            <div className="flex item-center gap-3 flex-wrap">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search videos..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="bg-[#13192B] border border-[#252D45] text-[#F5F0E8] rounded-xl px-4 py-1.5 pl-9 text-sm focus:border-[#D4A017] focus:outline-none w-48 md:w-64"
+                />
+                <span className="absolute left-3 top-2 text-[#7A8099]">🔍</span>
+              </div>
+              
+              <button
+                onClick={() => setOnlyMovies(!onlyMovies)}
+                className={`text-xs font-bold px-4 py-2 rounded-xl border transition-all ${
+                  onlyMovies 
+                    ? 'bg-[#D4A017]/10 border-[#D4A017] text-[#D4A017]' 
+                    : 'bg-[#13192B] border-[#252D45] text-[#7A8099] hover:text-[#F5F0E8]'
+                }`}
+              >
+                Movies (30m+)
+              </button>
+
+              {channel.channel_url && (
+                <a href={`${channel.channel_url}/videos`} target="_blank" rel="noopener noreferrer"
+                  className="text-[#D4A017] text-sm hover:underline hidden sm:block self-center ml-2">
+                  View on YouTube →
+                </a>
+              )}
+            </div>
           </div>
 
-          {displayVideos.length === 0 && !videosLoading ? (
+          {filteredVideos.length === 0 ? (
             <div className="text-center py-16 bg-[#13192B] rounded-2xl border border-[#252D45]">
               <p className="text-4xl mb-3">🎬</p>
               <p className="text-[#F5F0E8] font-medium mb-1">No videos found</p>
-              <p className="text-[#7A8099] text-sm">Videos will appear once the channel is synced</p>
+              <p className="text-[#7A8099] text-sm">Try adjusting your search or filters</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {(videosLoading && displayVideos.length === 0
-                ? Array.from({ length: 12 })
-                : displayVideos
-              ).map((video, i) =>
-                video ? (
-                  <VideoCard key={video.video_id || i} video={video} />
-                ) : (
-                  <div key={i} className="animate-pulse bg-[#13192B] rounded-xl overflow-hidden border border-[#252D45]">
-                    <div className="aspect-video bg-[#1C2440]" />
-                    <div className="p-3 space-y-1.5">
-                      <div className="h-3 bg-[#1C2440] rounded w-full" />
-                      <div className="h-2 bg-[#1C2440] rounded w-2/3" />
-                    </div>
-                  </div>
-                )
-              )}
+              {filteredVideos.map((video) => (
+                <VideoCard key={video.video_id} video={video} />
+              ))}
             </div>
           )}
         </div>

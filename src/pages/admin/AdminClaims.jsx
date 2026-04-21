@@ -34,7 +34,7 @@ export default function AdminClaims() {
       setClaims(data || []);
     } catch (error) {
       console.error('Error fetching claims:', error);
-      toast.error('Failed to load claims');
+      // toast.error('Failed to load claims');
     } finally {
       setIsLoading(false);
     }
@@ -124,7 +124,7 @@ export default function AdminClaims() {
         </div>
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-48 bg-surface-2 animate-pulse rounded-2xl"></div>
+            <div key={i} className="h-48 bg-surface-2 animate-pulse rounded-lg"></div>
           ))}
         </div>
       </div>
@@ -159,7 +159,7 @@ export default function AdminClaims() {
                 initial={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0, overflow: 'hidden', marginTop: 0, marginBottom: 0 }}
                 transition={{ duration: 0.3 }}
-                className="bg-[#13192B] rounded-2xl p-6 border border-border flex flex-col lg:flex-row gap-6"
+                className="bg-surface rounded-lg p-6 border border-border flex flex-col lg:flex-row gap-6"
               >
                 {/* LEFT SECTION */}
                 <div className="flex flex-col items-center text-center lg:w-48 shrink-0">
@@ -210,12 +210,12 @@ export default function AdminClaims() {
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
                         placeholder="Reason for rejection (optional)"
-                        className="w-full bg-bg border border-border text-text-primary rounded-xl px-3 py-2 text-sm focus:border-red-500 focus:outline-none resize-none h-24"
+                        className="w-full bg-bg border border-border text-text-primary rounded-md px-3 py-2 text-sm focus:border-red-500 focus:outline-none resize-none h-24"
                       />
                       <button
                         onClick={() => handleReject(claim)}
                         disabled={isProcessing}
-                        className="w-full bg-red-500 text-white font-semibold py-2 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
+                        className="w-full bg-red-500 text-white font-semibold py-2 rounded-md hover:bg-red-600 transition-colors disabled:opacity-50"
                       >
                         {isProcessing ? 'Processing...' : 'Confirm Rejection'}
                       </button>
@@ -235,14 +235,14 @@ export default function AdminClaims() {
                       <button
                         onClick={() => handleApprove(claim)}
                         disabled={isProcessing}
-                        className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl hover:bg-green-500 transition-colors disabled:opacity-50"
+                        className="w-full bg-green-600 text-white font-semibold py-3 rounded-md hover:bg-green-500 transition-colors disabled:opacity-50"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => setRejectingId(claim.id)}
                         disabled={isProcessing}
-                        className="w-full border border-red-500/50 text-red-400 font-semibold py-3 rounded-xl hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                        className="w-full border border-red-500/50 text-red-400 font-semibold py-3 rounded-md hover:bg-red-500/10 transition-colors disabled:opacity-50"
                       >
                         Reject
                       </button>

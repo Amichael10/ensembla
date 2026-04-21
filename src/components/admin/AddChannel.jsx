@@ -68,12 +68,12 @@ const AddChannel = ({ onChannelAdded, currentUserId }) => {
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleResolve()}
             placeholder="@EbonyLifeTV or youtube.com/channel/..."
-            className="flex-1 bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+            className="flex-1 bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
           />
           <button
             onClick={handleResolve}
             disabled={resolving || !input.trim()}
-            className="bg-surface-2 text-text-primary px-4 py-2 rounded-xl text-sm hover:bg-surface transition-all disabled:opacity-50 whitespace-nowrap"
+            className="bg-surface-2 text-text-primary px-4 py-2 rounded-md text-sm hover:bg-surface transition-all disabled:opacity-50 whitespace-nowrap"
           >
             {resolving ? 'Looking up...' : 'Find Channel'}
           </button>
@@ -82,7 +82,7 @@ const AddChannel = ({ onChannelAdded, currentUserId }) => {
 
       {/* Channel preview */}
       {preview && (
-        <div className="p-4 bg-surface-2 rounded-xl border border-border space-y-3">
+        <div className="p-4 bg-surface-2 rounded-md border border-border space-y-3">
           <div className="flex items-center gap-3">
             {preview.thumbnail && (
               <img
@@ -112,14 +112,14 @@ const AddChannel = ({ onChannelAdded, currentUserId }) => {
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="e.g. Official EbonyLife trailers"
-              className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              className="w-full bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
             />
           </div>
 
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-gold text-dark font-semibold py-2 rounded-xl text-sm hover:bg-gold/90 transition-all disabled:opacity-50"
+            className="w-full bg-gold text-dark font-semibold py-2 rounded-md text-sm hover:bg-gold/90 transition-all disabled:opacity-50"
           >
             {saving ? 'Saving...' : 'Add Channel'}
           </button>
@@ -127,7 +127,7 @@ const AddChannel = ({ onChannelAdded, currentUserId }) => {
       )}
 
       {error && (
-        <p className="text-red-400 text-sm bg-red-900/20 px-4 py-2 rounded-xl">
+        <p className="text-red-400 text-sm bg-red-900/20 px-4 py-2 rounded-md">
           {error}
         </p>
       )}

@@ -211,225 +211,286 @@ export default function AdminCinemas() {
 
   const getChainBadgeColor = (chain) => {
     switch (chain) {
-      case 'Filmhouse': return 'bg-gold/20 text-gold border-gold/30';
+      case 'Filmhouse': return 'bg-brand/20 text-brand border-brand/30';
       case 'Genesis': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'Silverbird': return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
       case 'Ozone': return 'bg-green-500/20 text-green-400 border-green-500/30';
       case 'Blu Star': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'Kada': return 'bg-teal-500/20 text-teal-400 border-teal-500/30';
-      default: return 'bg-gray-500/20 text-gray-400 border-gray-500/30';
+      default: return 'bg-surface-3 text-text-muted border-border';
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface p-6 rounded-2xl border border-border">
+    <div className="p-6 max-w-[1600px] mx-auto pb-24">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary flex items-center gap-3">
-            Cinemas
-            <span className="px-2.5 py-0.5 rounded-full bg-surface-2 border border-border text-xs font-semibold text-text-muted">
-              {filteredCinemas.length} Total
+          <p className="text-brand text-[10px] font-black uppercase tracking-[0.4em] mb-2 italic">Facility Management</p>
+          <h1 className="text-4xl font-black text-text-primary tracking-tight mb-2">Theater Directory</h1>
+          <div className="flex items-center gap-3">
+             <span className="px-3 py-1 rounded-full bg-surface-2 border border-border text-[10px] font-black text-text-muted uppercase tracking-widest">
+              {filteredCinemas.length} Locations Registered
             </span>
-          </h2>
-          <p className="text-text-muted mt-1 text-sm tracking-tight">Manage theater locations and chains</p>
+          </div>
         </div>
         <button
           onClick={() => handleOpenDrawer()}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-gold hover:bg-gold/90 text-dark font-bold rounded-xl transition-all shadow-[0_8px_20px_-6px_rgba(212,160,23,0.4)] active:scale-95"
+          className="group relative px-10 py-5 bg-brand text-white rounded-md text-[10px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-brand/20 hover:scale-105 active:scale-95 transition-all duration-300"
         >
-          <span className="text-xl leading-none">+</span>
-          Add Cinema
+          <span className="relative z-10 flex items-center gap-3 font-black">
+             <span className="text-lg">⊕</span> Add New Location
+          </span>
+          <div className="absolute inset-0 bg-white/10 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-surface p-4 rounded-2xl border border-border flex flex-col lg:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted">🔍</span>
-          <input
-            type="text"
-            placeholder="Search by name or city..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-surface-2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold transition-colors"
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          <select
-            value={filters.chain}
-            onChange={(e) => setFilters(prev => ({ ...prev, chain: e.target.value }))}
-            className="px-4 py-2 bg-surface-2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold transition-colors text-text-primary"
-          >
-            <option value="All">All Chains</option>
-            {chains.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select
-            value={filters.city}
-            onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
-            className="px-4 py-2 bg-surface-2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold transition-colors text-text-primary"
-          >
-            <option value="All">All Cities</option>
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            className="px-4 py-2 bg-surface-2 border border-border rounded-xl text-sm focus:outline-none focus:border-gold transition-colors text-text-primary"
-          >
-            <option value="All">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+      {/* Modern Filter Card */}
+      <div className="card-cal p-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-end">
+          <div className="lg:col-span-2 relative">
+            <label className="block text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-3 px-1">Industry Search</label>
+            <div className="relative group">
+              <input
+                type="text"
+                placeholder="Search by theater name, city, or chain..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-14 bg-surface-2 border border-border rounded-lg px-6 pl-14 text-text-primary text-sm focus:border-brand focus:outline-none transition-all placeholder:text-text-muted/30 group-hover:border-border-hover shadow-inner"
+              />
+              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-text-muted opacity-50 text-xl">🔍</span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-4 lg:col-span-2">
+            <div>
+              <label className="block text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-3 px-1">Chain</label>
+              <select
+                value={filters.chain}
+                onChange={(e) => setFilters(prev => ({ ...prev, chain: e.target.value }))}
+                className="w-full h-14 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-[10px] font-black uppercase tracking-widest focus:border-brand focus:outline-none appearance-none cursor-pointer hover:border-border-hover transition-colors"
+              >
+                <option value="All">All Chains</option>
+                {chains.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-3 px-1">Region</label>
+              <select
+                value={filters.city}
+                onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
+                className="w-full h-14 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-[10px] font-black uppercase tracking-widest focus:border-brand focus:outline-none appearance-none cursor-pointer hover:border-border-hover transition-colors"
+              >
+                <option value="All">All Cities</option>
+                {cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-3 px-1">Availability</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="w-full h-14 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-[10px] font-black uppercase tracking-widest focus:border-brand focus:outline-none appearance-none cursor-pointer hover:border-border-hover transition-colors"
+              >
+                <option value="All">Life Cycle</option>
+                <option value="Active">Operational</option>
+                <option value="Inactive">Offline</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-surface rounded-2xl border border-border overflow-hidden">
+      {/* Data Table Container */}
+      <div className="card-cal overflow-hidden mb-12 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-surface-2 border-b border-border text-text-muted uppercase text-[10px] font-black tracking-widest">
-                <th className="px-6 py-4">Cinema</th>
-                <th className="px-6 py-4">Chain</th>
-                <th className="px-6 py-4">Location</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+              <tr className="border-b border-border text-text-muted text-[10px] font-black uppercase tracking-[0.3em] bg-surface-2/50">
+                <th className="px-10 py-6">Facility / Chain</th>
+                <th className="px-10 py-6 border-l border-border/10">Operations Hub</th>
+                <th className="px-10 py-6 border-l border-border/10 text-center">Status</th>
+                <th className="px-10 py-6 text-right border-l border-border/10">Control Access</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-text-muted">Loading cinemas...</td>
+                  <td colSpan="4" className="px-10 py-32 text-center">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 border-4 border-brand/20 border-t-brand rounded-full animate-spin" />
+                      <p className="text-[10px] font-black text-brand uppercase tracking-widest animate-pulse">Syncing Directories...</p>
+                    </div>
+                  </td>
                 </tr>
               ) : filteredCinemas.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-text-muted">No cinemas found</td>
+                  <td colSpan="4" className="px-10 py-32 text-center text-text-muted italic font-medium">
+                    <div className="max-w-xs mx-auto">
+                       <p className="text-3xl mb-4 opacity-20">📍</p>
+                       <p className="text-xs uppercase font-black tracking-widest mb-1">Grid Empty</p>
+                       <p className="text-[10px] opacity-60">No theater locations found matching your filter criteria.</p>
+                    </div>
+                  </td>
                 </tr>
               ) : (
-                filteredCinemas.map((cinema) => (
+                filteredCinemas.map((cinema, i) => (
                   <React.Fragment key={cinema.id}>
                     <tr 
-                      className={`hover:bg-surface-2 transition-colors cursor-pointer group ${expandedRow === cinema.id ? 'bg-surface-2' : ''}`}
+                      className={`group transition-all duration-300 cursor-pointer overflow-hidden relative ${
+                        expandedRow === cinema.id ? 'bg-surface-2' : 'hover:bg-surface-2/50'
+                      }`}
                       onClick={() => setExpandedRow(expandedRow === cinema.id ? null : cinema.id)}
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center overflow-hidden border border-border flex-shrink-0 shadow-sm">
-                            {cinema.logo_url ? (
-                              <img src={cinema.logo_url} alt={cinema.name} className="w-full h-full object-contain" />
-                            ) : (
-                              <div className={`w-full h-full rounded-lg flex items-center justify-center text-xl font-bold bg-gold/10 text-gold`}>
-                                {cinema.chain.charAt(0)}
-                              </div>
-                            )}
+                      <td className="px-10 py-8">
+                        <div className="flex items-center gap-6">
+                          <div className="relative group/logo">
+                            <div className="absolute inset-0 bg-brand/10 blur-xl opacity-0 group-hover/logo:opacity-100 transition-opacity" />
+                            <div className="relative w-16 h-16 rounded-lg bg-white border border-border p-3 flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                              {cinema.logo_url ? (
+                                <img src={cinema.logo_url} alt="" className="w-full h-full object-contain" />
+                              ) : (
+                                <div className="text-2xl font-black text-dark/20">{cinema.name.charAt(0)}</div>
+                              )}
+                            </div>
                           </div>
                           <div className="min-w-0">
-                            <p className="font-bold text-text-primary text-base truncate">{cinema.name}</p>
-                            <p className="text-xs text-text-muted truncate">{cinema.address || 'No address set'}</p>
+                            <div className="flex items-center gap-3 mb-1.5">
+                              <h3 className="font-black text-text-primary text-xl tracking-tight group-hover:text-brand transition-colors">{cinema.name}</h3>
+                              <span className={`px-2.5 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${getChainBadgeColor(cinema.chain)} shadow-sm`}>
+                                {cinema.chain}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest opacity-70 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                              📍 {cinema.address || 'UNDEFINED LOCATION'}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-lg border text-xs font-semibold ${getChainBadgeColor(cinema.chain)}`}>
-                          {cinema.chain}
-                        </span>
+                      <td className="px-10 py-8 border-l border-border/10">
+                        <div className="flex flex-col gap-1">
+                          <p className="text-text-primary font-black text-base tracking-tight uppercase">{cinema.city}</p>
+                          <p className="text-[10px] text-text-muted font-black uppercase tracking-[0.2em] italic opacity-60">{cinema.state}</p>
+                        </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="text-text-primary font-medium">{cinema.city}</p>
-                        <p className="text-xs text-text-muted">{cinema.state}</p>
+                      <td className="px-10 py-8 border-l border-border/10 text-center">
+                        <div className="flex flex-col items-center gap-1.5">
+                          <span className={`inline-flex items-center px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border shadow-sm transition-all duration-300 ${
+                            cinema.is_active 
+                              ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                              : 'bg-red-500/10 text-red-500 border-red-500/20 opacity-50'
+                          }`}>
+                            {cinema.is_active ? (
+                              <><span className="w-1.5 h-1.5 rounded-full bg-green-400 mr-2 animate-pulse" /> OPERATIONAL</>
+                            ) : (
+                              <><span className="w-1.5 h-1.5 rounded-full bg-red-400 mr-2" /> OFFLINE</>
+                            )}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${cinema.is_active ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                          {cinema.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <td className="px-10 py-8 text-right border-l border-border/10">
+                        <div className="flex items-center justify-end gap-3" onClick={e => e.stopPropagation()}>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenDrawer(cinema);
-                            }}
-                            className="p-2 text-text-muted hover:text-gold rounded-lg hover:bg-surface transition-all"
-                            title="Edit"
+                            onClick={() => handleOpenDrawer(cinema)}
+                            className="w-11 h-11 flex items-center justify-center bg-surface border border-border text-text-muted hover:text-brand hover:border-brand/50 rounded-lg transition-all shadow-sm group/btn active:scale-90"
+                            title="Refine Metadata"
                           >
-                            ✏️
+                            <span className="text-base group-hover/btn:scale-125 transition-transform">✏️</span>
                           </button>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleActive(cinema);
-                            }}
-                            className={`p-2 rounded-lg hover:bg-surface transition-all ${cinema.is_active ? 'text-text-muted hover:text-red-500' : 'text-text-muted hover:text-green-500'}`}
-                            title={cinema.is_active ? 'Deactivate' : 'Activate'}
+                            onClick={() => toggleActive(cinema)}
+                            className={`w-11 h-11 flex items-center justify-center border rounded-lg transition-all shadow-sm group/btn active:scale-90 ${
+                              cinema.is_active 
+                                ? 'bg-orange-500/10 border-orange-500/20 text-orange-500 hover:bg-orange-500 hover:text-white' 
+                                : 'bg-green-500/10 border-green-500/20 text-green-500 hover:bg-green-500 hover:text-white'
+                            }`}
+                            title={cinema.is_active ? 'Pause Operations' : 'Resume Operations'}
                           >
-                            {cinema.is_active ? '⏸️' : '▶️'}
+                            <span className="text-base group-hover/btn:scale-125 transition-transform">{cinema.is_active ? '⏸' : '▶'}</span>
                           </button>
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(cinema);
-                            }}
-                            className="p-2 text-text-muted hover:text-red-500 rounded-lg hover:bg-surface transition-all"
-                            title="Delete"
+                            onClick={() => handleDelete(cinema)}
+                            className="w-11 h-11 flex items-center justify-center bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all shadow-sm group/btn active:scale-90"
+                            title="Dismantle Facility"
                           >
-                            🗑️
+                            <span className="text-base group-hover/btn:scale-125 transition-transform">🗑️</span>
                           </button>
                         </div>
                       </td>
                     </tr>
                     {expandedRow === cinema.id && (
-                      <tr className="bg-[#0D1326] border-l-4 border-gold">
-                        <td colSpan="5" className="p-8">
-                          <div className="flex flex-col md:flex-row gap-8 items-start animate-fade-in">
-                            <div className="w-32 h-32 rounded-2xl bg-white p-4 flex items-center justify-center overflow-hidden border border-border shadow-xl flex-shrink-0">
-                              {cinema.logo_url ? (
-                                <img src={cinema.logo_url} alt={cinema.name} className="w-full h-full object-contain" />
-                              ) : (
-                                <span className="text-4xl font-bold text-dark">{cinema.name.charAt(0)}</span>
-                              )}
-                            </div>
-                            <div className="flex-1 space-y-4">
-                              <div className="flex items-center gap-3">
-                                <h3 className="text-2xl font-bold text-text-primary">{cinema.name}</h3>
-                                <span className={`px-3 py-1 rounded-lg border text-sm font-semibold ${getChainBadgeColor(cinema.chain)}`}>
-                                  {cinema.chain}
-                                </span>
+                      <tr className="bg-surface-2 border-l-8 border-brand shadow-[inset_0_0_80px_rgba(0,0,0,0.4)] animate-in slide-in-from-top-4 duration-500">
+                        <td colSpan="4" className="p-12">
+                          <div className="flex flex-col xl:flex-row gap-12 items-start">
+                            <div className="relative group/expanded flex-shrink-0">
+                              <div className="absolute inset-0 bg-brand/10 blur-[80px] opacity-10" />
+                              <div className="relative w-48 h-48 rounded-md bg-white border-2 border-border p-8 flex items-center justify-center overflow-hidden shadow-2xl transition-transform duration-700 group-hover/expanded:scale-105">
+                                {cinema.logo_url ? (
+                                  <img src={cinema.logo_url} alt="" className="w-full h-full object-contain" />
+                                ) : (
+                                  <span className="text-7xl font-black text-dark/20">{cinema.name.charAt(0)}</span>
+                                )}
                               </div>
-                              <p className="text-text-muted leading-relaxed max-w-2xl">{cinema.description || 'No description provided.'}</p>
-                              
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-                                <div>
-                                  <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Full Address</p>
-                                  <p className="text-text-primary text-sm font-medium">{cinema.address || 'N/A'}, {cinema.city}, {cinema.state}</p>
+                            </div>
+                            <div className="flex-1 space-y-8">
+                              <div>
+                                <div className="flex flex-wrap items-center gap-4 mb-3">
+                                  <h3 className="text-4xl font-black text-text-primary tracking-tight">{cinema.name}</h3>
+                                  <span className={`px-4 py-1.5 rounded-md border text-[10px] font-black uppercase tracking-widest ${getChainBadgeColor(cinema.chain)} shadow-lg`}>
+                                    {cinema.chain} Infrastructure
+                                  </span>
                                 </div>
-                                {(cinema.screens_count || cinema.seating_capacity) && (
-                                  <div>
-                                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Capacity</p>
-                                    <p className="text-text-primary text-sm font-medium">
-                                      {cinema.screens_count ? `${cinema.screens_count} Screens` : ''} 
-                                      {cinema.screens_count && cinema.seating_capacity ? ' • ' : ''}
-                                      {cinema.seating_capacity ? `${cinema.seating_capacity} Seats` : ''}
+                                <p className="text-text-muted text-sm font-bold uppercase tracking-widest opacity-80 flex items-center gap-2">
+                                  📍 {cinema.address || 'Lagos, Nigeria'}
+                                </p>
+                              </div>
+
+                              <div className="bg-surface-3 border border-border rounded-md p-8 backdrop-blur-md relative overflow-hidden">
+                                <div className="absolute top-0 right-0 p-4 opacity-5 text-4xl">INFO</div>
+                                <p className="text-text-primary leading-relaxed text-sm opacity-90 font-medium">
+                                  {cinema.description || 'System Audit: No localized description provided for this facility currently.'}
+                                </p>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black text-brand uppercase tracking-[0.3em]">Operational Status</p>
+                                  <div className="flex items-center gap-3 bg-surface border border-border px-4 py-3 rounded-lg shadow-inner">
+                                    <div className={`w-3 h-3 rounded-full ${cinema.is_active ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                                    <p className="text-text-primary text-xs font-black uppercase tracking-widest">{cinema.is_active ? 'Actively Serving' : 'Offline'}</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black text-brand uppercase tracking-[0.3em]">Scale / Capacity</p>
+                                  <div className="flex items-center gap-3 bg-surface border border-border px-4 py-3 rounded-lg shadow-inner">
+                                    <span className="text-lg opacity-40">🎬</span>
+                                    <p className="text-text-primary text-xs font-black uppercase tracking-widest">
+                                      {cinema.screens_count || '?' } screens • {cinema.seating_capacity || '?' } seats
                                     </p>
                                   </div>
-                                )}
-                                {cinema.website && (
-                                  <div>
-                                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Website</p>
-                                    <a href={cinema.website} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline text-sm font-semibold inline-flex items-center gap-1.5">
-                                      Visit Website ↗
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black text-brand uppercase tracking-[0.3em]">Booking Portal</p>
+                                  {cinema.website ? (
+                                    <a href={cinema.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-brand/10 border border-brand/20 px-4 py-3 rounded-lg text-brand hover:bg-brand hover:text-white transition-all shadow-lg active:scale-95">
+                                      <span className="text-xs font-black uppercase tracking-widest">Launch Platform</span>
+                                      <span className="text-sm">↗</span>
                                     </a>
-                                  </div>
-                                )}
-                                {cinema.google_maps_url && (
-                                  <div>
-                                    <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Navigation</p>
-                                    <a href={cinema.google_maps_url} target="_blank" rel="noopener noreferrer" className="text-gold hover:underline text-sm font-semibold inline-flex items-center gap-1.5">
-                                      📍 Get Directions
+                                  ) : (
+                                    <div className="px-4 py-3 bg-surface-3 border border-border rounded-lg text-text-muted text-xs font-black uppercase tracking-widest italic opacity-50">No Link</div>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-black text-brand uppercase tracking-[0.3em]">Navigational data</p>
+                                  {cinema.google_maps_url ? (
+                                    <a href={cinema.google_maps_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 px-4 py-3 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-95">
+                                      <span className="text-xs font-black uppercase tracking-widest">Map Coordinates</span>
+                                      <span className="text-sm">📍</span>
                                     </a>
-                                  </div>
-                                )}
+                                  ) : (
+                                    <div className="px-4 py-3 bg-surface-3 border border-border rounded-lg text-text-muted text-xs font-black uppercase tracking-widest italic opacity-50">Undiscovered</div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -448,53 +509,60 @@ export default function AdminCinemas() {
       <Drawer
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
-        title={editingCinema ? 'Edit Cinema Location' : 'Save New Cinema Location'}
-        width="540px"
+        title={editingCinema ? 'Refine Facility Config' : 'Initialize New Facility'}
+        width="600px"
       >
-        <form onSubmit={handleSubmit} className="space-y-8 pb-20">
-          {/* Basic Info */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em] mb-2">Basic Information</h4>
-            <div>
-              <label className="block text-sm text-text-muted mb-1.5 font-medium">Cinema Name *</label>
-              <input
-                required
-                type="text"
-                name="name"
-                placeholder="e.g. Filmhouse IMAX Lekki"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
-              />
+        <form onSubmit={handleSubmit} className="space-y-10 pb-24 px-2">
+          {/* Section: Basic Info */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 mb-4">
+               <div className="h-px bg-border flex-1" />
+               <h4 className="text-[10px] font-black text-brand uppercase tracking-[0.4em] italic">Infrastructure Matrix</h4>
+               <div className="h-px bg-border flex-1" />
             </div>
-            <div>
-              <label className="block text-sm text-text-muted mb-1.5 font-medium">Chain *</label>
-              <select
-                required
-                name="chain"
-                value={formData.chain}
-                onChange={handleChange}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
-              >
-                <option value="">Select Chain</option>
-                {chains.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm text-text-muted mb-1.5 font-medium">City *</label>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Cinema Facility Name *</label>
                 <input
                   required
                   type="text"
-                  name="city"
-                  placeholder="Lagos"
-                  value={formData.city}
+                  name="name"
+                  placeholder="e.g. Filmhouse IMAX Lekki"
+                  value={formData.name}
                   onChange={handleChange}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
+                  className="w-full h-12 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-sm focus:border-brand focus:outline-none transition-all shadow-inner"
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-muted mb-1.5 font-medium">State *</label>
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Network Chain *</label>
+                <select
+                  required
+                  name="chain"
+                  value={formData.chain}
+                  onChange={handleChange}
+                  className="w-full h-12 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-sm focus:border-brand focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="">Select Protocol</option>
+                  {chains.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                   <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Region Hub *</label>
+                   <input
+                    required
+                    type="text"
+                    name="city"
+                    placeholder="Lagos"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className="w-full h-12 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-sm focus:border-brand focus:outline-none transition-all shadow-inner"
+                  />
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Geographic State *</label>
                 <input
                   required
                   type="text"
@@ -502,132 +570,113 @@ export default function AdminCinemas() {
                   placeholder="Lagos State"
                   value={formData.state}
                   onChange={handleChange}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
+                  className="w-full h-12 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-sm focus:border-brand focus:outline-none transition-all shadow-inner"
                 />
               </div>
             </div>
+            
             <div>
-              <label className="block text-sm text-text-muted mb-1.5 font-medium">Full Address</label>
+              <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Physical Address Registry</label>
               <textarea
                 name="address"
-                rows="2"
-                placeholder="No. 1 Bisway Street, Maroko, Lekki"
+                rows="3"
+                placeholder="No. 1 Bisway Street, Maroko, Lekki Phase 1..."
                 value={formData.address}
                 onChange={handleChange}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors resize-none"
+                className="w-full bg-surface-2 border border-border rounded-lg px-5 py-4 text-text-primary text-sm focus:border-brand focus:outline-none transition-all min-h-[100px] shadow-inner"
               />
             </div>
           </div>
 
-          {/* Logo Upload */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em] mb-2">Identity & Branding</h4>
-            <div className="flex items-start gap-6">
-              <div className="w-24 h-24 rounded-2xl bg-white border border-border flex items-center justify-center overflow-hidden flex-shrink-0 shadow-inner">
-                {formData.logo_url ? (
-                  <img src={formData.logo_url} alt="Preview" className="w-full h-full object-contain" />
-                ) : (
-                  <span className="text-gold/10 text-5xl font-black">?</span>
-                )}
-              </div>
-              <div className="flex-1">
-                <div className="relative group">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <div className="w-full border-2 border-dashed border-border rounded-xl px-4 py-5 text-center group-hover:border-gold transition-colors">
-                    <p className="text-sm font-bold text-text-muted group-hover:text-gold transition-colors">Click to upload cinema logo</p>
-                    <p className="text-[10px] text-text-muted/60 mt-1 uppercase font-black tracking-widest">PNG, JPG or SVG — Max 1MB</p>
-                  </div>
+          {/* Section: Identity */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 mb-4">
+               <div className="h-px bg-border flex-1" />
+               <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.4em] italic">Identity & Branding</h4>
+               <div className="h-px bg-border flex-1" />
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-8 bg-surface-3 p-6 rounded-md border border-border shadow-inner">
+              <div className="relative group/upload cursor-pointer">
+                <div className="w-32 h-32 rounded-md bg-white border border-border flex items-center justify-center overflow-hidden flex-shrink-0 shadow-2xl transition-all group-hover/upload:scale-105">
+                  {formData.logo_url ? (
+                    <img src={formData.logo_url} alt="Preview" className="w-full h-full object-contain" />
+                  ) : (
+                    <span className="text-brand/10 text-6xl font-black rotate-12 group-hover/upload:rotate-0 transition-transform">?</span>
+                  )}
                 </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                />
+              </div>
+              <div className="flex-1 text-center sm:text-left">
+                <p className="text-text-primary text-sm font-black mb-1 uppercase tracking-widest">Asset Repository</p>
+                <p className="text-[10px] text-text-muted uppercase font-bold tracking-widest mb-4">PNG, JPG or SVG — Max 1MB Payload</p>
                 {formData.logo_url && (
-                  <button 
+                   <button 
                     type="button" 
                     onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
-                    className="mt-3 text-xs font-black text-red-500 hover:text-red-400 flex items-center gap-2 transition-colors uppercase tracking-wider"
+                    className="px-4 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-md hover:bg-red-500 hover:text-white transition-all shadow-md group"
                   >
-                    🗑️ Remove Logo
+                    🗑️ Flush Asset
                   </button>
                 )}
               </div>
             </div>
           </div>
 
-          {/* About */}
+          {/* Section: Desc */}
           <div className="space-y-4">
-            <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em] mb-2">Location Description</h4>
-            <div>
-              <textarea
+             <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Atmospheric Bio</label>
+             <textarea
                 name="description"
-                rows="3"
-                placeholder="About this cinema location..."
+                rows="4"
+                placeholder="Primary characteristic traits of this cinema hub..."
                 value={formData.description}
                 onChange={handleChange}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors resize-none"
+                className="w-full bg-surface-2 border border-border rounded-lg px-5 py-4 text-text-primary text-sm focus:border-brand focus:outline-none transition-all shadow-inner"
               />
-            </div>
           </div>
 
-          {/* Links */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em] mb-2">Booking & Navigation</h4>
-            <div>
-              <label className="block text-sm text-text-muted mb-1.5 font-medium">Official Website</label>
-              <input
-                type="url"
-                name="website"
-                placeholder="https://filmhousecinemas.com"
-                value={formData.website}
-                onChange={handleChange}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
-              />
+          {/* Section: Capacity */}
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 mb-4">
+               <div className="h-px bg-border flex-1" />
+               <h4 className="text-[10px] font-black text-green-400 font-black uppercase tracking-[0.4em] italic">Capacity & Specs</h4>
+               <div className="h-px bg-border flex-1" />
             </div>
-            <div>
-              <label className="block text-sm text-text-muted mb-1.5 font-medium">Google Maps URL</label>
-              <input
-                type="url"
-                name="google_maps_url"
-                placeholder="https://maps.google.com/..."
-                value={formData.google_maps_url}
-                onChange={handleChange}
-                className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Capacity */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em] mb-2">Technical Specs</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm text-text-muted mb-1.5 font-medium">Screens Count</label>
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Available Screens</label>
                 <input
                   type="number"
                   name="screens_count"
                   value={formData.screens_count}
                   onChange={handleChange}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
+                  placeholder="0"
+                  className="w-full h-12 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-sm focus:border-brand focus:outline-none transition-all shadow-inner"
                 />
               </div>
               <div>
-                <label className="block text-sm text-text-muted mb-1.5 font-medium">Seating Capacity</label>
+                <label className="block text-[10px] font-black text-text-muted uppercase tracking-widest mb-2.5 px-1">Seat Threshold</label>
                 <input
                   type="number"
                   name="seating_capacity"
                   value={formData.seating_capacity}
                   onChange={handleChange}
-                  className="w-full bg-surface-2 border border-border rounded-xl px-4 py-2.5 text-text-primary focus:outline-none focus:border-gold transition-colors"
+                  placeholder="0"
+                  className="w-full h-12 bg-surface-2 border border-border rounded-lg px-5 text-text-primary text-sm focus:border-brand focus:outline-none transition-all shadow-inner"
                 />
               </div>
             </div>
           </div>
 
-          {/* Settings */}
-          <div className="space-y-4 pt-6 border-t border-border">
-            <label className="flex items-center gap-4 cursor-pointer group p-3 bg-surface-2 rounded-2xl border border-border/50">
+          {/* Section: Status */}
+          <div className="pt-8 border-t border-border">
+            <label className="flex items-center gap-6 cursor-pointer group p-6 bg-surface-2/50 rounded-md border border-border/50 hover:bg-surface-2 transition-all shadow-sm">
               <div className="relative">
                 <input
                   type="checkbox"
@@ -636,30 +685,33 @@ export default function AdminCinemas() {
                   onChange={handleChange}
                   className="sr-only"
                 />
-                <div className={`w-12 h-6 rounded-full transition-colors ${formData.is_active ? 'bg-gold' : 'bg-border'}`} />
-                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ${formData.is_active ? 'translate-x-6' : 'translate-x-0'}`} />
+                <div className={`w-14 h-8 rounded-full transition-all duration-300 ${formData.is_active ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'bg-surface-3'}`} />
+                <div className={`absolute top-1.5 left-1.5 w-5 h-5 bg-white rounded-full transition-transform duration-300 flex items-center justify-center ${formData.is_active ? 'translate-x-6' : 'translate-x-0'}`}>
+                   <div className={`w-1.5 h-1.5 rounded-full ${formData.is_active ? 'bg-green-500' : 'bg-text-muted'}`} />
+                </div>
               </div>
-              <div>
-                <span className="text-sm font-black text-text-primary group-hover:text-gold transition-colors italic">CINEMA IS ACTIVE</span>
-                <p className="text-[10px] text-text-muted/60 font-black uppercase tracking-wider mt-0.5">Inactive theaters won't appear in showtime selections.</p>
+              <div className="flex-1">
+                <span className="text-sm font-black text-text-primary group-hover:text-brand transition-colors uppercase tracking-widest italic">Facility Operational State</span>
+                <p className="text-[9px] text-text-muted font-black uppercase tracking-widest mt-1 opacity-60 group-hover:opacity-100 transition-opacity">Inactive hubs are decoupled from showtime processing pipelines.</p>
               </div>
             </label>
           </div>
 
-          <div className="sticky bottom-0 pt-6 mt-12 bg-[#13192B] border-t border-border -mx-6 px-6 pb-6 shadow-[0_-12px_30px_rgba(0,0,0,0.5)] z-20">
+          {/* Action Footer */}
+          <div className="sticky bottom-0 bg-surface border-t border-border pt-8 mt-12 pb-2 shadow-[0_-20px_40px_rgba(0,0,0,0.4)] z-20 -mx-2 px-2">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-4 bg-gold hover:bg-gold/90 text-dark font-black rounded-2xl transition-all shadow-[0_12px_24px_-8px_rgba(212,160,23,0.6)] active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest text-sm"
+              className="w-full py-5 bg-brand text-white font-black rounded-lg text-xs uppercase tracking-[0.2em] shadow-2xl shadow-brand/20 hover:scale-[1.02] active:scale-95 transition-all duration-300 disabled:opacity-50"
             >
-              {isSubmitting ? 'PROCESSING DATA...' : editingCinema ? 'UPDATE CINEMA LOCATION' : 'SAVE NEW CINEMA LOCATION'}
+              {isSubmitting ? 'Processing Sync...' : editingCinema ? 'Synchronize Record' : 'Initialize Command'}
             </button>
             <button
               type="button"
               onClick={handleCloseDrawer}
-              className="w-full py-3 mt-2 text-xs font-black text-text-muted hover:text-text-primary transition-colors italic uppercase tracking-widest"
+              className="w-full py-4 mt-2 text-[10px] font-black text-text-muted hover:text-text-primary transition-colors uppercase tracking-[0.2em]"
             >
-              Cancel and Discard Changes
+              Terminate Session
             </button>
           </div>
         </form>

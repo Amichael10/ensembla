@@ -449,58 +449,62 @@ export default function AdminFilms() {
   const uniqueYears = [...new Set(films.map(f => f.year))].filter(Boolean).sort((a, b) => b - a);
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-10 max-w-[1600px] mx-auto">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
-          <h1 className="text-2xl font-bold text-text-primary font-clash">Film Library</h1>
-          <p className="text-text-muted text-sm mt-1 uppercase tracking-wider font-black">Database Control Center</p>
+          <h1 className="text-4xl font-bold text-text-primary tracking-tight">Catalogue</h1>
+          <p className="text-text-muted text-base mt-2 font-medium">Manage and monitor the Nollywood digital asset library.</p>
         </div>
         <button
           onClick={() => handleOpenDrawer()}
-          className="bg-gold text-dark font-black px-6 py-3 rounded-xl hover:bg-gold/90 transition-all shadow-lg active:scale-95"
+          className="bg-brand text-white font-bold px-8 py-3.5 rounded-md text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-brand/20 flex items-center gap-2"
         >
-          + ADD NEW PRODUCTION
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Add New Production
         </button>
       </div>
 
       {/* Library Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="md:col-span-2 relative">
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="flex-1 relative group">
           <input
             type="text"
             placeholder="Search by production title..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none"
+            className="w-full bg-surface border border-border rounded-md px-4 py-3 pl-12 text-text-primary text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 shadow-sm transition-all"
           />
+          <svg className="absolute left-4 top-3.5 w-5 h-5 text-text-muted group-focus-within:text-brand transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
         </div>
-        <div>
-          <select 
+        <div className="flex gap-4">
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none uppercase font-black text-[10px] tracking-widest"
+            className="bg-surface border border-border rounded-md px-4 py-3 text-text-primary text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 shadow-sm transition-all appearance-none cursor-pointer min-w-[160px]"
           >
-            <option value="all">ALL STATUSES</option>
-            <option value="announced">ANNOUNCED</option>
-            <option value="filming">FILMING</option>
-            <option value="post-production">POST-PROD</option>
-            <option value="released">RELEASED</option>
+            <option value="all">Any Status</option>
+            <option value="announced">Announced</option>
+            <option value="filming">Filming</option>
+            <option value="post-production">Post-Prod</option>
+            <option value="released">Released</option>
           </select>
-        </div>
-        <div>
-          <select 
+          <select
             value={yearFilter}
             onChange={(e) => setYearFilter(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none uppercase font-black text-[10px] tracking-widest"
+            className="bg-surface border border-border rounded-md px-4 py-3 text-text-primary text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 shadow-sm transition-all appearance-none cursor-pointer min-w-[120px]"
           >
-            <option value="all">ALL YEARS</option>
+            <option value="all">All Years</option>
             {uniqueYears.map(y => <option key={y} value={y.toString()}>{y}</option>)}
           </select>
         </div>
       </div>
 
       {selectedFilmIds.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-4 rounded-xl bg-surface-2 border border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 p-4 rounded-md bg-surface-2 border border-border">
           <span className="text-sm text-text-primary font-bold">
             {selectedFilmIds.length} selected
           </span>
@@ -514,86 +518,98 @@ export default function AdminFilms() {
         </div>
       )}
 
-      <div className="bg-surface rounded-2xl overflow-hidden border border-border shadow-2xl">
+      <div className="card-cal overflow-hidden mb-12">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
-            <thead className="bg-[#0D1326] text-text-muted uppercase text-[10px] font-black tracking-widest">
-              <tr>
-                <th className="pl-6 pr-2 py-4 w-12">
+            <thead>
+              <tr className="border-b border-border text-text-muted text-[11px] font-bold uppercase tracking-widest bg-surface-2/30">
+                <th className="pl-6 py-4 w-12">
                   <input
                     type="checkbox"
                     checked={allFilteredFilmsSelected}
                     onChange={toggleSelectAllFilteredFilms}
                     disabled={loading || filteredFilms.length === 0}
-                    className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer disabled:opacity-40"
-                    title="Select all in this view"
+                    className="w-4 h-4 rounded border-border bg-surface accent-brand cursor-pointer disabled:opacity-40"
                   />
                 </th>
-                <th className="px-6 py-4">Title & Identity</th>
-                <th className="px-6 py-4">Release Status</th>
-                <th className="px-6 py-4">Internal Stats</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4 font-bold">Production</th>
+                <th className="px-6 py-4 font-bold">Status</th>
+                <th className="px-6 py-4 font-bold">Engagement</th>
+                <th className="pr-6 py-4 text-right font-bold w-[120px]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border/50">
+            <tbody className="divide-y divide-border">
               {loading ? (
-                <tr><td colSpan="5" className="p-12 text-center text-text-muted italic">Synchronizing database...</td></tr>
+                <tr><td colSpan="5" className="p-20 text-center text-text-muted italic">Synchronizing database records...</td></tr>
               ) : filteredFilms.length === 0 ? (
-                <tr><td colSpan="5" className="p-12 text-center text-text-muted italic">No productions match your filters.</td></tr>
-              ) : filteredFilms.map(film => (
-                <tr key={film.id} className="hover:bg-surface-2/30 transition-colors group">
-                  <td className="pl-6 pr-2 py-4 align-middle">
+                <tr><td colSpan="5" className="p-20 text-center text-text-muted italic">No productions found.</td></tr>
+              ) : filteredFilms.map((film, i) => (
+                <tr 
+                  key={film.id} 
+                  className="group hover:bg-surface-2/50 transition-colors"
+                >
+                  <td className="pl-6 py-4">
                     <input
                       type="checkbox"
                       checked={selectedFilmIds.includes(film.id)}
                       onChange={() => toggleFilmSelect(film.id)}
-                      className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold accent-gold cursor-pointer"
-                      aria-label={`Select ${film.title}`}
+                      className="w-4 h-4 rounded border-border bg-surface accent-brand cursor-pointer"
                     />
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-16 bg-surface-2 rounded-lg border border-border overflow-hidden flex-shrink-0 shadow-md">
+                      <div className="w-10 h-14 bg-surface-2 rounded-lg border border-border overflow-hidden flex-shrink-0 shadow-sm transition-transform group-hover:scale-105">
                         {film.poster_url ? (
                           <img src={film.poster_url} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gold/20 text-xs">NO IMG</div>
+                          <div className="w-full h-full flex items-center justify-center text-[8px] font-black italic text-text-muted uppercase">Empty</div>
                         )}
                       </div>
-                      <div>
-                        <div className="font-bold text-text-primary text-base group-hover:text-gold transition-colors">{film.title}</div>
-                        <div className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-0.5">
-                          {film.year} • {film.language}
-                          {film.tmdb_id && (
-                            <span className="ml-3 inline-flex items-center gap-1 text-blue-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                              TMDB {film.tmdb_rating ? `⭐${film.tmdb_rating}` : 'LINKED'}
-                            </span>
-                          )}
+                      <div className="min-w-0">
+                        <div className="font-bold text-text-primary text-sm truncate group-hover:text-brand transition-colors">{film.title}</div>
+                        <div className="text-[11px] text-text-muted font-medium mt-0.5">
+                          {film.year || 'TBD'} • {film.language || 'English'}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                      film.status === 'released' ? 'bg-green-500/10 text-green-400' :
-                      film.status === 'post-production' ? 'bg-blue-500/10 text-blue-400' :
-                      'bg-surface-2 text-text-muted'
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight border ${
+                      film.status === 'released' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
+                      film.status === 'post-production' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' :
+                      film.status === 'filming' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                      'bg-slate-500/10 text-slate-500 border-slate-500/20'
                     }`}>
                       {film.status.replace('-', ' ')}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex gap-4">
-                      <div className="text-center">
-                        <p className="text-[10px] text-text-muted font-black">VIEWS</p>
-                        <p className="text-sm font-bold text-text-primary">{(film.view_count || 0).toLocaleString()}</p>
-                      </div>
+                    <div className="flex flex-col">
+                      <span className="text-text-primary font-bold text-xs">{(film.view_count || 0).toLocaleString()}</span>
+                      <span className="text-[10px] text-text-muted font-medium">Views</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <button onClick={() => handleOpenDrawer(film)} className="text-gold font-black text-xs uppercase mr-4 hover:underline">Edit</button>
-                    <button onClick={() => setDeletingFilm(film)} className="text-red-500 font-black text-xs uppercase hover:underline">Delete</button>
+                  <td className="pr-6 py-4 text-right">
+                    <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleOpenDrawer(film)}
+                        className="p-2 hover:bg-surface rounded-lg text-text-muted hover:text-brand transition-all border border-transparent hover:border-border hover:shadow-sm"
+                        title="Edit Production"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setDeletingFilm(film)}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg text-text-muted hover:text-red-600 transition-all border border-transparent hover:border-red-100 dark:hover:border-red-900 shadow-sm"
+                        title="Delete Production"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -608,222 +624,249 @@ export default function AdminFilms() {
         title={editingFilm ? 'Edit Production Profile' : 'Register New Production'}
         width="800px"
       >
-        <form onSubmit={handleSubmit} className="space-y-12 pb-24">
+        <form onSubmit={handleSubmit} className="space-y-12">
           {/* Main Attributes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <section className="space-y-6">
-              <div className="flex items-center justify-between border-b border-gold/10 pb-2">
-                <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em]">Core Identity</h4>
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-widest">Core Identity</h4>
                 {editingFilm && formData.tmdb_id && (
                   <button
                     type="button"
                     onClick={refreshFromTmdb}
                     disabled={isRefreshing}
-                    className="text-[10px] font-black bg-blue-500/10 text-blue-400 border border-blue-500/20 px-3 py-1 rounded-full hover:bg-blue-500/20 transition-all flex items-center gap-1.5"
+                    className="text-[10px] font-bold text-brand bg-brand/5 border border-brand/20 px-3 py-1 rounded-full hover:bg-brand/10 transition-all flex items-center gap-1.5"
                   >
-                    {isRefreshing ? 'REFRESHING...' : '✨ REFRESH FROM TMDB'}
+                    {isRefreshing ? 'Refreshing...' : '✨ Sync TMDB'}
                   </button>
                 )}
               </div>
-              <div>
-                <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Production Title *</label>
-                <input required name="title" value={formData.title} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Release Year</label>
-                  <input type="number" name="year" value={formData.year} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" />
+                  <label className="block text-xs font-bold text-text-primary mb-2">Production Title *</label>
+                  <input 
+                    required 
+                    name="title" 
+                    value={formData.title} 
+                    onChange={handleChange} 
+                    className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all" 
+                    placeholder="Enter production title..."
+                  />
                 </div>
-                <div>
-                  <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Status</label>
-                  <select name="status" value={formData.status} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none">
-                    <option value="announced">Announced</option>
-                    <option value="filming">Filming</option>
-                    <option value="post-production">Post-Production</option>
-                    <option value="released">Released</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Story Synopsis</label>
-                <textarea name="synopsis" rows="5" value={formData.synopsis} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none resize-none" />
-              </div>
-              <section className="space-y-4 pt-4">
-                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                  TMDB Metadata
-                </h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[8px] font-black text-text-muted uppercase mb-1">TMDB ID</label>
-                    <input name="tmdb_id" value={formData.tmdb_id || ''} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs focus:border-gold outline-none" />
+                    <label className="block text-xs font-bold text-text-primary mb-2">Release Year</label>
+                    <input 
+                      type="number" 
+                      name="year" 
+                      value={formData.year} 
+                      onChange={handleChange} 
+                      className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all" 
+                    />
                   </div>
                   <div>
-                    <label className="block text-[8px] font-black text-text-muted uppercase mb-1">TMDB Rating</label>
-                    <input step="0.1" type="number" name="tmdb_rating" value={formData.tmdb_rating || ''} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs focus:border-gold outline-none" />
+                    <label className="block text-xs font-bold text-text-primary mb-2">Status</label>
+                    <select 
+                      name="status" 
+                      value={formData.status} 
+                      onChange={handleChange} 
+                      className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="announced">Announced</option>
+                      <option value="filming">Filming</option>
+                      <option value="post-production">Post-Production</option>
+                      <option value="released">Released</option>
+                    </select>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[8px] font-black text-text-muted uppercase mb-1">Tagline</label>
-                  <input name="tagline" value={formData.tagline || ''} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-xs focus:border-gold outline-none" placeholder="Catchy marketing phrase..." />
+                  <label className="block text-xs font-bold text-text-primary mb-2">Story Synopsis</label>
+                  <textarea 
+                    name="synopsis" 
+                    rows="5" 
+                    value={formData.synopsis} 
+                    onChange={handleChange} 
+                    className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all resize-none leading-relaxed" 
+                    placeholder="Tell the story..."
+                  />
                 </div>
+              </div>
 
-                <div className="pt-4 space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gold/5 border border-gold/20 rounded-xl">
-                    <div>
-                      <h4 className="text-xs font-black text-gold uppercase tracking-wider">Hero Spotlight</h4>
-                      <p className="text-[10px] text-text-muted">Display this production in the homepage hero slider.</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
-                      className={`relative w-12 h-6 rounded-full transition-colors ${
-                        formData.is_featured ? 'bg-gold' : 'bg-surface-2'
-                      }`}
-                    >
-                      <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-                        formData.is_featured ? 'translate-x-7' : 'translate-x-1'
-                      }`} />
-                    </button>
+              <div className="pt-4 space-y-6">
+                <div className="p-5 bg-surface-2 border border-border rounded-lg space-y-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></span>
+                    <h4 className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Intelligence Linking</h4>
                   </div>
-
-                  <div className="space-y-4 p-4 bg-surface-2 rounded-xl border border-border">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-black text-text-muted uppercase mb-2">Release Format</label>
-                      <div className="flex flex-wrap gap-2">
-                        {['cinema', 'youtube', 'netflix', 'prime_video', 'kaba', 'showmax'].map((type) => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, release_type: type })}
-                            className={`py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest border transition-all ${
-                              formData.release_type === type 
-                                ? 'bg-gold text-dark border-gold' 
-                                : 'bg-bg text-text-muted border-border hover:border-gold/50'
-                            }`}
-                          >
-                            {type.replace('_', ' ')}
-                          </button>
-                        ))}
-                      </div>
+                      <label className="block text-[10px] font-bold text-text-muted uppercase mb-1.5">TMDB ID</label>
+                      <input name="tmdb_id" value={formData.tmdb_id || ''} onChange={handleChange} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none" />
                     </div>
-
-                    {formData.release_type !== 'cinema' && (
-                      <div className="animate-in fade-in slide-in-from-top-2">
-                        <label className="block text-[8px] font-black text-gold uppercase mb-1.5 flex items-center gap-1.5">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                          Streaming Link / Watch URL
-                        </label>
-                        <input 
-                          name="youtube_watch_url" 
-                          value={formData.youtube_watch_url || ''} 
-                          onChange={handleChange} 
-                          className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-xs focus:border-gold outline-none" 
-                          placeholder="https://..." 
-                        />
-                        <p className="text-[8px] text-text-muted mt-1 italic">The main "Watch" button on the film detail page will go here.</p>
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Rating</label>
+                      <input step="0.1" type="number" name="tmdb_rating" value={formData.tmdb_rating || ''} onChange={handleChange} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase mb-1.5">Marketing Tagline</label>
+                    <input name="tagline" value={formData.tagline || ''} onChange={handleChange} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none" placeholder="Catchy phrase..." />
                   </div>
                 </div>
-              </section>
+
+                <div className="flex items-center justify-between p-5 bg-surface-2 border border-border rounded-lg">
+                  <div>
+                    <h4 className="text-sm font-bold text-text-primary tracking-tight">Spotlight Feature</h4>
+                    <p className="text-[11px] text-text-muted mt-0.5">Showcase in the primary library slider.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none focus:ring-2 focus:ring-brand/20 ${
+                      formData.is_featured ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-800'
+                    }`}
+                  >
+                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      formData.is_featured ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+              </div>
             </section>
 
-            <section className="space-y-6">
-              <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em] border-b border-gold/10 pb-2">Media & Visuals</h4>
-              <div>
-                <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Poster URL</label>
-                <input name="poster_url" value={formData.poster_url} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" placeholder="https://" />
-              </div>
-              <div>
-                <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Backdrop URL</label>
-                <input name="backdrop_url" value={formData.backdrop_url} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" placeholder="https://" />
+            <section className="space-y-8">
+              <h4 className="text-[11px] font-bold text-text-muted uppercase tracking-widest pb-2 border-b border-border">Media & Presentation</h4>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-text-primary mb-2">Poster Asset URL</label>
+                  <input name="poster_url" value={formData.poster_url} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all" placeholder="https://" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-text-primary mb-2">Landscape Backdrop URL</label>
+                  <input name="backdrop_url" value={formData.backdrop_url} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all" placeholder="https://" />
+                </div>
               </div>
 
-              <div className="bg-[#0D1326] p-4 rounded-xl border border-gold/20 space-y-4">
-                <h4 className="text-[10px] font-black text-gold uppercase tracking-widest flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-                  YouTube Trailer Override
-                </h4>
+              <div className="p-5 bg-surface-2 border border-border rounded-lg space-y-5">
                 <div>
-                  <label className="block text-[8px] font-black text-text-muted uppercase mb-1">YouTube URL or ID</label>
+                  <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-3">Classification Genres</label>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    {allGenres.map(genre => (
+                      <label key={genre.id} className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.genres.includes(genre.id)}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setFormData(prev => ({
+                                ...prev,
+                                genres: checked 
+                                  ? [...prev.genres, genre.id]
+                                  : prev.genres.filter(id => id !== genre.id)
+                              }));
+                            }}
+                            className="w-4 h-4 rounded border-border text-brand bg-surface focus:ring-brand/30 accent-brand transition-all"
+                          />
+                        </div>
+                        <span className="text-[11px] font-medium text-text-muted group-hover:text-text-primary transition-colors">
+                          {genre.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">Duration (Mins)</label>
+                    <input type="number" name="runtime_minutes" value={formData.runtime_minutes} onChange={handleChange} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">Content Rating</label>
+                    <select 
+                      name="nfvcb_rating" 
+                      value={formData.nfvcb_rating} 
+                      onChange={handleChange} 
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none"
+                    >
+                      {['G', 'PG', 'PG-13', '15', '18'].map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-5 bg-orange-50 dark:bg-orange-500/5 border border-orange-200 dark:border-orange-500/20 rounded-lg space-y-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="w-4 h-4 text-brand" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                  <h4 className="text-[10px] font-bold text-brand uppercase tracking-widest">Public Access Control</h4>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">Release Stream Type</label>
+                  <div className="flex flex-wrap gap-2">
+                    {['cinema', 'youtube', 'netflix', 'prime_video', 'kaba', 'showmax'].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, release_type: type })}
+                        className={`py-1.5 px-3 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                          formData.release_type === type 
+                            ? 'bg-brand text-white border-brand shadow-sm' 
+                            : 'bg-surface text-text-muted border-border hover:border-brand/40'
+                        }`}
+                      >
+                        {type.replace('_', ' ')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {formData.release_type !== 'cinema' && (
+                  <div className="pt-2 animate-in fade-in slide-in-from-top-2">
+                    <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">Streaming destination / Watch URL</label>
+                    <input 
+                      name="youtube_watch_url" 
+                      value={formData.youtube_watch_url || ''} 
+                      onChange={handleChange} 
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none" 
+                      placeholder="https://..." 
+                    />
+                  </div>
+                )}
+                <div className="pt-2">
+                  <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">YouTube Video Override (Trailers)</label>
                   <input 
                     name="trailer_youtube_id" 
                     value={formData.trailer_youtube_id || ''} 
                     onChange={handleChange} 
-                    className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-xs focus:border-gold outline-none placeholder:text-[10px]" 
-                    placeholder="Paste full URL or ID here..." 
+                    className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-xs focus:border-brand outline-none" 
+                    placeholder="URL or ID..." 
                   />
-                  <p className="text-[8px] text-text-muted mt-1 italic">When you paste a full link, we automatically extract the Video ID.</p>
-                </div>
-              </div>
-              
-              {/* Genre Selection */}
-              <div>
-                <label className="block text-xs font-black text-text-muted uppercase mb-3 text-gold">Primary Genres</label>
-                <div className="grid grid-cols-2 gap-3 bg-surface-2 p-4 rounded-xl border border-border">
-                  {allGenres.map(genre => (
-                    <label key={genre.id} className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={formData.genres.includes(genre.id)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setFormData(prev => ({
-                            ...prev,
-                            genres: checked 
-                              ? [...prev.genres, genre.id]
-                              : prev.genres.filter(id => id !== genre.id)
-                          }));
-                        }}
-                        className="w-4 h-4 rounded border-border text-gold bg-bg focus:ring-gold focus:ring-offset-bg accent-gold"
-                      />
-                      <span className="text-[10px] font-black uppercase tracking-wider text-text-muted group-hover:text-gold transition-colors">
-                        {genre.name}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Runtime (Mins)</label>
-                  <input type="number" name="runtime_minutes" value={formData.runtime_minutes} onChange={handleChange} className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" />
-                </div>
-                <div>
-                  <label className="block text-xs font-black text-text-muted uppercase mb-1.5">Rating</label>
-                  <select 
-                    name="nfvcb_rating" 
-                    value={formData.nfvcb_rating} 
-                    onChange={handleChange} 
-                    className="w-full bg-surface-2 border border-border rounded-xl px-4 py-3 text-sm focus:border-gold outline-none"
-                  >
-                    <option value="G">G</option>
-                    <option value="PG">PG</option>
-                    <option value="PG-13">PG-13</option>
-                    <option value="15">15</option>
-                    <option value="18">18</option>
-                  </select>
                 </div>
               </div>
             </section>
           </div>
 
+          <hr className="border-border" />
+
           {/* Credits Section */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b border-gold/10 pb-2">
-              <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em]">Cast & Creative Crew</h4>
-              <div className="relative">
+          <section className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h4 className="text-sm font-bold text-text-primary tracking-tight">Cast & Creative Crew</h4>
+              <div className="relative group">
                 <input
                   type="text"
-                  placeholder="SEARCH PEOPLE DIRECTORY..."
+                  placeholder="Search directory..."
                   value={peopleSearch}
                   onChange={(e) => handlePeopleSearch(e.target.value)}
-                  className="bg-surface border border-gold/30 rounded-full px-4 py-1.5 text-[10px] font-black w-64 focus:border-gold outline-none"
+                  className="bg-surface-2 border border-border rounded-md px-4 py-2 text-xs w-full md:w-64 focus:border-brand outline-none transition-all pr-12"
                 />
+                <svg className="absolute right-4 top-2.5 w-4 h-4 text-text-muted group-focus-within:text-brand transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
                 {peopleResults.length > 0 && (
-                  <div className="absolute right-0 top-full mt-2 w-full bg-surface border border-border rounded-xl shadow-2xl z-20 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-full bg-surface border border-border rounded-md shadow-2xl z-20 overflow-hidden ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2">
                     {peopleResults.map(p => (
                       <button
                         key={p.id}
@@ -831,7 +874,7 @@ export default function AdminFilms() {
                         onClick={() => addCredit(p)}
                         className="w-full flex items-center gap-3 p-3 hover:bg-surface-2 transition-colors text-left border-b border-border/50 last:border-0"
                       >
-                        <div className="w-8 h-8 rounded-full bg-border overflow-hidden">
+                        <div className="w-8 h-8 rounded-full bg-surface-2 overflow-hidden border border-border">
                           {p.photo_url && <img src={p.photo_url} alt="" className="w-full h-full object-cover" />}
                         </div>
                         <span className="text-xs font-bold text-text-primary">{p.name}</span>
@@ -842,20 +885,25 @@ export default function AdminFilms() {
               </div>
             </div>
 
-            <div className="bg-surface-2 rounded-2xl border border-border p-4">
+            <div className="bg-surface-2/50 rounded-lg border border-border p-6 min-h-[100px] flex flex-col items-center justify-center">
               {credits.length === 0 ? (
-                <div className="p-8 text-center text-text-muted italic text-xs uppercase font-black">No credits assigned. Search above to add cast and crew.</div>
+                <div className="text-center text-text-muted py-8">
+                  <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mx-auto mb-3 border border-border">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                  </div>
+                  <p className="text-xs font-medium">No cast members assigned yet.</p>
+                </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
                   {credits.map((credit, idx) => (
-                    <div key={idx} className="flex items-center gap-4 bg-surface p-3 rounded-xl border border-border shadow-sm slide-in">
-                      <div className="flex-1">
-                        <p className="text-xs font-black text-gold uppercase">{credit.name}</p>
-                        <div className="flex items-center gap-4 mt-2">
+                    <div key={idx} className="flex items-center gap-4 bg-surface p-4 rounded-md border border-border shadow-sm group animate-in slide-in-from-left-2">
+                      <div className="flex-1 space-y-3">
+                        <p className="text-xs font-bold text-text-primary">{credit.name}</p>
+                        <div className="flex items-center gap-3">
                           <select
                             value={credit.role}
                             onChange={(e) => setCredits(prev => prev.map((c, i) => i === idx ? { ...c, role: e.target.value } : c))}
-                            className="bg-surface-2 border border-border rounded-lg px-3 py-1 text-[10px] font-black focus:border-gold outline-none uppercase"
+                            className="bg-surface-2 border border-border rounded-lg px-2 py-1 text-[10px] font-bold focus:border-brand outline-none uppercase"
                           >
                             <option value="actor">Actor</option>
                             <option value="director">Director</option>
@@ -864,15 +912,17 @@ export default function AdminFilms() {
                           </select>
                           {credit.role === 'actor' && (
                             <input
-                              placeholder="AS CHARACTER..."
+                              placeholder="Role name..."
                               value={credit.character_name || ''}
                               onChange={(e) => setCredits(prev => prev.map((c, i) => i === idx ? { ...c, character_name: e.target.value } : c))}
-                              className="bg-transparent border-b border-border text-[10px] font-black px-2 py-1 outline-none focus:border-gold uppercase flex-1"
+                              className="bg-transparent border-b border-border text-[10px] font-medium px-2 py-1 outline-none focus:border-brand flex-1"
                             />
                           )}
                         </div>
                       </div>
-                      <button type="button" onClick={() => removeCredit(idx)} className="text-red-500 font-bold p-2 hover:bg-red-500/10 rounded-lg transition-colors">✕</button>
+                      <button type="button" onClick={() => removeCredit(idx)} className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -880,59 +930,66 @@ export default function AdminFilms() {
             </div>
           </section>
 
+          <hr className="border-border" />
+
           {/* Showtimes Section */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b border-gold/10 pb-2">
-              <h4 className="text-xs font-black text-gold uppercase tracking-[0.2em]">Cinema Showtimes</h4>
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-text-primary tracking-tight">Active Engagement (Showtimes)</h4>
               <button
                 type="button"
                 onClick={addShowtime}
-                className="text-[10px] font-black bg-gold/10 text-gold border border-gold/20 px-4 py-1.5 rounded-full hover:bg-gold/20 transition-all"
+                className="text-[10px] font-bold text-brand bg-brand/5 border border-brand/20 px-4 py-2 rounded-md hover:bg-brand/10 transition-all flex items-center gap-2"
               >
-                + APPEND SHOWTIME
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                Add Showtime
               </button>
             </div>
 
-            <div className="bg-surface-2 rounded-2xl border border-border p-4">
+            <div className="bg-surface-2/50 rounded-lg border border-border p-6 min-h-[100px]">
               {showtimes.length === 0 ? (
-                <div className="p-8 text-center text-text-muted italic text-xs uppercase font-black">No active showtimes. Toggle "Showing in Cinema" by adding slots here.</div>
+                <div className="text-center text-text-muted py-8">
+                  <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mx-auto mb-3 border border-border">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <p className="text-xs font-medium">No showtimes listed.</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {showtimes.map((st, idx) => (
-                    <div key={idx} className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-surface p-4 rounded-xl border border-border shadow-sm relative">
+                    <div key={idx} className="grid grid-cols-1 lg:grid-cols-5 gap-4 bg-surface p-5 rounded-md border border-border shadow-sm group relative animate-in slide-in-from-bottom-2">
                       <div className="lg:col-span-1">
-                        <label className="block text-[8px] font-black text-text-muted uppercase mb-1">Cinema Location</label>
+                        <label className="block text-[9px] font-bold text-text-muted uppercase mb-1.5">Cinema</label>
                         <select
                           value={st.cinema_id}
                           onChange={(e) => updateShowtime(idx, 'cinema_id', e.target.value)}
-                          className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[10px] font-black outline-none focus:border-gold"
+                          className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-brand"
                         >
                           {cinemas.map(c => <option key={c.id} value={c.id}>{c.name} ({c.city})</option>)}
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[8px] font-black text-text-muted uppercase mb-1">Session Date</label>
-                        <input type="date" value={st.date} onChange={(e) => updateShowtime(idx, 'date', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[10px] font-black outline-none focus:border-gold" />
+                        <label className="block text-[9px] font-bold text-text-muted uppercase mb-1.5">Date</label>
+                        <input type="date" value={st.date} onChange={(e) => updateShowtime(idx, 'date', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-brand" />
                       </div>
                       <div>
-                        <label className="block text-[8px] font-black text-text-muted uppercase mb-1">Start Time</label>
-                        <input type="time" value={st.time} onChange={(e) => updateShowtime(idx, 'time', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[10px] font-black outline-none focus:border-gold" />
+                        <label className="block text-[9px] font-bold text-text-muted uppercase mb-1.5">Time</label>
+                        <input type="time" value={st.time} onChange={(e) => updateShowtime(idx, 'time', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-brand" />
                       </div>
                       <div>
-                        <label className="block text-[8px] font-black text-text-muted uppercase mb-1">Format</label>
-                        <select value={st.format} onChange={(e) => updateShowtime(idx, 'format', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[10px] font-black outline-none focus:border-gold">
-                          <option value="2D">2D</option>
-                          <option value="3D">3D</option>
-                          <option value="IMAX 2D">IMAX 2D</option>
-                          <option value="IMAX 3D">IMAX 3D</option>
+                        <label className="block text-[9px] font-bold text-text-muted uppercase mb-1.5">Format</label>
+                        <select value={st.format} onChange={(e) => updateShowtime(idx, 'format', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-brand">
+                          {['2D', '3D', 'IMAX 2D', 'IMAX 3D'].map(f => <option key={f} value={f}>{f}</option>)}
                         </select>
                       </div>
-                      <div className="flex items-end gap-2">
+                      <div className="flex items-end gap-3">
                         <div className="flex-1">
-                          <label className="block text-[8px] font-black text-text-muted uppercase mb-1">Booking Link</label>
-                          <input placeholder="https://" value={st.ticket_url} onChange={(e) => updateShowtime(idx, 'ticket_url', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[10px] font-black outline-none focus:border-gold" />
+                          <label className="block text-[9px] font-bold text-text-muted uppercase mb-1.5">Ticket URL</label>
+                          <input placeholder="https://" value={st.ticket_url} onChange={(e) => updateShowtime(idx, 'ticket_url', e.target.value)} className="w-full bg-surface-2 border border-border rounded-lg px-3 py-2 text-[11px] font-bold outline-none focus:border-brand" />
                         </div>
-                        <button type="button" onClick={() => removeShowtime(idx)} className="text-red-500 font-bold p-2 mb-0.5 hover:bg-red-500/10 rounded-lg transition-colors">🗑️</button>
+                        <button type="button" onClick={() => removeShowtime(idx)} className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -941,13 +998,20 @@ export default function AdminFilms() {
             </div>
           </section>
 
-          <div className="sticky bottom-0 pt-6 mt-12 bg-[#13192B] border-t border-border -mx-6 px-6 pb-6 shadow-[0_-12px_30px_rgba(0,0,0,0.5)] z-20">
+          <div className="pt-8 pb-4">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-4 bg-gold hover:bg-gold/90 text-dark font-black rounded-2xl transition-all shadow-[0_12px_24px_-8px_rgba(212,160,23,0.6)] active:scale-[0.98] disabled:opacity-50 uppercase tracking-widest text-sm"
+              className="w-full py-4 bg-brand text-white font-bold rounded-lg transition-all shadow-xl shadow-brand/20 active:scale-[0.99] disabled:opacity-50 text-sm tracking-tight flex items-center justify-center gap-3"
             >
-              {isSubmitting ? 'PROCESSING TRANSACTION...' : editingFilm ? 'RE-COMMIT PRODUCTION DATA' : 'COMMIT PRODUCTION TO DATABASE'}
+              {isSubmitting ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  Processing...
+                </>
+              ) : (
+                editingFilm ? 'Commit Changes' : 'Register Production'
+              )}
             </button>
           </div>
         </form>
@@ -957,9 +1021,9 @@ export default function AdminFilms() {
         <ConfirmModal
           onCancel={() => setDeletingFilm(null)}
           onConfirm={handleConfirmDelete}
-          title="Delete Film"
-          message={`Are you sure you want to delete "${deletingFilm?.title}"? All related credits, genres, and showtimes will be permanently removed.`}
-          confirmLabel="Delete Film"
+          title="Delete Production"
+          message={`Are you sure you want to delete "${deletingFilm?.title}"? This action cannot be undone and will remove all related intelligence including credits and showtimes.`}
+          confirmLabel="Delete Production"
         />
       )}
 
@@ -967,9 +1031,9 @@ export default function AdminFilms() {
         <ConfirmModal
           onCancel={() => !isBatchDeleting && setFilmBatchDeleteIds(null)}
           onConfirm={handleConfirmBatchDeleteFilms}
-          title="Delete films"
-          message={`Delete ${filmBatchDeleteIds.length} film${filmBatchDeleteIds.length === 1 ? '' : 's'}? Related credits, genres, and showtimes will be removed if your database is set up to cascade or allow it.`}
-          confirmLabel="Delete selected"
+          title="Batch Delete"
+          message={`Are you sure you want to delete ${filmBatchDeleteIds.length} productions? All associated data will be purged.`}
+          confirmLabel="Delete Multiple"
           isProcessing={isBatchDeleting}
         />
       )}

@@ -8,28 +8,28 @@ export default function ConfirmModal({ title, message, confirmLabel = 'Confirm',
       />
       
       {/* Modal */}
-      <div className="relative bg-[#13192B] rounded-2xl shadow-2xl border border-border w-full max-w-md p-6 animate-in zoom-in-95 duration-200">
-        <h3 className="text-xl font-semibold text-text-primary mb-2">
+      <div className="relative bg-surface rounded-lg shadow-2xl border border-border w-full max-w-sm p-8 animate-in zoom-in-95 duration-200">
+        <h3 className="text-xl font-bold text-text-primary mb-2 tracking-tight">
           {title}
         </h3>
-        <p className="text-text-muted mb-8">
+        <p className="text-text-muted mb-8 leading-relaxed">
           {message}
         </p>
         
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            disabled={isProcessing}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-text-primary bg-surface hover:bg-surface-2 transition-colors border border-border disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancel
-          </button>
+        <div className="flex flex-col gap-3">
           <button
             onClick={onConfirm}
             disabled={isProcessing}
-            className={`px-4 py-2 rounded-xl text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${confirmColor}`}
+            className={`w-full py-2.5 rounded-md text-sm font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg ${confirmColor}`}
           >
             {isProcessing ? 'Processing...' : confirmLabel}
+          </button>
+          <button
+            onClick={onCancel}
+            disabled={isProcessing}
+            className="w-full py-2.5 rounded-md text-sm font-bold text-text-primary bg-surface-2 hover:bg-surface border border-border transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancel
           </button>
         </div>
       </div>

@@ -136,7 +136,7 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
             <button
               onClick={handleSearch}
               disabled={searching}
-              className="flex items-center gap-2 bg-surface-2 hover:bg-surface text-text-primary px-4 py-2 rounded-xl transition-all disabled:opacity-50"
+              className="flex items-center gap-2 bg-surface-2 hover:bg-surface text-text-primary px-4 py-2 rounded-md transition-all disabled:opacity-50"
             >
               {searching ? (
                 <>
@@ -158,7 +158,7 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
               {results.map((result, i) => (
                 <div
                   key={result.videoId}
-                  className="flex gap-3 p-3 bg-surface-2 rounded-xl border border-border hover:border-gold/50 transition-all"
+                  className="flex gap-3 p-3 bg-surface-2 rounded-md border border-border hover:border-gold/50 transition-all"
                 >
                   <img
                     src={result.thumbnail}
@@ -212,12 +212,12 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
                 value={manualId}
                 onChange={e => setManualId(e.target.value)}
                 placeholder="https://youtube.com/watch?v=... or video ID"
-                className="flex-1 bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+                className="flex-1 bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
               />
               <button
                 onClick={handleManualSave}
                 disabled={saving || !manualId.trim()}
-                className="bg-gold text-dark font-semibold px-4 py-2 rounded-xl text-sm disabled:opacity-50"
+                className="bg-gold text-dark font-semibold px-4 py-2 rounded-md text-sm disabled:opacity-50"
               >
                 Save
               </button>
@@ -231,7 +231,7 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
               <img
                 src={`https://img.youtube.com/vi/${film.trailer_youtube_id}/hqdefault.jpg`}
                 alt="Current trailer thumbnail"
-                className="w-48 rounded-xl"
+                className="w-48 rounded-md"
               />
               <p className="text-xs text-text-muted mt-1">
                 ID: {film.trailer_youtube_id}
@@ -254,13 +254,13 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
               value={externalUrl}
               onChange={e => setExternalUrl(e.target.value)}
               placeholder="https://www.primevideo.com/..."
-              className="flex-1 bg-bg border border-border text-text-primary rounded-xl px-4 py-2 text-sm focus:border-gold focus:outline-none"
+              className="flex-1 bg-bg border border-border text-text-primary rounded-md px-4 py-2 text-sm focus:border-gold focus:outline-none"
             />
             <a
               href={externalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-surface-2 text-text-muted px-3 py-2 rounded-xl text-sm hover:text-text-primary transition-colors"
+              className="bg-surface-2 text-text-muted px-3 py-2 rounded-md text-sm hover:text-text-primary transition-colors"
             >
               Preview ↗
             </a>
@@ -268,7 +268,7 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
           <button
             onClick={handleExternalSave}
             disabled={saving || !externalUrl.trim()}
-            className="bg-gold text-dark font-semibold px-6 py-2 rounded-xl text-sm disabled:opacity-50"
+            className="bg-gold text-dark font-semibold px-6 py-2 rounded-md text-sm disabled:opacity-50"
           >
             Save External URL
           </button>
@@ -287,7 +287,7 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
           </p>
           <button
             onClick={handleSetNone}
-            className="bg-surface-2 text-text-primary font-semibold px-6 py-2 rounded-xl text-sm hover:bg-surface transition-all"
+            className="bg-surface-2 text-text-primary font-semibold px-6 py-2 rounded-md text-sm hover:bg-surface transition-all"
           >
             Confirm — No Trailer
           </button>
@@ -296,7 +296,7 @@ const TrailerSearch = ({ film, onTrailerSaved, currentUserId }) => {
 
       {/* Message display */}
       {message && (
-        <div className={`p-3 rounded-xl text-sm ${
+        <div className={`p-3 rounded-md text-sm ${
           message.type === 'success' ? 'bg-green-900/30 text-green-400 border border-green-800' :
           message.type === 'warning' ? 'bg-amber-900/30 text-amber-400 border border-amber-800' :
           'bg-red-900/30 text-red-400 border border-red-800'

@@ -19,8 +19,23 @@
   --font-body: 'Inter', sans-serif;
 }
 
-/* Dark Theme (Default) */
+/* Theme Variables (Cal + Orange Inspired) */
+:root {
+  --color-brand: #FF5C00;
+  --color-brand-hover: #E65200;
+  --color-gold: #FF5C00;
+  
+  /* Shared Defaults */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 9999px;
+}
+
+/* Dark Theme (Default/Professional) */
 .dark, :root:not(.light) {
+  color-scheme: dark;
   --color-bg: #0F0F0F;
   --color-surface: #1A1A1A;
   --color-surface-2: #242424;
@@ -29,26 +44,44 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B0B0B0;
   --color-text-muted: #707070;
-  --color-gold: #D4A017;
-  --color-gold-hover: #E5B020;
-  --color-terracotta: #C1440E;
+  --color-brand-muted: rgba(255, 92, 0, 0.15);
   --color-overlay: rgba(0, 0, 0, 0.85);
+  
+  /* Cal Shadows (Dark context) */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.5);
+
+  /* Sidebar Tokens */
+  --color-sidebar: #1A1A1A;
+  --color-sidebar-text: #B0B0B0;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --color-sidebar-active: rgba(255, 92, 0, 0.1);
+  --color-sidebar-border: rgba(255, 255, 255, 0.08);
 }
 
-/* Light Theme */
+/* Light Theme (Clean Admin) */
 .light {
-  --color-bg: #F5F5F5;
+  color-scheme: light;
+  --color-bg: #F9FAFB;
   --color-surface: #FFFFFF;
-  --color-surface-2: #F0F0F0;
-  --color-surface-3: #E8E8E8;
-  --color-border: rgba(0, 0, 0, 0.08);
-  --color-text-primary: #0F0F0F;
-  --color-text-secondary: #404040;
-  --color-text-muted: #808080;
-  --color-gold: #B8860B;
-  --color-gold-hover: #D4A017;
-  --color-terracotta: #C1440E;
+  --color-surface-2: #F3F4F6;
+  --color-surface-3: #E5E7EB;
+  --color-border: rgba(34, 42, 53, 0.08);
+  --color-text-primary: #111827;
+  --color-text-secondary: #4B5563;
+  --color-text-muted: #9CA3AF;
+  --color-brand-muted: rgba(255, 92, 0, 0.1);
   --color-overlay: rgba(255, 255, 255, 0.85);
+
+  /* Cal Shadow (Multi-level Ring) */
+  --shadow-md: rgba(19, 19, 22, 0.05) 0px 1px 5px -4px, rgba(34, 42, 53, 0.08) 0px 0px 0px 1px, rgba(34, 42, 53, 0.04) 0px 4px 8px 0px;
+
+  /* Sidebar Tokens */
+  --color-sidebar: #FFFFFF;
+  --color-sidebar-text: #4B5563;
+  --color-sidebar-hover: #F3F4F6;
+  --color-sidebar-active: rgba(255, 92, 0, 0.1);
+  --color-sidebar-border: rgba(0, 0, 0, 0.05);
 }
 
 @theme {
@@ -57,12 +90,29 @@
   --color-surface-2: var(--color-surface-2);
   --color-surface-3: var(--color-surface-3);
   --color-border: var(--color-border);
-  --color-gold: var(--color-gold);
-  --color-gold-hover: var(--color-gold-hover);
-  --color-terracotta: var(--color-terracotta);
+  --color-brand: var(--color-brand);
+  --color-brand-hover: var(--color-brand-hover);
+  --color-brand-muted: var(--color-brand-muted);
+  --color-gold: var(--color-brand);
+  
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
   --color-text-muted: var(--color-text-muted);
+  --color-overlay: var(--color-overlay);
+  
+  --color-sidebar: var(--color-sidebar);
+  --color-sidebar-text: var(--color-sidebar-text);
+  --color-sidebar-hover: var(--color-sidebar-hover);
+  --color-sidebar-active: var(--color-sidebar-active);
+  --color-sidebar-border: var(--color-sidebar-border);
+  
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
   
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
@@ -125,8 +175,14 @@
     @apply transition-all duration-200 hover:brightness-110 active:scale-[0.97];
   }
   
-  .card-hover {
-    @apply transition-all duration-200 hover:scale-[1.04] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)];
+  .card-cal {
+    @apply bg-surface rounded-lg transition-all duration-200 border border-transparent;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .card-cal:hover {
+    @apply border-brand/20;
+    box-shadow: rgba(19, 19, 22, 0.1) 0px 2px 8px -4px, rgba(34, 42, 53, 0.12) 0px 0px 0px 1px, rgba(34, 42, 53, 0.08) 0px 8px 16px 0px;
   }
 
   .link-underline {
@@ -134,7 +190,7 @@
   }
   .link-underline::after {
     content: '';
-    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-gold transition-all duration-300;
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-brand transition-all duration-300;
   }
   .link-underline:hover::after {
     @apply w-full;

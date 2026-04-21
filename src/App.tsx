@@ -41,6 +41,8 @@ import AdminChannels from './pages/admin/AdminChannels';
 import AdminYouTubeVideos from './pages/admin/AdminYouTubeVideos';
 import AdminCinemaFilms from './pages/admin/AdminCinemaFilms';
 import AdminCinemaScraping from './pages/admin/AdminCinemaScraping';
+import AdminChannelDetail from './pages/admin/AdminChannelDetail';
+
 
 function BackToTop() {
   const [visible, setVisible] = useState(false);
@@ -200,6 +202,8 @@ export default function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="cinemas" element={<AdminCinemas />} />
               <Route path="channels" element={<AdminChannels />} />
+              <Route path="channels/:id" element={<AdminChannelDetail />} />
+
               <Route path="youtube-videos" element={<AdminYouTubeVideos />} />
               <Route path="cinema-films" element={<AdminCinemaFilms />} />
               <Route path="cinema-scraping" element={<AdminCinemaScraping />} />
