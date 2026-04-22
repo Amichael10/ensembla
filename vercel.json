@@ -12,7 +12,7 @@
     },
     {
       "path": "/api/cron/refresh-showtimes",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 1 * * *"
     }
   ]
 }

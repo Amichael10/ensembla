@@ -39,9 +39,11 @@ export default function AdminOverview() {
 
     const fetchActivity = async () => {
       try {
-        const [films, reviews] = await Promise.all([
-          supabase.from('films').select('title, created_at').order('created_at', { ascending: false }).limit(3),
-          supabase.from('reviews').select('body, rating, created_at').order('created_at', { ascending: false }).limit(3)
+        const [films, reviews, cinemas, channels] = await Promise.all([
+          supabase.from('films').select('title, created_at').order('created_at', { ascending: false }).limit(5),
+          supabase.from('reviews').select('body, rating, created_at').order('created_at', { ascending: false }).limit(5),
+          supabase.from('cinemas').select('name, showtimes_last_fetched_at').order('showtimes_last_fetched_at', { ascending: false }).limit(3),
+          supabase.from('channels').select('name, videos_last_fetched_at').order('videos_last_fetched_at', { ascending: false }).limit(3)
         ]);
 
         const activities = [
@@ -54,8 +56,18 @@ export default function AdminOverview() {
             type: 'review', 
             text: `New ${r.rating}★ review: "${r.body?.substring(0, 30)}..."`, 
             time: new Date(r.created_at).toLocaleString() 
+          })),
+          ...(cinemas.data || []).filter(c => c.showtimes_last_fetched_at).map(c => ({
+            type: 'sync',
+            text: `Cinema synced: ${c.name}`,
+            time: new Date(c.showtimes_last_fetched_at).toLocaleString()
+          })),
+          ...(channels.data || []).filter(c => c.videos_last_fetched_at).map(c => ({
+            type: 'sync',
+            text: `YouTube sync: ${c.name}`,
+            time: new Date(c.videos_last_fetched_at).toLocaleString()
           }))
-        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 8);
+        ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 10);
 
         setRecentActivity(activities);
       } catch (error) {
@@ -112,12 +124,19 @@ export default function AdminOverview() {
 
   const handleRunScript = async (scriptName) => {
     const toast = (await import('react-hot-toast')).default;
-    const promise = fetch(`/api/cron/${scriptName}`);
+    const promise = fetch(`/api/cron/${scriptName}`).then(async res => {
+      const text = await res.text();
+      if (text.includes('import ') || text.includes('export ')) {
+        throw new Error('Local dev detected: Vite cannot execute .ts scripts. Use vercel dev.');
+      }
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      return text;
+    });
     
     toast.promise(promise, {
       loading: `Executing ${scriptName}...`,
-      success: `${scriptName} completed successfully!`,
-      error: `Failed to run ${scriptName}. Check logs.`
+      success: `${scriptName} executed (Check Production for real data)!`,
+      error: (err) => err.message
     });
   };
 

@@ -117,13 +117,25 @@ export default function AdminCinemaScraping() {
     setSyncResult(null);
     try {
       const res = await fetch('/api/cron/refresh-showtimes', { method: 'GET' });
-      const data = await res.json();
+      const text = await res.text();
+      
+      if (text.includes('import ') || text.includes('export ')) {
+        throw new Error('Local dev detected: Vite cannot execute .ts scripts. Use vercel dev.');
+      }
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Invalid server response');
+      }
+
       setSyncResult(data);
-      toast.success('Starting sync...');
+      toast.success('Sync cycle completed.');
       fetchCinemas();
     } catch (err) {
       console.error(err);
-      toast.error('Sync failed to start');
+      toast.error(err.message || 'Sync failed to start');
     } finally {
       setSyncing(false);
     }
