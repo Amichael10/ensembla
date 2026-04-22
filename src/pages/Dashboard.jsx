@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { films, people } from '../data/mockData';
+import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 import FilmCard from '../components/film/FilmCard';
 import PersonCard from '../components/person/PersonCard';
 
@@ -31,24 +32,77 @@ export default function Dashboard() {
   
   const [activeTab, setActiveTab] = useState('watchlist');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   
-  // Local state for mock data interaction
-  const [watchlist, setWatchlist] = useState(initialWatchlist);
+  // Real database state
+  const [watchlist, setWatchlist] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [watchedFilms, setWatchedFilms] = useState(new Set());
-  const [following, setFollowing] = useState(initialFollowing);
-  const [reviews, setReviews] = useState(initialReviews);
   const [editingReviewId, setEditingReviewId] = useState(null);
 
   useEffect(() => {
     document.title = "FilmDba | Dashboard";
-  }, []);
+    if (user?.id) {
+      fetchAllData();
+    }
+  }, [user?.id]);
 
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
+  const fetchAllData = async () => {
+    setLoading(true);
+    try {
+      // 1. Fetch Watchlist
+      const { data: wlData } = await supabase
+        .from('watchlist')
+        .select('*, films(*)')
+        .eq('user_id', user.id);
+      
+      if (wlData) {
+        setWatchlist(wlData.map(item => item.films));
+      }
 
-  const handleRemoveFromWatchlist = (filmToRemove) => {
-    setWatchlist(prev => prev.filter(f => f.id !== filmToRemove.id));
+      // 2. Fetch Following (people)
+      const { data: followData } = await supabase
+        .from('followers')
+        .select('*, people(*)')
+        .eq('user_id', user.id);
+      
+      if (followData) {
+        setFollowing(followData.map(item => item.people));
+      }
+
+      // 3. Fetch Reviews
+      const { data: revData } = await supabase
+        .from('reviews')
+        .select('*, films(*)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (revData) {
+        setReviews(revData.map(r => ({
+          ...r,
+          film: r.films
+        })));
+      }
+
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveFromWatchlist = async (film) => {
+    const { error } = await supabase
+      .from('watchlist')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('film_id', film.id);
+    
+    if (!error) {
+      setWatchlist(prev => prev.filter(f => f.id !== film.id));
+      toast.success('Removed from watchlist');
+    }
   };
 
   const handleToggleWatched = (film) => {
@@ -63,12 +117,29 @@ export default function Dashboard() {
     });
   };
 
-  const handleUnfollow = (personId) => {
-    setFollowing(prev => prev.filter(p => p.id !== personId));
+  const handleUnfollow = async (personId) => {
+    const { error } = await supabase
+      .from('followers')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('person_id', personId);
+    
+    if (!error) {
+      setFollowing(prev => prev.filter(p => p.id !== personId));
+      toast.success('Unfollowed');
+    }
   };
 
-  const handleDeleteReview = (reviewId) => {
-    setReviews(prev => prev.filter(r => r.id !== reviewId));
+  const handleDeleteReview = async (reviewId) => {
+    const { error } = await supabase
+      .from('reviews')
+      .delete()
+      .eq('id', reviewId);
+    
+    if (!error) {
+      setReviews(prev => prev.filter(r => r.id !== reviewId));
+      toast.success('Review deleted');
+    }
   };
 
   const tabs = [

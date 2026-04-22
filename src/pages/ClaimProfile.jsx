@@ -1,39 +1,83 @@
 import { useState, useEffect } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { people } from '../data/mockData';
+import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 import PersonCard from '../components/person/PersonCard';
 
 export default function ClaimProfile() {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filteredPeople, setFilteredPeople] = useState([]);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [claimReason, setClaimReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
     document.title = "FilmDba | Claim Profile";
-  }, []);
+    if (user?.id) {
+       checkExistingClaim();
+    }
+  }, [user?.id]);
 
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
+  const checkExistingClaim = async () => {
+    const { data } = await supabase
+      .from('profile_claims')
+      .select('status')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (data && (data.status === 'pending' || data.status === 'approved')) {
+      toast.success('Redirecting to your dashboard...');
+      window.location.href = '/dashboard/pro';
+    }
+  };
 
-  const filteredPeople = searchQuery 
-    ? people.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : [];
+  useEffect(() => {
+    if (searchQuery.length > 2) {
+      const delaySearch = setTimeout(async () => {
+        const { data } = await supabase
+          .from('people')
+          .select('*')
+          .ilike('name', `%${searchQuery}%`)
+          .limit(8);
+        setFilteredPeople(data || []);
+      }, 300);
+      return () => clearTimeout(delaySearch);
+    } else {
+      setFilteredPeople([]);
+    }
+  }, [searchQuery]);
 
   const handleSelect = (person) => {
     setSelectedPerson(person);
     setStep(2);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (confirmed) {
+    if (!confirmed) return;
+    
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('profile_claims')
+        .insert({
+          user_id: user.id,
+          person_id: selectedPerson.id,
+          status: 'pending',
+          notes: claimReason
+        });
+      
+      if (error) throw error;
       setIsSubmitted(true);
+    } catch (err) {
+      toast.error('Failed to submit claim');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

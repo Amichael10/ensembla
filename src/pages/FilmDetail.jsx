@@ -68,7 +68,12 @@ export default function FilmDetail() {
     try {
       const { data, error } = await supabase
         .from('films')
-        .select('*')
+        .select(`
+          *,
+          film_companies(
+            companies(id, name, logo_url)
+          )
+        `)
         .eq('id', id)
         .single();
 
@@ -299,15 +304,31 @@ export default function FilmDetail() {
           <div className="space-y-8">
 
             {/* Production Company */}
-            <div className="bg-surface rounded-2xl p-6 border border-border flex items-center gap-4">
-              <div className="w-12 h-12 bg-surface-2 rounded-full flex items-center justify-center text-gold font-bold text-xl shrink-0">
-                K
+            {film.film_companies?.length > 0 ? (
+              <div className="bg-surface rounded-2xl p-6 border border-border flex items-center gap-4 group hover:border-gold/30 transition-all cursor-default">
+                <div className="w-12 h-12 bg-surface-2 rounded-xl overflow-hidden flex items-center justify-center text-gold font-bold text-xl shrink-0 border border-border/50">
+                  {film.film_companies[0].companies?.logo_url ? (
+                    <img src={film.film_companies[0].companies.logo_url} className="w-full h-full object-contain p-1" />
+                  ) : (
+                    film.film_companies[0].companies?.name?.charAt(0) || 'L'
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-muted uppercase font-black tracking-widest mb-0.5">Production House</div>
+                  <div className="font-bold text-text-primary text-sm line-clamp-1">{film.film_companies[0].companies?.name}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-xs text-text-muted uppercase tracking-wider mb-1">Production Company</div>
-                <div className="font-bold text-text-primary">Kemi Adetiba Visuals</div>
+            ) : (
+              <div className="bg-surface rounded-2xl p-6 border border-border flex items-center gap-4">
+                <div className="w-12 h-12 bg-surface-2 rounded-full flex items-center justify-center text-gold font-bold text-xl shrink-0">
+                  {film.director?.charAt(0) || 'L'}
+                </div>
+                <div>
+                  <div className="text-[10px] text-text-muted uppercase font-black tracking-widest mb-0.5">Production Lead</div>
+                  <div className="font-bold text-text-primary text-sm">{film.director || 'Lumi Productions'}</div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Film Details List */}
             <div className="bg-surface rounded-2xl p-6 border border-border">

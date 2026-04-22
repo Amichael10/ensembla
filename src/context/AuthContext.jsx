@@ -17,36 +17,17 @@ export function AuthProvider({ children }) {
     }
     
     try {
-      // 1. Try lookup by ID first (standard)
-      let { data: profile, error } = await supabase
-        .from('users')
-        .select('role, name, avatar_url, linked_profile_id')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-      // 2. Fallback to Email lookup if ID not found (identity unification)
-      if (!profile && !error) {
-        let { data: emailProfile } = await supabase
-          .from('users')
-          .select('role, name, avatar_url, linked_profile_id')
-          .eq('email', authUser.email)
-          .maybeSingle();
-        
-        if (emailProfile) {
-          profile = emailProfile;
-        }
-      }
-        
+      // Use the dedicated RPC function to bypass restricted table access
+      const { data: serverRole } = await supabase.rpc('get_my_role');
+      
       const defaultAdminEmail = 'amichaelwale@gmail.com';
       const isDefaultAdmin = authUser.email === defaultAdminEmail;
       
-      let finalRole = 'fan';
+      let finalRole = serverRole || 'fan';
       if (isDefaultAdmin) {
         finalRole = 'admin';
-      } else if (profile) {
-        finalRole = profile.role || authUser.user_metadata?.role || 'fan';
       } else {
-        finalRole = authUser.user_metadata?.role || 'fan';
+        finalRole = authUser.user_metadata?.role || serverRole || 'fan';
       }
 
       setAuthState({

@@ -14,7 +14,6 @@ const FIELDS = [
   'poster_url',
   'backdrop_url',
   'year',
-  'country',
   'language',
   'runtime_minutes',
   'view_count',
@@ -40,18 +39,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(429).json({ error: 'Too many requests' });
   }
 
-  const { country, year, language, search } = req.query;
-  const limit = Math.min(Number(req.query.limit) || 20, 50);
-  const offset = Math.max(Number(req.query.offset) || 0, 0);
+  const { country, year, language, search, genre, rating } = req.query;
+  const limitValue = Math.min(Number(req.query.limit) || 24, 100);
+  const offsetValue = Math.max(Number(req.query.offset) || 0, 0);
 
-  let query = supabase.from('films').select(FIELDS).range(offset, offset + limit - 1);
+  let query;
+
+  if (genre) {
+    const genres = Array.isArray(genre) ? genre : [genre];
+    // Use !inner join for filtering, but define the fields precisely to avoid duplicates
+    const JOIN_FIELDS = FIELDS.replace('film_genres(genres(name))', 'film_genres!inner(genres!inner(name))');
+    query = supabase.from('films').select(JOIN_FIELDS);
+    query = query.in('film_genres.genres.name', genres);
+  } else {
+    query = supabase.from('films').select(FIELDS);
+  }
 
   if (search) query = query.ilike('title', `%${search}%`);
   if (country) query = query.eq('country', country);
-  if (year) query = query.eq('year', Number(year));
+  if (year) query = query.gte('year', Number(year));
   if (language) query = query.eq('language', language);
+  if (rating) {
+    const ratings = Array.isArray(rating) ? rating : [rating];
+    query = query.in('nfvcb_rating', ratings);
+  }
 
-  const { data, error } = await query;
+  const { data, error } = await query
+    .order('view_count', { ascending: false })
+    .range(offsetValue, offsetValue + limitValue - 1);
 
   if (error) {
     console.error('films query error:', error);
@@ -64,5 +79,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     genres: f.film_genres?.map((fg: any) => fg.genres?.name).filter(Boolean) ?? [],
   }));
 
-  return res.status(200).json({ films, limit, offset });
+  return res.status(200).json({ films, limit: limitValue, offset: offsetValue });
 }

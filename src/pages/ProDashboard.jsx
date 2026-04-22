@@ -1,43 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { films, people } from '../data/mockData';
+import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 
 export default function ProDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
-  const [activeTab, setActiveTab] = useState('profile');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
-  
-  // Profile Claim State: 'unclaimed', 'pending', 'approved'
-  const [claimState, setClaimState] = useState('unclaimed');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedPerson, setSelectedPerson] = useState(null);
-  const [showClaimForm, setShowClaimForm] = useState(false);
-  const [claimReason, setClaimReason] = useState('');
 
-  useEffect(() => {
-    document.title = "FilmDba Pro | Dashboard";
-    
-    // Check if welcome modal should be shown
-    const hasSeenModal = localStorage.getItem('filmdba_pro_welcome_seen');
-    if (!hasSeenModal && user?.role === 'professional') {
-      setShowWelcomeModal(true);
-    }
-  }, [user]);
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  if (user.role !== 'professional' && user.role !== 'admin') {
-    // In a real app we might use a toast library here
-    alert("Upgrade to a professional account to access this.");
-    return <Navigate to="/dashboard" />;
-  }
-
+  // Missing helper functions
   const handleCloseModal = () => {
     setShowWelcomeModal(false);
     localStorage.setItem('filmdba_pro_welcome_seen', 'true');
@@ -46,20 +17,151 @@ export default function ProDashboard() {
   const handleFindMyProfile = () => {
     handleCloseModal();
     setActiveTab('profile');
-    // Scroll to top or focus search
+  };
+  
+  const [activeTab, setActiveTab] = useState('profile');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  
+  // Profile Claim State: 'unclaimed', 'pending', 'approved'
+  const [claimState, setClaimState] = useState('unclaimed');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredPeople, setFilteredPeople] = useState([]);
+  const [selectedPerson, setSelectedPerson] = useState(null);
+  const [showClaimForm, setShowClaimForm] = useState(false);
+  const [claimReason, setClaimReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Stats
+  const [stats, setStats] = useState({
+    totalViews: 0,
+    totalFilms: 0,
+    followers: 0,
+    avgRating: 0,
+    filmStats: []
+  });
+
+  useEffect(() => {
+    document.title = "FilmDba Pro | Dashboard";
+    if (user?.id) {
+      checkClaimStatus();
+    }
+    
+    // Check if welcome modal should be shown
+    const hasSeenModal = localStorage.getItem('filmdba_pro_welcome_seen');
+    if (!hasSeenModal && user?.role === 'professional' && !user.linked_profile_id) {
+      setShowWelcomeModal(true);
+    }
+  }, [user]);
+
+  const checkClaimStatus = async () => {
+    setLoading(true);
+    try {
+      // 1. Check if already linked
+      if (user.linked_profile_id) {
+        const { data: person } = await supabase
+          .from('people')
+          .select('*')
+          .eq('id', user.linked_profile_id)
+          .single();
+        
+        if (person) {
+          setSelectedPerson(person);
+          setClaimState('approved');
+          fetchProStats(person.id);
+        }
+      } else {
+        // 2. Check for pending claim
+        const { data: claim } = await supabase
+          .from('profile_claims')
+          .select('*, people(*)')
+          .eq('user_id', user.id)
+          .eq('status', 'pending')
+          .single();
+        
+        if (claim) {
+          setSelectedPerson(claim.people);
+          setClaimState('pending');
+        }
+      }
+    } catch (err) {
+      console.error('Check claim error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSubmitClaim = (e) => {
+  const fetchProStats = async (personId) => {
+    try {
+      // Fetch credits with films
+      const { data: credits } = await supabase
+        .from('credits')
+        .select('*, films(*)')
+        .eq('person_id', personId);
+      
+      if (credits) {
+        const filmsList = credits.map(c => c.films).filter(Boolean);
+        const totalViews = filmsList.reduce((acc, f) => acc + (f.view_count || 0), 0);
+        const avgRating = filmsList.length > 0 
+          ? (filmsList.reduce((acc, f) => acc + (f.average_rating || 0), 0) / filmsList.length).toFixed(1)
+          : 0;
+
+        setStats({
+          totalViews,
+          totalFilms: filmsList.length,
+          followers: 0,
+          avgRating,
+          filmStats: filmsList
+        });
+      }
+    } catch (err) {
+      console.error('Fetch stats error:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (searchQuery.length > 2) {
+      const delaySearch = setTimeout(async () => {
+        const { data } = await supabase
+          .from('people')
+          .select('*')
+          .ilike('name', `%${searchQuery}%`)
+          .limit(5);
+        setFilteredPeople(data || []);
+      }, 300);
+      return () => clearTimeout(delaySearch);
+    } else {
+      setFilteredPeople([]);
+    }
+  }, [searchQuery]);
+
+  const handleSubmitClaim = async (e) => {
     e.preventDefault();
-    setClaimState('pending');
-    setShowClaimForm(false);
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('profile_claims')
+        .insert({
+          user_id: user.id,
+          person_id: selectedPerson.id,
+          status: 'pending',
+          notes: claimReason
+        });
+      
+      if (error) throw error;
+      
+      toast.success('Claim submitted! Our admins will review it.');
+      setClaimState('pending');
+      setShowClaimForm(false);
+    } catch (err) {
+      toast.error('Submission failed');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // Mock data for the dashboard
-  const myFilms = claimState === 'approved' && selectedPerson 
-    ? films.filter(f => f.cast.includes(selectedPerson.name) || f.director === selectedPerson.name)
-    : [];
-
+  const myFilms = stats.filmStats;
   const tabs = [
     { id: 'profile', label: 'My Profile', icon: '🎭' },
     { id: 'films', label: 'My Films', icon: '🎬' },
@@ -67,10 +169,6 @@ export default function ProDashboard() {
     { id: 'stats', label: 'Stats', icon: '📊' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
-
-  const filteredPeople = searchQuery 
-    ? people.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : [];
 
   return (
     <div className="min-h-screen bg-bg flex flex-col fixed inset-0 z-[60] overflow-hidden">
@@ -562,7 +660,7 @@ export default function ProDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
                   <div className="bg-surface border border-border rounded-2xl p-6">
                     <div className="text-3xl font-bold text-gold mb-1">
-                      {(myFilms.reduce((acc, f) => acc + f.views, 0) / 1000000).toFixed(1)}M
+                      {(myFilms.reduce((acc, f) => acc + (f.view_count || 0), 0) / 1000000).toFixed(1)}M
                     </div>
                     <div className="text-sm text-text-muted mb-3">Total Views</div>
                     <div className="text-xs text-green-400 font-medium flex items-center gap-1">
@@ -587,7 +685,7 @@ export default function ProDashboard() {
                   </div>
                   <div className="bg-surface border border-border rounded-2xl p-6">
                     <div className="text-3xl font-bold text-gold mb-1">
-                      {(myFilms.reduce((acc, f) => acc + f.rating, 0) / (myFilms.length || 1)).toFixed(1)}
+                      {(myFilms.reduce((acc, f) => acc + (f.average_rating || 0), 0) / (myFilms.length || 1)).toFixed(1)}
                     </div>
                     <div className="text-sm text-text-muted mb-3">Avg. Rating</div>
                     <div className="text-xs text-green-400 font-medium flex items-center gap-1">
@@ -601,8 +699,8 @@ export default function ProDashboard() {
                   <h3 className="font-bold text-lg text-text-primary mb-6">Views by Film</h3>
                   <div className="h-64 flex items-end gap-4 md:gap-8 pt-4">
                     {myFilms.map((film, i) => {
-                      const maxViews = Math.max(...myFilms.map(f => f.views));
-                      const heightPercent = Math.max((film.views / maxViews) * 100, 5);
+                      const maxViews = Math.max(...myFilms.map(f => f.view_count || 0), 1);
+                      const heightPercent = Math.max(((film.view_count || 0) / maxViews) * 100, 5);
                       return (
                         <div key={film.id} className="flex-1 flex flex-col items-center gap-3 group">
                           <div className="w-full relative h-full flex items-end justify-center">
@@ -611,7 +709,7 @@ export default function ProDashboard() {
                               style={{ height: `${heightPercent}%` }}
                             ></div>
                             <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-2 border border-border text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap z-10">
-                              {(film.views / 1000000).toFixed(1)}M views
+                              {((film.view_count || 0) / 1000000).toFixed(1)}M views
                             </div>
                           </div>
                           <div className="text-xs text-text-muted text-center truncate w-full px-1" title={film.title}>
@@ -641,7 +739,7 @@ export default function ProDashboard() {
                             <span className="bg-gold text-bg text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">Most Viewed</span>
                             <span className="text-gold font-bold flex items-center gap-1">
                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                              {myFilms[0].rating}
+                              {myFilms[0].average_rating || 'N/A'}
                             </span>
                           </div>
                           <h4 className="font-heading font-bold text-3xl text-text-primary mb-1">{myFilms[0].title}</h4>

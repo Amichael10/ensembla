@@ -158,9 +158,10 @@ const PeopleList = () => {
     let query = supabase
       .from('people')
       .select(`
-        id, name, photo_url, nationality,
+        id, name, photo_url,
         popularity_score, is_verified,
         youtube_handle, youtube_stats,
+        known_for_department,
         credits(role)
       `)
 
@@ -188,12 +189,13 @@ const PeopleList = () => {
       setHasMore(false)
     }
 
-    // Filter by role client-side
+    // Filter by role (checks both credits and primary department)
     let filtered = data || []
     if (roleFilter !== 'All') {
       const roleKey = roleFilter.toLowerCase()
       filtered = filtered.filter(p =>
-        p.credits?.some(c => c.role === roleKey)
+        p.known_for_department?.toLowerCase().includes(roleKey) ||
+        p.credits?.some(c => c.role.toLowerCase() === roleKey)
       )
     }
 

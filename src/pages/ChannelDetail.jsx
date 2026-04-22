@@ -163,7 +163,7 @@ export default function ChannelDetail() {
   
   // Search & Filter
   const [search, setSearch] = useState('');
-  const [onlyMovies, setOnlyMovies] = useState(false);
+  const [onlyMovies, setOnlyMovies] = useState(true); // Default to true to hide 1-min skits
 
   useEffect(() => {
     fetchChannel();
@@ -213,7 +213,12 @@ export default function ChannelDetail() {
 
   const filteredVideos = videos.filter(v => {
     if (search.trim() && !v.title.toLowerCase().includes(search.toLowerCase())) return false;
-    if (onlyMovies && v.duration_seconds < 1800) return false;
+    
+    // Default filter: hide anything under 30 mins (1800s)
+    if (onlyMovies && v.duration_seconds && v.duration_seconds < 1800) return false;
+    
+    // If it's a very short video and we don't have duration data, still show it 
+    // unless the user is specifically looking for movies.
     return true;
   });
 
@@ -384,13 +389,14 @@ export default function ChannelDetail() {
               
               <button
                 onClick={() => setOnlyMovies(!onlyMovies)}
-                className={`text-xs font-bold px-4 py-2 rounded-xl border transition-all ${
+                className={`text-xs font-bold px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${
                   onlyMovies 
                     ? 'bg-[#D4A017]/10 border-[#D4A017] text-[#D4A017]' 
                     : 'bg-[#13192B] border-[#252D45] text-[#7A8099] hover:text-[#F5F0E8]'
                 }`}
               >
-                Movies (30m+)
+                <div className={`w-2 h-2 rounded-full ${onlyMovies ? 'bg-[#D4A017] shadow-[0_0_8px_#D4A017]' : 'bg-[#7A8099]'}`} />
+                Movies Only (30m+)
               </button>
 
               {channel.channel_url && (

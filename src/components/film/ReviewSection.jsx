@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useReviews } from '../../hooks/useReviews'
 
@@ -6,7 +6,7 @@ const StarRating = ({ value, onChange, readonly = false }) => {
     const [hover, setHover] = useState(0)
 
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                 <button
                     key={num}
@@ -15,16 +15,16 @@ const StarRating = ({ value, onChange, readonly = false }) => {
                     onClick={() => !readonly && onChange?.(num)}
                     onMouseEnter={() => !readonly && setHover(num)}
                     onMouseLeave={() => !readonly && setHover(0)}
-                    className={`text-lg transition-colors ${num <= (hover || value)
-                            ? 'text-yellow-400'
-                            : 'text-gray-600'
-                        } ${readonly ? 'cursor-default' : 'cursor-pointer'}`}
+                    className={`text-xl transition-all duration-200 ${num <= (hover || value)
+                            ? 'text-brand scale-110'
+                            : 'text-surface-3'
+                        } ${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-125'}`}
                 >
                     ★
                 </button>
             ))}
-            <span className="text-sm text-gray-400 ml-2">
-                {value > 0 ? `${value}/10` : ''}
+            <span className="text-xs font-black text-brand ml-3 bg-brand/5 px-2 py-0.5 rounded-full border border-brand/10">
+                {value > 0 ? `${value}/10` : 'SCORE'}
             </span>
         </div>
     )
@@ -36,74 +36,101 @@ const ReviewCard = ({
     onEdit,
     onDelete
 }) => {
-    const initials = review.users?.name
-        ?.split(' ')
-        .map(n => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
+    const [timeRemaining, setTimeRemaining] = useState(null);
+    
+    // Check if the review is still editable (within 2 minutes of creation)
+    const getEditStatus = () => {
+        const createdTime = new Date(review.created_at).getTime();
+        const now = Date.now();
+        const diffMs = now - createdTime;
+        const diffMinutes = diffMs / 1000 / 60;
+        const remainingSeconds = Math.max(0, 120 - Math.floor(diffMs / 1000));
+        return { isEditable: diffMinutes < 2, remainingSeconds };
+    };
 
-    const isOwner = currentUser?.id === review.user_id
+    useEffect(() => {
+        const { isEditable } = getEditStatus();
+        if (isEditable && currentUser?.id === review.user_id) {
+            const timer = setInterval(() => {
+                const { isEditable: stillEditable, remainingSeconds } = getEditStatus();
+                setTimeRemaining(remainingSeconds);
+                if (!stillEditable) clearInterval(timer);
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [review.created_at, currentUser?.id]);
+
+    const userName = review.users?.name || 'Lumi Member';
+    const avatarUrl = review.users?.avatar_url || null;
+    const initials = userName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    
+    const isOwner = currentUser?.id === review.user_id;
+    const { isEditable } = getEditStatus();
 
     return (
-        <div className="bg-[#13192B] rounded-2xl p-5 border border-[#252D45]">
-            <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                    {review.users?.avatar_url ? (
-                        <img
-                            src={review.users.avatar_url}
-                            alt={review.users.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                        />
-                    ) : (
-                        <div className="w-10 h-10 rounded-full bg-[#D4A017] flex items-center justify-center text-black font-bold text-sm">
-                            {initials}
-                        </div>
-                    )}
+        <div className="bg-surface border border-border rounded-xl p-6 transition-all duration-300 hover:shadow-md group relative overflow-hidden">
+            <div className="flex items-start justify-between relative z-10">
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        {avatarUrl ? (
+                            <img src={avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-surface-2 group-hover:border-brand/30 transition-all shadow-sm" />
+                        ) : (
+                            <div className="w-12 h-12 rounded-full bg-brand/5 border-2 border-brand/10 flex items-center justify-center text-brand font-black text-xs">
+                                {initials}
+                            </div>
+                        )}
+                        {isOwner && isEditable && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand rounded-full border-2 border-surface flex items-center justify-center animate-pulse">
+                                <span className="text-[7px] text-white font-black">!</span>
+                            </div>
+                        )}
+                    </div>
                     <div>
-                        <p className="text-[#F5F0E8] font-medium text-sm">
-                            {review.users?.name || 'Anonymous'}
-                        </p>
-                        <p className="text-[#7A8099] text-xs">
-                            {new Date(review.created_at).toLocaleDateString(
-                                'en-NG',
-                                {
-                                    day: 'numeric',
-                                    month: 'short',
-                                    year: 'numeric'
-                                }
+                        <p className="text-text-primary font-bold text-sm tracking-tight">{userName}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest px-0.5">
+                                {new Date(review.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </p>
+                            {isOwner && isEditable && timeRemaining > 0 && (
+                                <span className="text-brand text-[8px] font-bold bg-brand/5 px-2 py-0.5 rounded italic">
+                                    Edit window: {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                                </span>
                             )}
-                        </p>
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="bg-[#D4A017] text-black text-xs font-bold px-2 py-1 rounded-lg">
-                        {review.rating}/10
-                    </span>
-                    {isOwner && (
-                        <div className="flex gap-1">
+
+                <div className="flex items-center gap-3">
+                    <div className="text-brand font-black text-lg tracking-tighter">
+                        {review.rating}<span className="text-[10px] text-text-muted">/10</span>
+                    </div>
+                    {isOwner && isEditable && (
+                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
                             <button
                                 onClick={() => onEdit(review)}
-                                className="text-[#7A8099] hover:text-[#D4A017] p-1 transition-colors"
-                                title="Edit review"
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-2 text-text-secondary hover:bg-brand hover:text-white transition-all shadow-sm"
+                                title="Edit (2 min limit)"
                             >
-                                ✏️
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                             </button>
                             <button
                                 onClick={() => onDelete(review.id)}
-                                className="text-[#7A8099] hover:text-red-400 p-1 transition-colors"
-                                title="Delete review"
+                                className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-2 text-text-secondary hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                title="Delete (2 min limit)"
                             >
-                                🗑️
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </button>
                         </div>
                     )}
                 </div>
             </div>
             {review.body && (
-                <p className="text-[#F5F0E8] text-sm leading-relaxed">
-                    {review.body}
-                </p>
+                <div className="mt-5 relative">
+                    <div className="absolute -left-1.5 top-0 w-0.5 h-full bg-brand/10 rounded-full" />
+                    <p className="text-text-secondary text-sm leading-[1.6] pl-4 italic opacity-90">
+                        {review.body}
+                    </p>
+                </div>
             )}
         </div>
     )
@@ -126,80 +153,85 @@ const ReviewForm = ({
         setError(null)
 
         if (rating === 0) {
-            setError('Please select a rating')
+            setError('Please award a star rating first.')
             return
         }
         if (body.trim().length < 20) {
-            setError('Review must be at least 20 characters')
+            setError('Your thoughts are too short! (Min 20 characters)')
             return
         }
 
         setSubmitting(true)
-        await onSubmit(rating, body)
+        const success = await onSubmit(rating, body)
         setSubmitting(false)
+        if (!success) setError('Synchronization failed. Please try again.')
     }
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="bg-[#13192B] rounded-2xl p-5 border border-[#252D45] space-y-4"
-        >
-            <h4 className="text-[#F5F0E8] font-semibold">
-                {isEditing ? 'Edit your review' : 'Write a review'}
-            </h4>
-
-            <div>
-                <label className="text-[#7A8099] text-xs block mb-2">
-                    Your Rating
-                </label>
-                <StarRating value={rating} onChange={setRating} />
+        <form onSubmit={handleSubmit} className="bg-surface border-2 border-brand/20 rounded-2xl p-6 space-y-6 shadow-xl shadow-brand/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand/5 rounded-full -translate-y-16 translate-x-16 blur-3xl pointer-events-none" />
+            
+            <div className="relative z-10">
+                <h4 className="text-text-primary text-lg font-bold tracking-tight">
+                    {isEditing ? 'Refining Your Review' : 'Share Your Experience'}
+                </h4>
+                <p className="text-text-muted text-[10px] font-black uppercase tracking-widest mt-1">
+                    {isEditing ? 'Pulse Edit window active' : 'Contribute to the Nollywood Archive'}
+                </p>
             </div>
 
-            <div>
-                <label className="text-[#7A8099] text-xs block mb-2">
-                    Your Review
-                </label>
+            <div className="space-y-2">
+                <label className="text-text-secondary text-xs font-bold block uppercase tracking-wider">How was the production?</label>
+                <div className="p-4 bg-surface-2 rounded-xl border border-border">
+                    <StarRating value={rating} onChange={setRating} />
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <label className="text-text-secondary text-xs font-bold block uppercase tracking-wider">Your Critical Thoughts</label>
                 <textarea
                     value={body}
                     onChange={e => setBody(e.target.value)}
-                    placeholder="Share your thoughts about this film... (min 20 characters)"
+                    placeholder="This production was..."
                     rows={4}
-                    className="w-full bg-[#0A0F1E] border border-[#252D45] text-[#F5F0E8] rounded-xl px-4 py-3 text-sm focus:border-[#D4A017] focus:outline-none resize-none placeholder-[#7A8099]"
+                    className="w-full bg-surface-2 border border-border text-text-primary rounded-xl px-5 py-4 text-sm focus:border-brand focus:ring-4 focus:ring-brand/10 focus:outline-none resize-none placeholder-text-muted transition-all leading-relaxed"
                 />
-                <p className="text-[#7A8099] text-xs mt-1 text-right">
-                    {body.length} characters
-                    {body.length < 20 && body.length > 0 && (
-                        <span className="text-amber-400">
-                            {' '}(need {20 - body.length} more)
-                        </span>
-                    )}
-                </p>
+                <div className="flex justify-between items-center px-1">
+                    <p className={`text-[9px] font-bold uppercase tracking-widest ${body.length < 20 ? 'text-amber-500' : 'text-text-muted'}`}>
+                        {body.length < 20 ? `${20 - body.length} MORE TO GO` : 'REVIEW READY'}
+                    </p>
+                    <p className="text-[9px] text-text-muted font-bold">{body.length} CHARS</p>
+                </div>
             </div>
 
             {error && (
-                <p className="text-red-400 text-sm bg-red-900/20 px-3 py-2 rounded-xl">
-                    {error}
-                </p>
+                <div className="bg-red-500/5 border border-red-500/20 text-red-500 text-xs px-4 py-3 rounded-xl font-bold flex items-center gap-2">
+                    <span className="text-lg">⚠️</span> {error}
+                </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex gap-4 pt-2">
                 <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 bg-[#D4A017] text-black font-semibold py-3 rounded-xl text-sm hover:bg-[#D4A017]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex-[2] bg-brand text-white font-bold py-4 rounded-xl text-sm btn-hover shadow-lg shadow-brand/20 flex items-center justify-center gap-2 disabled:opacity-50"
                 >
-                    {submitting && (
-                        <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    {submitting ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Archiving...</span>
+                        </>
+                    ) : (
+                        <span>{isEditing ? 'Commit Changes' : 'Post Archive'}</span>
                     )}
-                    {isEditing ? 'Update Review' : 'Post Review'}
                 </button>
                 {onCancel && (
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-6 py-3 text-[#7A8099] hover:text-[#F5F0E8] text-sm transition-colors"
+                        className="flex-1 bg-surface-2 text-text-secondary font-bold py-4 rounded-xl text-sm transition-all hover:bg-surface-3"
                     >
-                        Cancel
+                        Dismiss
                     </button>
                 )}
             </div>
@@ -226,6 +258,7 @@ const ReviewSection = ({ filmId, currentUser }) => {
             setShowForm(false)
             setEditingReview(null)
         }
+        return success
     }
 
     const handleEdit = (review) => {
@@ -234,7 +267,7 @@ const ReviewSection = ({ filmId, currentUser }) => {
     }
 
     const handleDelete = async (reviewId) => {
-        if (window.confirm('Delete this review?')) {
+        if (window.confirm('Strike this review from the records?')) {
             await deleteReview(reviewId)
         }
     }
@@ -244,102 +277,86 @@ const ReviewSection = ({ filmId, currentUser }) => {
         : null
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-10 pt-6">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-border pb-8">
                 <div>
-                    <h3 className="text-[#F5F0E8] text-xl font-bold">
-                        Reviews
+                    <h3 className="text-text-primary text-2xl font-black tracking-tight">
+                        Critic & Community Feedback
                     </h3>
-                    {averageRating && (
-                        <p className="text-[#7A8099] text-sm mt-1">
-                            <span className="text-[#D4A017] font-bold text-lg">
-                                {averageRating}
-                            </span>
-                            /10 from {reviews.length} review
-                            {reviews.length !== 1 ? 's' : ''}
-                        </p>
-                    )}
+                    <p className="text-text-muted text-xs font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                        {reviews.length} Production Review{reviews.length !== 1 ? 's' : ''} 
+                        {averageRating && (
+                            <>
+                                <span className="w-1 h-1 rounded-full bg-border" />
+                                <span className="text-brand flex items-center gap-1">★ {averageRating} AVG</span>
+                            </>
+                        )}
+                    </p>
                 </div>
 
-                {/* Write review button */}
-                {currentUser ? (
-                    !userReview && !showForm && !editingReview && (
-                        <button
-                            onClick={() => setShowForm(true)}
-                            className="bg-transparent border border-[#D4A017] text-[#D4A017] font-semibold px-5 py-2 rounded-full text-sm hover:bg-[#D4A017] hover:text-black transition-all"
-                        >
-                            Write a Review
-                        </button>
-                    )
-                ) : (
+                {!userReview && !showForm && !editingReview && (
                     <button
-                        onClick={() => navigate('/login')}
-                        className="bg-transparent border border-[#D4A017] text-[#D4A017] font-semibold px-5 py-2 rounded-full text-sm hover:bg-[#D4A017] hover:text-black transition-all"
+                        onClick={() => currentUser ? setShowForm(true) : navigate('/login')}
+                        className="bg-brand text-white font-bold px-8 py-3.5 rounded-xl text-sm btn-hover shadow-lg shadow-brand/20 flex items-center justify-center gap-2"
                     >
-                        Sign in to Review
+                        <span>★</span> {currentUser ? 'Contribute Review' : 'Sign in to Review'}
                     </button>
                 )}
             </div>
 
-            {/* Write review form */}
-            {showForm && currentUser && (
-                <ReviewForm
-                    onSubmit={handleSubmit}
-                    onCancel={() => setShowForm(false)}
-                />
-            )}
-
-            {/* Loading */}
-            {loading && (
-                <div className="space-y-3">
-                    {[1, 2, 3].map(i => (
-                        <div
-                            key={i}
-                            className="bg-[#13192B] rounded-2xl p-5 animate-pulse h-32"
-                        />
-                    ))}
+            {/* Posting Context */}
+            {(showForm || editingReview) && (
+                <div className="page-fade-in max-w-2xl">
+                    <ReviewForm
+                        onSubmit={handleSubmit}
+                        onCancel={() => { setShowForm(false); setEditingReview(null); }}
+                        initialRating={editingReview?.rating}
+                        initialBody={editingReview?.body}
+                        isEditing={!!editingReview}
+                    />
                 </div>
             )}
 
-            {/* Reviews list */}
-            {!loading && (
-                <div className="space-y-4">
-                    {reviews.map(review => (
-                        editingReview?.id === review.id ? (
-                            <ReviewForm
-                                key={review.id}
-                                onSubmit={handleSubmit}
-                                onCancel={() => setEditingReview(null)}
-                                initialRating={review.rating}
-                                initialBody={review.body || ''}
-                                isEditing
-                            />
-                        ) : (
-                            <ReviewCard
-                                key={review.id}
-                                review={review}
-                                currentUser={currentUser}
-                                onEdit={handleEdit}
-                                onDelete={handleDelete}
-                            />
-                        )
-                    ))}
-
-                    {/* Empty state */}
-                    {reviews.length === 0 && (
-                        <div className="text-center py-12">
-                            <div className="text-5xl mb-3">🎬</div>
-                            <p className="text-[#F5F0E8] font-medium">
-                                No reviews yet
-                            </p>
-                            <p className="text-[#7A8099] text-sm mt-1">
-                                Be the first to review this film
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
+            {/* Feed Context */}
+            <div className="space-y-6">
+                {loading ? (
+                    <div className="space-y-4">
+                        {[1, 2].map(i => (
+                            <div key={i} className="bg-surface-2 rounded-2xl h-40 animate-pulse border border-border" />
+                        ))}
+                    </div>
+                ) : reviews.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-6">
+                        {reviews.map(review => (
+                            editingReview?.id === review.id ? null : (
+                                <div key={review.id} className="page-fade-in">
+                                    <ReviewCard
+                                        review={review}
+                                        currentUser={currentUser}
+                                        onEdit={handleEdit}
+                                        onDelete={handleDelete}
+                                    />
+                                </div>
+                            )
+                        ))}
+                    </div>
+                ) : (
+                    <div className="bg-surface-2/50 border-2 border-dashed border-border rounded-3xl py-16 text-center">
+                        <div className="text-5xl mb-4 grayscale opacity-40">🎬</div>
+                        <h4 className="text-text-primary text-xl font-bold tracking-tight">The archive is empty.</h4>
+                        <p className="text-text-muted text-sm mt-1 max-w-xs mx-auto">Be the first to analyze this production and share your insights with the community.</p>
+                        {!showForm && (
+                            <button
+                                onClick={() => currentUser ? setShowForm(true) : navigate('/login')}
+                                className="mt-8 text-brand font-black text-xs uppercase tracking-widest hover:scale-105 transition-all"
+                            >
+                                + ANALYZE NOW
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     )
 }

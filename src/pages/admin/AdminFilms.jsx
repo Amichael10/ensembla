@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { toast } from 'react-hot-toast';
 import Drawer from '../../components/admin/Drawer';
 import ConfirmModal from '../../components/admin/ConfirmModal';
+import MergeModal from '../../components/admin/MergeModal';
 import { extractYoutubeId } from '../../lib/youtube';
 
 export default function AdminFilms() {
@@ -15,6 +16,11 @@ export default function AdminFilms() {
   const [filmBatchDeleteIds, setFilmBatchDeleteIds] = useState(null);
   const [isBatchDeleting, setIsBatchDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMergeModalOpen, setIsMergeModalOpen] = useState(false);
+  const [isMerging, setIsMerging] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 20;
   
   // Normalized Data State
   const [credits, setCredits] = useState([]);
@@ -58,14 +64,21 @@ export default function AdminFilms() {
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
-    fetchFilms();
     fetchCinemas();
     fetchGenres();
   }, []);
 
   useEffect(() => {
+    setPage(1);
     setSelectedFilmIds([]);
   }, [searchTerm, statusFilter, yearFilter]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchFilms();
+    }, searchTerm ? 400 : 0);
+    return () => clearTimeout(timer);
+  }, [page, searchTerm, statusFilter, yearFilter]);
 
   const fetchGenres = async () => {
     const { data } = await supabase.from('genres').select('*').order('name');
@@ -75,13 +88,33 @@ export default function AdminFilms() {
   const fetchFilms = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('films')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // 1. Get total count
+      let countQuery = supabase.from('films').select('*', { count: 'exact', head: true });
+      if (searchTerm) countQuery = countQuery.ilike('title', `%${searchTerm}%`);
+      if (statusFilter !== 'all') countQuery = countQuery.eq('status', statusFilter);
+      if (yearFilter !== 'all') countQuery = countQuery.eq('year', parseInt(yearFilter));
+      
+      const { count } = await countQuery;
+      setTotalCount(count || 0);
+
+      // 2. Get paginated data
+      let query = supabase.from('films').select('*');
+      
+      if (searchTerm) query = query.ilike('title', `%${searchTerm}%`);
+      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+      if (yearFilter !== 'all') query = query.eq('year', parseInt(yearFilter));
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const { data, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
       if (error) throw error;
       setFilms(data || []);
     } catch (error) {
+      console.error(error);
       toast.error('Failed to load films');
     } finally {
       setLoading(false);
@@ -181,13 +214,14 @@ export default function AdminFilms() {
       .from('showtimes')
       .select('*')
       .eq('film_id', filmId)
-      .order('start_time', { ascending: true });
+      .order('show_date', { ascending: true })
+      .order('show_time', { ascending: true });
     
     if (showtimeData) {
       setShowtimes(showtimeData.map(s => ({
         cinema_id: s.cinema_id,
-        date: s.start_time.split('T')[0],
-        time: s.start_time.split('T')[1].substring(0, 5),
+        date: s.show_date,
+        time: s.show_time?.substring(0, 5) || '12:00',
         format: s.format,
         ticket_url: s.ticket_url
       })));
@@ -368,9 +402,11 @@ export default function AdminFilms() {
         const showtimePayload = showtimes.map(s => ({
           film_id: filmId,
           cinema_id: s.cinema_id,
-          start_time: `${s.date}T${s.time}:00Z`,
+          show_date: s.date,
+          show_time: s.time,
           format: s.format,
-          ticket_url: s.ticket_url
+          ticket_url: s.ticket_url,
+          is_available: true
         }));
         const { error: sError } = await supabase.from('showtimes').insert(showtimePayload);
         if (sError) throw sError;
@@ -446,7 +482,32 @@ export default function AdminFilms() {
     }
   };
 
-  const uniqueYears = [...new Set(films.map(f => f.year))].filter(Boolean).sort((a, b) => b - a);
+  const handleMergeFilms = async (primaryId, secondaryIds) => {
+    setIsMerging(true);
+    const t = toast.loading('Consolidating production records...');
+    try {
+      for (const secId of secondaryIds) {
+        const { error } = await supabase.rpc('merge_films', { 
+          primary_id: primaryId, 
+          secondary_id: secId 
+        });
+        if (error) throw error;
+      }
+      
+      toast.success('Productions merged successfully!', { id: t });
+      setIsMergeModalOpen(false);
+      setSelectedFilmIds([]);
+      fetchFilms();
+    } catch (error) {
+      console.error('Merge error:', error);
+      toast.error(`Merge failed: ${error.message}`, { id: t });
+    } finally {
+      setIsMerging(false);
+    }
+  };
+
+  const currentYear = new Date().getFullYear();
+  const uniqueYears = Array.from({ length: currentYear - 1980 + 3 }, (_, i) => currentYear + 2 - i);
 
   return (
     <div className="p-10 max-w-[1600px] mx-auto">
@@ -508,13 +569,25 @@ export default function AdminFilms() {
           <span className="text-sm text-text-primary font-bold">
             {selectedFilmIds.length} selected
           </span>
-          <button
-            type="button"
-            onClick={() => setFilmBatchDeleteIds([...selectedFilmIds])}
-            className="text-sm font-black uppercase tracking-wider px-4 py-2 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
-          >
-            Delete selected
-          </button>
+          <div className="flex items-center gap-3">
+            {selectedFilmIds.length >= 2 && (
+              <button
+                type="button"
+                onClick={() => setIsMergeModalOpen(true)}
+                className="text-sm font-black uppercase tracking-wider px-4 py-2 rounded-lg bg-brand/15 text-brand border border-brand/30 hover:bg-brand/25 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                Merge selected
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setFilmBatchDeleteIds([...selectedFilmIds])}
+              className="text-sm font-black uppercase tracking-wider px-4 py-2 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
+            >
+              Delete selected
+            </button>
+          </div>
         </div>
       )}
 
@@ -616,7 +689,41 @@ export default function AdminFilms() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between px-6 py-6 border-t border-border bg-surface-2/30">
+          <div className="text-xs font-bold text-text-muted uppercase tracking-widest">
+            Showing <span className="text-text-primary">{(page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Productions
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(prev => Math.max(1, prev - 1))}
+              disabled={page === 1 || loading}
+              className="px-4 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              Previous
+            </button>
+            <div className="flex items-center px-4 text-xs font-bold text-brand bg-brand/10 border border-brand/20 rounded-md">
+              Page {page}
+            </div>
+            <button
+              onClick={() => setPage(prev => (prev * pageSize < totalCount ? prev + 1 : prev))}
+              disabled={page * pageSize >= totalCount || loading}
+              className="px-4 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
+
+      <MergeModal
+        isOpen={isMergeModalOpen}
+        onClose={() => setIsMergeModalOpen(false)}
+        items={films.filter(f => selectedFilmIds.includes(f.id))}
+        onConfirm={handleMergeFilms}
+        type="film"
+      />
 
       <Drawer
         isOpen={isDrawerOpen}
@@ -715,22 +822,42 @@ export default function AdminFilms() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-5 bg-surface-2 border border-border rounded-lg">
-                  <div>
-                    <h4 className="text-sm font-bold text-text-primary tracking-tight">Spotlight Feature</h4>
-                    <p className="text-[11px] text-text-muted mt-0.5">Showcase in the primary library slider.</p>
+                <div className="p-5 bg-surface-2 border border-border rounded-lg space-y-6">
+                  <div className="flex items-center justify-between pb-4 border-b border-border/50">
+                    <div>
+                      <h4 className="text-sm font-bold text-text-primary tracking-tight">Showcase Feature</h4>
+                      <p className="text-[11px] text-text-muted mt-0.5">Pin this production to the primary Hero carousel.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none focus:ring-2 focus:ring-brand/20 ${
+                        formData.is_featured ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-800'
+                      }`}
+                    >
+                      <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        formData.is_featured ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, is_featured: !formData.is_featured })}
-                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none focus:ring-2 focus:ring-brand/20 ${
-                      formData.is_featured ? 'bg-brand' : 'bg-slate-200 dark:bg-slate-800'
-                    }`}
-                  >
-                    <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                      formData.is_featured ? 'translate-x-5' : 'translate-x-0'
-                    }`} />
-                  </button>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-text-primary tracking-tight font-heading">Market Momentum</h4>
+                      <p className="text-[11px] text-text-muted mt-0.5 italic">Boost this to the 'Trending This Week' section.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, is_trending: !formData.is_trending })}
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 outline-none focus:ring-2 focus:ring-brand/20 ${
+                        formData.is_trending ? 'bg-orange-500' : 'bg-slate-200 dark:bg-slate-800'
+                      }`}
+                    >
+                      <span className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        formData.is_trending ? 'translate-x-5' : 'translate-x-0'
+                      }`} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </section>
@@ -824,7 +951,9 @@ export default function AdminFilms() {
                 </div>
                 {formData.release_type !== 'cinema' && (
                   <div className="pt-2 animate-in fade-in slide-in-from-top-2">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">Streaming destination / Watch URL</label>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase mb-2">
+                      {formData.release_type.replace('_', ' ')} Destination / Watch URL
+                    </label>
                     <input 
                       name="youtube_watch_url" 
                       value={formData.youtube_watch_url || ''} 
