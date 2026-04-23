@@ -1,33 +1,20 @@
 /**
  * POST /api/cron/refresh-videos
  *
- * Called by Supabase pg_cron 3× per day (6am / 12pm / 4pm UTC = 7am / 1pm / 5pm WAT).
+ * Called by Supabase pg_cron 3× per day.
  * Also callable manually from AdminChannels → "↻ Sync" button.
- *
- * What it does per channel:
- *   1. Resolve the YouTube uploads playlist ID from channel handle / URL
- *   2. Fetch the 50 most recent uploads
- *   3. Fetch duration + view-count for every video
- *   4. Upsert rows into channel_videos
- *   5. For videos ≥ 30 min with a known channel owner:
- *      - Create a film record (needs_review = true, source = 'youtube')
- *      - Create a producer credit for the channel owner
- *      - Link channel_video.film_id back to the new film
- *   6. Stamp videos_last_fetched_at on the channel
- *
- * Auth: x-cron-secret header must equal CRON_SECRET env var.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from '../_lib/supabase';
+import { isValidAuth } from '../_lib/auth';
 
 // Allow up to 60 s on Vercel Pro; Hobby silently caps at 10 s but we batch small
 export const config = { maxDuration: 60 };
 
-const CRON_SECRET  = process.env.CRON_SECRET;
 const YT_KEY       = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY;
 const YT_BASE      = 'https://www.googleapis.com/youtube/v3';
-const FILM_MIN_SEC = 1800; // 30 minutes
+const FILM_MIN_SEC = 60; // 1 minute (includes skits and movies)
 const CHANNELS_PER_RUN = 20; // stay well within Vercel timeout
 
 // ── YouTube helper ────────────────────────────────────────────────────────────
@@ -80,14 +67,12 @@ function cleanTitle(raw: string): string {
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') return res.status(405).end();
+  if (req.method !== 'POST' && req.method !== 'GET') {
+     return res.status(405).end();
+  }
 
-  // Auth — support both x-cron-secret and native Vercel Authorization header
-  const authHeader = req.headers['authorization'];
-  const cronSecretHeader = req.headers['x-cron-secret'];
-  const isValidAuth = (CRON_SECRET && (cronSecretHeader === CRON_SECRET || authHeader === `Bearer ${CRON_SECRET}`));
-
-  if (CRON_SECRET && !isValidAuth) {
+  // Auth — support CRON_SECRET or Supabase Admin Session
+  if (!(await isValidAuth(req))) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -101,17 +86,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     errors: [] as string[],
   };
 
+  const { channelId } = req.query;
+
   // Channels that haven't been refreshed in the last 3.5 h (handles 3×/day schedule)
+  // UNLESS a specific channelId is requested.
   const cutoff = new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString();
-  const { data: channels, error: chErr } = await supabase
+  let query = supabase
     .from('channels')
-    .select('id, name, channel_url, channel_handle, owner_person_id')
-    .or(`videos_last_fetched_at.is.null,videos_last_fetched_at.lt.${cutoff}`)
-    .limit(CHANNELS_PER_RUN);
+    .select('id, name, channel_url, channel_handle, owner_person_id');
+    
+  if (channelId) {
+    query = query.eq('id', channelId);
+  } else {
+    query = query.or(`videos_last_fetched_at.is.null,videos_last_fetched_at.lt.${cutoff}`).limit(CHANNELS_PER_RUN);
+  }
+
+  const { data: channels, error: chErr } = await query;
 
   if (chErr) return res.status(500).json({ error: chErr.message });
   if (!channels?.length) {
-    return res.status(200).json({ message: 'All channels up to date', ...results });
+    return res.status(200).json({ message: channelId ? 'Channel not found or not due for refresh' : 'All channels up to date', ...results });
   }
 
   for (const ch of channels) {

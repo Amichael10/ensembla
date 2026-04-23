@@ -163,7 +163,7 @@ export default function ChannelDetail() {
   
   // Search & Filter
   const [search, setSearch] = useState('');
-  const [onlyMovies, setOnlyMovies] = useState(true); // Default to true to hide 1-min skits
+  const [onlyMovies, setOnlyMovies] = useState(false); // Default to false to show latest skits
 
   useEffect(() => {
     fetchChannel();
@@ -214,8 +214,8 @@ export default function ChannelDetail() {
   const filteredVideos = videos.filter(v => {
     if (search.trim() && !v.title.toLowerCase().includes(search.toLowerCase())) return false;
     
-    // Default filter: hide anything under 30 mins (1800s)
-    if (onlyMovies && v.duration_seconds && v.duration_seconds < 1800) return false;
+    // Minimal filter: hide anything under 1 min
+    if (onlyMovies && v.duration_seconds && v.duration_seconds < 60) return false;
     
     // If it's a very short video and we don't have duration data, still show it 
     // unless the user is specifically looking for movies.

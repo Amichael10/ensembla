@@ -161,9 +161,9 @@ const PersonDetail = () => {
     }
 
     // 2. All other videos from the channel (unified into the main grid)
-    // ONLY show videos >= 30 minutes (1800s) as requested
+    // Show all videos >= 1 minute
     for (const vid of vids) {
-      if (vid.duration_seconds < 1800) continue
+      if (vid.duration_seconds < 60) continue
       if (vid.is_hidden) continue
 
       // Merge into 'actor' role so it shows in the main grid

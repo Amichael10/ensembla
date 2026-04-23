@@ -15,6 +15,18 @@ export default function AdminPanel() {
   const [peopleCount, setPeopleCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [apiStatus, setApiStatus] = useState({ youtube: 'checking', tmdb: 'checking' });
+
+  useEffect(() => {
+    const checkApi = async (svc) => {
+      try {
+        const res = await fetch(`/api/health?service=${svc}`);
+        const d = await res.json();
+        setApiStatus(prev => ({ ...prev, [svc]: d.status }));
+      } catch { setApiStatus(prev => ({ ...prev, [svc]: 'error' })); }
+    };
+    checkApi('youtube'); checkApi('tmdb');
+  }, []);
 
   const [claims, setClaims] = useState([
     {
@@ -211,21 +223,34 @@ export default function AdminPanel() {
                     <div className="text-3xl font-bold text-text-primary mb-1">{peopleCount}</div>
                     <div className="text-sm text-text-muted">Total People</div>
                   </div>
-                  <div className="bg-surface border border-border rounded-2xl p-6">
-                    <div className="text-3xl font-bold text-text-primary mb-1">0</div>
-                    <div className="text-sm text-text-muted">Total Reviews</div>
-                  </div>
                   <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-6">
                     <div className="text-3xl font-bold text-amber-500 mb-1">{claims.length}</div>
                     <div className="text-sm text-amber-500/80 font-medium">Pending Claims</div>
                   </div>
-                  <div className="bg-surface border border-border rounded-2xl p-6">
-                    <div className="text-3xl font-bold text-text-primary mb-1">1</div>
-                    <div className="text-sm text-text-muted">Total Users</div>
+                  
+                  {/* System Health Indicators */}
+                  <div className="bg-surface border border-border rounded-2xl p-6 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                       <span className="text-sm text-text-muted">YouTube API</span>
+                       <span className={`w-2 h-2 rounded-full ${apiStatus.youtube === 'active' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+                    </div>
+                    <div className="text-xl font-bold text-text-primary uppercase tracking-tight">{apiStatus.youtube}</div>
                   </div>
-                  <div className="bg-surface border border-border rounded-2xl p-6">
-                    <div className="text-xl font-bold text-text-primary mb-3 mt-1">Just now</div>
-                    <div className="text-sm text-text-muted">Last TMDB Sync</div>
+                  
+                  <div className="bg-surface border border-border rounded-2xl p-6 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                       <span className="text-sm text-text-muted">TMDB API</span>
+                       <span className={`w-2 h-2 rounded-full ${apiStatus.tmdb === 'active' ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
+                    </div>
+                    <div className="text-xl font-bold text-text-primary uppercase tracking-tight">{apiStatus.tmdb}</div>
+                  </div>
+
+                  <div className="bg-surface border border-border rounded-2xl p-6 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-2">
+                       <span className="text-sm text-text-muted">Lumi AI Core</span>
+                       <span className="w-2 h-2 rounded-full bg-green-500" />
+                    </div>
+                    <div className="text-lg font-bold text-text-primary uppercase tracking-tight">Gemini-1.5-Flash</div>
                   </div>
                 </div>
 

@@ -18,7 +18,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (checkRateLimit(req as unknown as Request)) {
+  console.log(`[API] ${req.method} ${req.url}`);
+
+  if (checkRateLimit(req as any)) {
+    console.log(`[API] Rate limit hit for ${req.url}`);
     return res.status(429).json({ error: 'Too many requests' });
   }
 

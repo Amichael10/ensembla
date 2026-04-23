@@ -3,25 +3,15 @@
  *
  * Called by Supabase pg_cron 1× per day (6am UTC = 7am WAT).
  * Also callable manually from /admin/cinema-scraping → "↻ Sync now" button.
- *
- * For each cinema with scrape_enabled=true and stale showtimes_last_fetched_at:
- *   1. Dispatch to the matching adapter (reach_cinema / veezi / cinesync / ...)
- *   2. Feed the scraped showtimes through upsertShowtimes():
- *      - Match/create films (fuzzy match by title, auto-create w/ needs_review if new)
- *      - Upsert showtime rows on (cinema_id, film_id, show_date, show_time, format)
- *      - Mark any existing showtimes not in the batch as is_available=false
- *   3. Stamp showtimes_last_fetched_at on the cinema
- *
- * Auth: x-cron-secret header must equal CRON_SECRET env var.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from '../_lib/supabase';
 import { ADAPTERS, upsertShowtimes, type CinemaRow } from '../_lib/cinema-adapters';
+import { isValidAuth } from '../_lib/auth';
 
 export const config = { maxDuration: 60 };
 
-const CRON_SECRET       = process.env.CRON_SECRET;
 const CINEMAS_PER_RUN   = 15;       // stay under Vercel 60s timeout
 const STALENESS_HOURS   = 10;       // skip cinemas refreshed more recently
 const MAX_FAILURES      = 5;        // after this many consecutive failures, skip until admin re-enables
@@ -41,12 +31,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  // Auth — support both x-cron-secret and native Vercel Authorization header
-  const authHeader = req.headers['authorization'];
-  const cronSecretHeader = req.headers['x-cron-secret'];
-  const isValidAuth = (CRON_SECRET && (cronSecretHeader === CRON_SECRET || authHeader === `Bearer ${CRON_SECRET}`));
 
-  if (CRON_SECRET && !isValidAuth) {
+  // Auth — support CRON_SECRET or Supabase Admin Session
+  if (!(await isValidAuth(req))) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

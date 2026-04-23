@@ -41,6 +41,7 @@ export default function AdminLayout() {
     { path: '/admin/youtube-videos', label: 'YT Videos', icon: '🎞️' },
     { path: '/admin/cinema-films', label: 'Cinema Films', icon: '🎟️' },
     { path: '/admin/cinema-scraping', label: 'Scraping', icon: '🔄' },
+    { path: '/admin/ai', label: 'AI Agent', icon: '🤖' },
   ];
 
   const currentPage = navItems.find(item => location.pathname === item.path) || 

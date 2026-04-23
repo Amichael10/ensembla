@@ -404,31 +404,33 @@ export default function AdminChannels() {
     setSyncingId(channel.id);
     setSyncResult('');
     try {
-      const res = await fetch(
-        `/api/youtube?part=snippet,contentDetails&channelId=${encodeURIComponent(channel.channel_url || '')}&type=video&order=date&maxResults=20`,
-      );
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const json = await res.json();
-      const items = json.items || [];
-
-      if (items.length > 0) {
-        const rows = items.map((item) => ({
-          channel_id: channel.id,
-          video_id: item.id?.videoId || item.snippet?.resourceId?.videoId,
-          title: item.snippet?.title,
-          thumbnail_url: item.snippet?.thumbnails?.medium?.url,
-          published_at: item.snippet?.publishedAt,
-        })).filter(r => r.video_id);
-
-        await supabase.from('channel_videos').upsert(rows, { onConflict: 'channel_id,video_id' });
-        await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', channel.id);
-        
-        setSyncResult(`Sync complete: ${rows.length} assets ingested.`);
-        toast.success(`Ingested ${rows.length} videos`);
-        fetchChannels();
-      } else {
-        setSyncResult('No new assets detected.');
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/cron/refresh-videos?channelId=${channel.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        }
+      });
+      
+      const text = await res.text();
+      if (text.includes('import ') || text.includes('export ')) {
+        throw new Error('Local dev detected: Vite cannot execute .ts scripts. Use vercel dev.');
       }
+
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        throw new Error('Invalid server response');
+      }
+
+      if (!res.ok) throw new Error(json.error || `Status ${res.status}`);
+
+      const processedCount = json.videos_upserted || 0;
+      const filmsCreated = json.films_created || 0;
+      
+      setSyncResult(`Sync complete: ${processedCount} assets ingested. ${filmsCreated} films created.`);
+      toast.success(`Ingested ${processedCount} videos`);
+      fetchChannels();
     } catch (e) {
       setSyncResult(`Protocol Error: ${e.message}`);
       toast.error('Sync failed');

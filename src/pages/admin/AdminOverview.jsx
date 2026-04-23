@@ -77,37 +77,40 @@ export default function AdminOverview() {
 
     const checkSyncs = async () => {
       try {
-        const [channels, cinemas] = await Promise.all([
+        const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        
+        const [channels, cinemas, videoCount, showtimeCount] = await Promise.all([
           supabase.from('channels').select('videos_last_fetched_at').order('videos_last_fetched_at', { ascending: false }).limit(1).maybeSingle(),
-          supabase.from('cinemas').select('showtimes_last_fetched_at').order('showtimes_last_fetched_at', { ascending: false }).limit(1).maybeSingle()
+          supabase.from('cinemas').select('showtimes_last_fetched_at').order('showtimes_last_fetched_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('channel_videos').select('*', { count: 'exact', head: true }).gt('created_at', last24h),
+          supabase.from('showtimes').select('*', { count: 'exact', head: true }).gt('created_at', last24h)
         ]);
+
         setLastSyncs({
           videos: channels.data?.videos_last_fetched_at,
-          showtimes: cinemas.data?.showtimes_last_fetched_at
+          showtimes: cinemas.data?.showtimes_last_fetched_at,
+          videosCount: videoCount.count || 0,
+          showtimesCount: showtimeCount.count || 0
         });
       } catch (e) {
         console.error('Error fetching sync times:', e);
       }
     };
 
-    const checkApis = async () => {
-      try {
-        const [tmdb, yt] = await Promise.all([
-          fetch('/api/meta/health/tmdb').then(r => r.ok),
-          fetch('/api/meta/health/youtube').then(r => r.ok)
-        ]);
-        setApiStatus({ 
-          tmdb: tmdb ? 'active' : 'error', 
-          youtube: yt ? 'active' : 'error' 
-        });
-      } catch (e) {
-        setApiStatus({ tmdb: 'error', youtube: 'error' });
-      }
+    const checkApiHealth = async () => {
+      ['tmdb', 'youtube'].forEach(async (provider) => {
+        try {
+          const res = await fetch(`/api/health?service=${provider}`);
+          setApiStatus(prev => ({ ...prev, [provider]: res.ok ? 'active' : 'error' }));
+        } catch (e) {
+          setApiStatus(prev => ({ ...prev, [provider]: 'error' }));
+        }
+      });
     };
 
     fetchCounts();
     fetchActivity();
-    checkApis();
+    checkApiHealth();
     checkSyncs();
   }, []);
 
@@ -124,7 +127,19 @@ export default function AdminOverview() {
 
   const handleRunScript = async (scriptName) => {
     const toast = (await import('react-hot-toast')).default;
-    const promise = fetch(`/api/cron/${scriptName}`).then(async res => {
+    const promise = (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const cronSecret = (import.meta.env && import.meta.env.VITE_CRON_SECRET) || '';
+      
+      const headers = {
+        'Authorization': `Bearer ${session?.access_token || ''}`
+      };
+      if (cronSecret) {
+        headers['x-cron-secret'] = cronSecret;
+      }
+
+      return fetch(`/api/cron/${scriptName}`, { headers });
+    })().then(async res => {
       const text = await res.text();
       if (text.includes('import ') || text.includes('export ')) {
         throw new Error('Local dev detected: Vite cannot execute .ts scripts. Use vercel dev.');
@@ -151,7 +166,11 @@ export default function AdminOverview() {
             Manage users, films, claims, and system settings.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-brand/10 rounded-full border border-brand/20">
+            <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+            <span className="text-[10px] font-black text-brand uppercase tracking-widest">AI: Gemini-1.5</span>
+          </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 rounded-full border border-green-500/20">
             <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
             <span className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-widest">System Online</span>
@@ -165,7 +184,7 @@ export default function AdminOverview() {
           { label: 'Films', value: counts.films, icon: '🎬' },
           { label: 'Talent', value: counts.people, icon: '👤' },
           { label: 'Credits', value: counts.credits, icon: '📜' },
-          { label: 'Users', value: counts.users, icon: '👥' },
+          { label: 'AI Engine', value: 'Gemini', icon: '🧠', isStatic: true },
           { label: 'Reviews', value: counts.reviews, icon: '⭐' },
           { label: 'Claims', value: counts.pendingClaims, icon: '📋', warning: counts.pendingClaims > 0 }
         ].map((stat, i) => (
@@ -179,10 +198,10 @@ export default function AdminOverview() {
                 </span>
               )}
             </div>
-            <div className="text-2xl font-black text-text-primary tabular-nums relative z-10">
+            <div className="text-xl font-black text-text-primary tabular-nums relative z-10 truncate">
               {isLoading ? (
                 <div className="h-8 w-16 bg-surface-2 rounded-lg animate-pulse" />
-              ) : stat.value.toLocaleString()}
+              ) : stat.isStatic ? stat.value : (stat.value || 0).toLocaleString()}
             </div>
             <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest mt-1.5 opacity-60">{stat.label}</p>
             
@@ -244,17 +263,18 @@ export default function AdminOverview() {
             <div className="space-y-3">
               {[
                 { label: 'Register Film', icon: '🎬', path: '/admin/films' },
-                { label: 'Manage People', icon: '👤', path: '/admin/people' },
+                { label: 'AI Command Center', icon: '🪄', path: '/admin/ai' },
                 { label: 'Fetch Cinemas', icon: '🔄', path: '/admin/cinema-scraping' },
                 { label: 'Review Claims', icon: '📋', path: '/admin/claims' }
               ].map((action, i) => (
-                <button 
+                <a 
                   key={i} 
+                  href={action.path}
                   className="w-full flex items-center gap-3 p-3 bg-surface-2/50 border border-border rounded-md hover:border-brand/40 hover:bg-surface-2 transition-all text-left group"
                 >
                   <span className="text-xl group-hover:scale-110 transition-transform">{action.icon}</span>
                   <span className="text-sm font-bold text-text-primary group-hover:text-brand transition-colors">{action.label}</span>
-                </button>
+                </a>
               ))}
             </div>
           </div>
@@ -262,7 +282,7 @@ export default function AdminOverview() {
           {/* System Health & APIs */}
           <div className="card-cal p-6">
             <h3 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-5 flex items-center justify-between">
-              <span>API Status</span>
+              <span>System APIs</span>
               <div className="flex gap-1">
                 <div className="w-1 h-1 rounded-full bg-green-500" />
                 <div className="w-1 h-1 rounded-full bg-green-500" />
@@ -270,8 +290,9 @@ export default function AdminOverview() {
             </h3>
             <div className="space-y-4">
               {[
-                { name: 'TMDB API', status: apiStatus.tmdb, icon: '🎬' },
-                { name: 'YouTube API', status: apiStatus.youtube, icon: '🎞️' }
+                { name: 'Analyze Engine', status: 'active', icon: '🧠' },
+                { name: 'Movie Data (TMDB)', status: apiStatus.tmdb, icon: '🎬' },
+                { name: 'YouTube Data', status: apiStatus.youtube, icon: '🎞️' }
               ].map((api, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-surface-2 rounded-md border border-border">
                   <div className="flex items-center gap-3">
@@ -298,14 +319,20 @@ export default function AdminOverview() {
             </h3>
             <div className="space-y-4">
               {[
-                { name: 'Sync YouTube Videos', script: 'refresh-videos', desc: 'Fetch latest trailers', last: lastSyncs.videos },
-                { name: 'Clear Showtimes', script: 'refresh-showtimes', desc: 'Reset all times', last: lastSyncs.showtimes },
-                { name: 'Scrape Cinemas', script: 'scrape-cinemas', desc: 'Run data fetcher', last: lastSyncs.showtimes }
+                { name: 'Sync YouTube Videos', script: 'refresh-videos', desc: 'Fetch latest trailers', last: lastSyncs.videos, count: lastSyncs.videosCount },
+                { name: 'Sync Showtimes', script: 'refresh-showtimes', desc: 'Auto-fetch from cinemas', last: lastSyncs.showtimes, count: lastSyncs.showtimesCount }
               ].map((job, i) => (
                 <div key={i} className="group">
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <p className="text-xs font-black text-text-primary line-clamp-1">{job.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-black text-text-primary line-clamp-1">{job.name}</p>
+                        {job.count > 0 && (
+                          <span className="text-[8px] font-black bg-brand/10 text-brand px-1.5 py-0.5 rounded-full">
+                            +{job.count} recently
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-text-muted font-medium">
                         {job.last ? `Last: ${new Date(job.last).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : job.desc}
                       </p>

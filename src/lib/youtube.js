@@ -60,8 +60,14 @@ export const fetchChannelData = async (identifier) => {
       const searchRes = await fetch(
         `/api/youtube?endpoint=search&part=snippet&type=channel&q=${encodeURIComponent(identifier.value)}`
       );
+      
+      if (!searchRes.ok) {
+        const errorText = await searchRes.text();
+        console.error('YouTube Search Failed:', searchRes.status, errorText);
+        throw new Error(`YouTube search returned status ${searchRes.status}`);
+      }
+      
       const searchData = await searchRes.json();
-
       if (!searchData.items || searchData.items.length === 0) {
         throw new Error('Channel not found');
       }
@@ -72,8 +78,14 @@ export const fetchChannelData = async (identifier) => {
     const detailRes = await fetch(
       `/api/youtube?endpoint=channels&part=snippet,statistics,brandingSettings&id=${encodeURIComponent(channelId)}`
     );
-    const detailData = await detailRes.json();
+    
+    if (!detailRes.ok) {
+      const errorText = await detailRes.text();
+      console.error('YouTube Details Failed:', detailRes.status, errorText);
+      throw new Error(`YouTube details returned status ${detailRes.status}`);
+    }
 
+    const detailData = await detailRes.json();
     if (!detailData.items || detailData.items.length === 0) {
       throw new Error('Channel details not found');
     }

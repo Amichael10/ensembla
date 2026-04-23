@@ -116,7 +116,13 @@ export default function AdminCinemaScraping() {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await fetch('/api/cron/refresh-showtimes', { method: 'GET' });
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/cron/refresh-showtimes', { 
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        }
+      });
       const text = await res.text();
       
       if (text.includes('import ') || text.includes('export ')) {

@@ -126,10 +126,10 @@ export const syncNewTrailersFromChannels = async (onProgress = null) => {
 
         const existingIds = new Set(existingFilms?.map(f => f.trailer_youtube_id) || []);
         
-        // Filter: Must be NEW and within 0-15 minutes (900 seconds)
+        // Filter: Must be NEW and within 0-4 hours (14400 seconds)
         const videosToInsert = videos.filter(v => {
           const isDuplicate = existingIds.has(v.videoId);
-          const isTooLong = v.totalSeconds > 900;
+          const isTooLong = v.totalSeconds > 14400; // Increased from 900 to catch full movies
           
           if (isDuplicate) {
             // No log for duplicates to keep it clean, or maybe just a count
@@ -154,7 +154,7 @@ export const syncNewTrailersFromChannels = async (onProgress = null) => {
           backdrop_url: video.thumbnail, 
           trailer_source: 'youtube',
           trailer_youtube_id: video.videoId,
-          status: 'announced', // Pending review flow
+          status: 'released', // Match database enum
           year: new Date(video.publishedAt).getFullYear() || new Date().getFullYear(),
           view_count: video.viewCount || 0,
           language: 'English',

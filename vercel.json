@@ -3,7 +3,7 @@
     { "source": "/api/youtube", "destination": "/api/external?provider=youtube" },
     { "source": "/api/tmdb", "destination": "/api/external?provider=tmdb" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api|src|node_modules|@vite|@react-refresh|assets|favicon.ico).*)", "destination": "/index.html" }
   ],
   "crons": [
     {
@@ -13,6 +13,10 @@
     {
       "path": "/api/cron/refresh-showtimes",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-tmdb",
+      "schedule": "0 2 * * *"
     }
   ]
 }

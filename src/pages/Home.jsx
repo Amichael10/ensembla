@@ -50,11 +50,18 @@ export default function Home() {
       .order('view_count', { ascending: false });
 
     if (!error) {
-      const transformed = (data || []).map(f => ({
-        ...f,
-        genres: f.film_genres?.map(fg => fg.genres?.name).filter(Boolean) || []
-      }));
-      setFilms(transformed);
+      const uniqueFilms = [];
+      const titles = new Set();
+      (data || []).forEach(f => {
+        if (!titles.has(f.title?.toLowerCase())) {
+          uniqueFilms.push({
+            ...f,
+            genres: f.film_genres?.map(fg => fg.genres?.name).filter(Boolean) || []
+          });
+          titles.add(f.title?.toLowerCase());
+        }
+      });
+      setFilms(uniqueFilms);
     }
   };
 

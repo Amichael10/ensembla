@@ -55,11 +55,18 @@ export default function Search() {
 
       if (filmError) throw filmError;
       
-      const transformedFilms = (filmData || []).map(f => ({
-        ...f,
-        genres: f.film_genres?.map(fg => fg.genres?.name).filter(Boolean) || []
-      }));
-      setFilms(transformedFilms);
+      const uniqueFilms = [];
+      const titles = new Set();
+      (filmData || []).forEach(f => {
+        if (!titles.has(f.title?.toLowerCase())) {
+          uniqueFilms.push({
+            ...f,
+            genres: f.film_genres?.map(fg => fg.genres?.name).filter(Boolean) || []
+          });
+          titles.add(f.title?.toLowerCase());
+        }
+      });
+      setFilms(uniqueFilms);
 
       // 2. Fetch People
       const { data: peopleData, error: peopleError } = await supabase
