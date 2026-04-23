@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { formatViewCount } from '../utils/youtube';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const CATEGORIES = [
   'All', 'Movies', 'Comedy', 'Series', 'Yoruba', 'Faith',
@@ -28,77 +29,98 @@ function ChannelCard({ channel }) {
   return (
     <Link
       to={`/channels/${channel.id}`}
-      className="group block bg-[#13192B] rounded-2xl overflow-hidden border border-[#252D45] hover:border-[#D4A017]/50 transition-all duration-300 hover:shadow-lg hover:shadow-[#D4A017]/5 hover:-translate-y-0.5"
+      className="group block bg-surface rounded-lg overflow-hidden border border-border hover:border-brand transition-all duration-500 shadow-sm"
     >
       {/* Banner */}
-      <div className="h-20 w-full overflow-hidden bg-[#0A0F1E]">
+      <div className="h-20 w-full overflow-hidden bg-surface-2/10 relative">
+        <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
         {channel.banner_url ? (
           <img
             src={channel.banner_url}
             alt=""
-            className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700"
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-r from-[#D4A017]/20 via-[#C1440E]/10 to-transparent" />
+          <div className="w-full h-full bg-gradient-to-br from-brand/10 via-transparent to-bg" />
         )}
       </div>
 
       {/* Content */}
-      <div className="px-4 pb-4 relative">
+      <div className="px-4 pb-5 relative">
         {/* Avatar */}
-        <div className="absolute -top-7 left-4">
-          {channel.thumbnail_url ? (
-            <img
-              src={channel.thumbnail_url}
-              alt={channel.name}
-              className="w-14 h-14 rounded-full border-2 border-[#13192B] object-cover shadow-xl group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-14 h-14 rounded-full border-2 border-[#13192B] bg-[#1C2440] flex items-center justify-center shadow-xl">
-              <span className="text-[#D4A017] font-bold text-xl">{channel.name?.charAt(0)}</span>
-            </div>
-          )}
+        <div className="absolute -top-8 left-4">
+          <div className="relative">
+             <div className="absolute -inset-1 bg-brand/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            {channel.thumbnail_url ? (
+              <img
+                src={channel.thumbnail_url}
+                alt={channel.name}
+                className="relative w-16 h-16 rounded-xl border-4 border-surface object-cover shadow-xl group-hover:scale-105 transition-transform duration-500"
+              />
+            ) : (
+              <div className="relative w-16 h-16 rounded-xl border-4 border-surface bg-surface-2 flex items-center justify-center shadow-xl">
+                <span className="text-brand font-bold text-2xl font-heading">{channel.name?.charAt(0)}</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="pt-9">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="text-[#F5F0E8] font-bold text-sm leading-tight line-clamp-1 group-hover:text-[#D4A017] transition-colors">
+        <div className="pt-10">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="text-text-primary font-bold text-sm leading-tight line-clamp-1 group-hover:text-brand transition-colors font-heading uppercase italic tracking-tighter">
               {channel.name}
             </h3>
             {channel.is_featured && (
-              <span className="shrink-0 text-[9px] font-black uppercase tracking-widest text-[#D4A017] bg-[#D4A017]/10 px-2 py-0.5 rounded-full">
-                Featured
-              </span>
+               <div className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse shadow-[0_0_8px_var(--brand)]"></div>
             )}
           </div>
 
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {channel.category && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A8099] bg-[#1C2440] px-2 py-0.5 rounded-full">
+              <span className="text-[9px] font-black uppercase tracking-widest text-text-muted bg-surface-2 px-2 py-0.5 rounded border border-border">
                 {CATEGORY_LABELS[channel.category] || channel.category}
               </span>
             )}
             {channel.subscriber_count > 0 && (
-              <span className="text-[10px] text-[#7A8099]">
-                {formatViewCount(channel.subscriber_count)} subscribers
+              <span className="text-[9px] font-black uppercase tracking-widest text-text-muted">
+                {formatViewCount(channel.subscriber_count)}
               </span>
             )}
           </div>
 
           {channel.description && (
-            <p className="text-[#7A8099] text-xs mt-2 line-clamp-2 leading-relaxed">
+            <p className="text-text-muted text-[10px] mt-3 line-clamp-2 leading-relaxed italic opacity-80">
               {channel.description}
             </p>
           )}
 
           {channel.owner_name && (
-            <p className="text-[#D4A017] text-xs mt-2 font-medium truncate">
+            <p className="text-brand text-[9px] font-black uppercase tracking-[0.2em] mt-3 truncate">
               {channel.owner_name}
             </p>
           )}
         </div>
       </div>
     </Link>
+  );
+}
+
+function ChannelSkeleton() {
+  return (
+    <div className="bg-surface rounded-lg overflow-hidden border border-border">
+      <div className="h-20 bg-surface-2/20" />
+      <div className="px-4 pb-5 pt-10 space-y-3">
+        <div className="absolute -top-8 left-4">
+           <Skeleton className="w-16 h-16 rounded-xl border-4 border-surface" />
+        </div>
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+        <div className="pt-2 space-y-2">
+          <Skeleton className="h-2 w-full" />
+          <Skeleton className="h-2 w-5/6" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -151,110 +173,106 @@ export default function Channels() {
   const rest = channels.filter(c => !c.is_featured);
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] pt-20 pb-20">
+    <div className="min-h-screen bg-bg">
       {/* Header */}
-      <div className="bg-[#13192B] border-b border-[#252D45]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <h1 className="font-heading font-bold text-3xl md:text-4xl text-[#F5F0E8] mb-2">
-            Nollywood YouTube Channels
+      <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 pt-32 border-x border-border relative z-10">
+          <h1 className="font-heading font-bold text-4xl md:text-6xl text-text-primary mb-4 tracking-tighter uppercase italic">
+            Creators & Studios
           </h1>
-          <p className="text-[#7A8099] text-sm">
-            Discover the creators, studios, and networks behind Nigerian film and entertainment
+          <p className="text-text-muted text-sm max-w-xl italic border-l-2 border-brand pl-6 mb-8">
+            The beating heart of Nollywood. Discover the visionary creators, independent studios, and global networks shaping the future of African entertainment.
           </p>
 
           {/* Search */}
-          <form onSubmit={handleSearch} className="mt-6 flex gap-2 max-w-md">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              placeholder="Search channels…"
-              className="flex-1 bg-[#0A0F1E] border border-[#252D45] rounded-xl px-4 py-2.5 text-[#F5F0E8] placeholder-[#7A8099] text-sm focus:outline-none focus:border-[#D4A017] transition-colors"
-            />
+          <form onSubmit={handleSearch} className="flex gap-2 max-w-lg">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={e => setSearchInput(e.target.value)}
+                placeholder="SEARCH ARCHIVE..."
+                className="w-full bg-surface border border-border rounded-lg px-6 py-4 pl-12 text-[10px] font-black tracking-widest text-text-primary placeholder-text-muted focus:outline-none focus:border-brand transition-all"
+              />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
+            </div>
             <button
               type="submit"
-              className="bg-[#D4A017] text-black font-bold px-5 py-2.5 rounded-xl hover:bg-[#D4A017]/90 transition-colors text-sm"
+              className="bg-brand text-white font-black uppercase tracking-[0.2em] px-8 py-4 rounded-lg hover:shadow-brand/20 hover:scale-[1.02] transition-all text-[10px]"
             >
-              Search
+              SEARCH
             </button>
-            {search && (
-              <button
-                type="button"
-                onClick={() => { setSearch(''); setSearchInput(''); }}
-                className="px-3 py-2.5 rounded-xl border border-[#252D45] text-[#7A8099] hover:text-[#F5F0E8] text-sm transition-colors"
-              >
-                ✕
-              </button>
-            )}
           </form>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto border-x border-border min-h-[600px] pb-20">
         {/* Category tabs */}
-        <div className="flex gap-2 flex-wrap mb-8">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-                activeCategory === cat
-                  ? 'bg-[#D4A017] text-black'
-                  : 'bg-[#13192B] border border-[#252D45] text-[#7A8099] hover:text-[#F5F0E8] hover:border-[#D4A017]/40'
-              }`}
-            >
-              {CATEGORY_LABELS[cat] || cat}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="animate-pulse bg-[#13192B] rounded-2xl overflow-hidden border border-[#252D45]">
-                <div className="h-20 bg-[#1C2440]" />
-                <div className="px-4 pb-4 pt-10 space-y-2">
-                  <div className="h-4 bg-[#1C2440] rounded w-3/4" />
-                  <div className="h-3 bg-[#1C2440] rounded w-1/2" />
-                </div>
-              </div>
+        <div className="p-8 md:p-12 border-b border-border bg-surface-2/5">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-6 py-2 rounded-md text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
+                  activeCategory === cat
+                    ? 'bg-brand text-white shadow-lg shadow-brand/20'
+                    : 'bg-surface border border-border text-text-muted hover:text-text-primary hover:border-brand/40'
+                }`}
+              >
+                {CATEGORY_LABELS[cat] || cat}
+              </button>
             ))}
           </div>
-        ) : channels.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-5xl mb-4">📺</p>
-            <h3 className="text-[#F5F0E8] font-bold text-xl mb-2">No channels found</h3>
-            <p className="text-[#7A8099]">Try a different search or category</p>
-          </div>
-        ) : (
-          <>
-            {/* Featured section */}
-            {featured.length > 0 && activeCategory === 'All' && !search && (
-              <div className="mb-10">
-                <h2 className="text-[#F5F0E8] font-bold text-lg mb-4 flex items-center gap-2">
-                  <span className="text-[#D4A017]">★</span> Featured Channels
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {featured.map(c => <ChannelCard key={c.id} channel={c} />)}
-                </div>
-              </div>
-            )}
+        </div>
 
-            {/* All/rest */}
-            {(rest.length > 0 || search || activeCategory !== 'All') && (
-              <>
-                {featured.length > 0 && activeCategory === 'All' && !search && (
-                  <h2 className="text-[#F5F0E8] font-bold text-lg mb-4">All Channels</h2>
-                )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                  {(search || activeCategory !== 'All' ? channels : rest).map(c => (
-                    <ChannelCard key={c.id} channel={c} />
-                  ))}
+        <div className="p-8 md:p-12">
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <ChannelSkeleton key={i} />
+              ))}
+            </div>
+          ) : channels.length === 0 ? (
+            <div className="text-center py-32 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+              <p className="text-4xl mb-4">📺</p>
+              <h3 className="text-text-muted font-black uppercase tracking-widest text-xs">No hubs found matching your filters</h3>
+            </div>
+          ) : (
+            <div className="space-y-16">
+              {/* Featured section */}
+              {featured.length > 0 && activeCategory === 'All' && !search && (
+                <div>
+                  <h2 className="text-text-primary font-bold text-xl mb-8 font-heading tracking-tighter uppercase italic flex items-center gap-3">
+                    <span className="w-8 h-px bg-brand"></span>
+                    Featured Hubs
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    {featured.map(c => <ChannelCard key={c.id} channel={c} />)}
+                  </div>
                 </div>
-              </>
-            )}
-          </>
-        )}
+              )}
+
+              {/* All/rest */}
+              {(rest.length > 0 || search || activeCategory !== 'All') && (
+                <div>
+                  {featured.length > 0 && activeCategory === 'All' && !search && (
+                    <h2 className="text-text-primary font-bold text-xl mb-8 font-heading tracking-tighter uppercase italic flex items-center gap-3">
+                       <span className="w-8 h-px bg-brand"></span>
+                       Industry Archive
+                    </h2>
+                  )}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                    {(search || activeCategory !== 'All' ? channels : rest).map(c => (
+                      <ChannelCard key={c.id} channel={c} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

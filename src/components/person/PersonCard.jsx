@@ -44,7 +44,7 @@ export default function PersonCard({ person, variant = 'compact' }) {
         <img 
           src={person.photo_url || person.photo} 
           alt={person.name} 
-          className="w-32 h-32 sm:w-40 sm:h-40 rounded-xl object-cover border-2 border-transparent group-hover:border-gold transition-colors duration-300"
+          className="w-32 h-32 sm:w-40 sm:h-40 rounded-lg object-cover border-2 border-transparent group-hover:border-gold transition-colors duration-300"
         />
       </Link>
       

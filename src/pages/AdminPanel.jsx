@@ -28,26 +28,8 @@ export default function AdminPanel() {
     checkApi('youtube'); checkApi('tmdb');
   }, []);
 
-  const [claims, setClaims] = useState([
-    {
-      id: 1,
-      person: people[2],
-      claimantName: 'Genevieve Nnaji',
-      claimantEmail: 'genevieve.official@example.com',
-      submittedAt: '1 hour ago',
-      message: '"I am claiming my official profile. You can verify my identity through my verified Instagram account @genevievennaji or contact my management team at the email provided."',
-      status: 'pending'
-    },
-    {
-      id: 2,
-      person: people[0],
-      claimantName: 'Funke Akindele',
-      claimantEmail: 'management@sceneone.tv',
-      submittedAt: '1 day ago',
-      message: '"This is the official SceneOne Productions management team claiming the profile on behalf of Funke Akindele."',
-      status: 'pending'
-    }
-  ]);
+  const [claims, setClaims] = useState([]);
+  const [verifications, setVerifications] = useState([]);
 
   const [rejectingClaimId, setRejectingClaimId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -58,21 +40,39 @@ export default function AdminPanel() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleApproveClaim = (claimId, personId, personName) => {
-    setClaims(claims.filter(c => c.id !== claimId));
-    setPeople(people.map(p => p.id === personId ? { ...p, is_verified: true } : p));
-    showToast(`Profile approved — ${personName} is now verified`);
+  const handleApproveVerification = async (person) => {
+    try {
+      const { error } = await supabase
+        .from('people')
+        .update({ is_verified: true, status: 'official' })
+        .eq('id', person.id);
+      
+      if (error) throw error;
+      
+      setVerifications(verifications.filter(v => v.id !== person.id));
+      showToast(`Profile Verified — ${person.name} is now official`);
+    } catch (err) {
+      console.error('Approval error:', err);
+    }
   };
 
-  const handleRejectClaim = (claimId) => {
-    setClaims(claims.filter(c => c.id !== claimId));
-    setRejectingClaimId(null);
-    setRejectReason('');
-    showToast('Claim rejected');
+  const handleApproveClaim = async (claim) => {
+    try {
+        const { error: claimError } = await supabase.from('profile_claims').update({ status: 'approved' }).eq('id', claim.id);
+        const { error: personError } = await supabase.from('people').update({ is_verified: true, status: 'official', claimed_by: claim.user_id }).eq('id', claim.person_id);
+        const { error: userError } = await supabase.from('users').update({ linked_profile_id: claim.person_id }).eq('id', claim.user_id);
+
+        if (claimError || personError || userError) throw new Error('Update failed');
+
+        setClaims(claims.filter(c => c.id !== claim.id));
+        showToast(`Claim approved for ${claim.people.name}`);
+    } catch (err) {
+        console.error('Claim approval error:', err);
+    }
   };
 
   useEffect(() => {
-    document.title = "FilmDba | Admin Panel";
+    document.title = "Lumi | Admin Panel";
     fetchStats();
   }, []);
 
@@ -93,7 +93,14 @@ export default function AdminPanel() {
       setDbFilms(fList || []);
       setPeople(pList || []);
 
-      // Get Recent Activity (simulated from updated_at)
+      // Get Claims & Verifications
+      const { data: claimList } = await supabase.from('profile_claims').select('*, people(*)').eq('status', 'pending');
+      const { data: verifyList } = await supabase.from('people').select('*').eq('status', 'pending');
+      
+      setClaims(claimList || []);
+      setVerifications(verifyList || []);
+      
+      // Get Recent Activity
       const { data: recentFilms } = await supabase
         .from('films')
         .select('title, updated_at')
@@ -143,7 +150,7 @@ export default function AdminPanel() {
     { id: 'people', label: 'People', icon: '👤' },
     { id: 'credits', label: 'Credits', icon: '🎭' },
     { id: 'companies', label: 'Companies', icon: '🏢' },
-    { id: 'claims', label: 'Pending Claims', icon: '📋', badge: claims.length > 0 ? claims.length : null },
+    { id: 'verifications', label: 'Verifications', icon: '🛡️', badge: (claims.length + verifications.length) > 0 ? (claims.length + verifications.length) : null },
     { id: 'sync', label: 'YouTube Sync', icon: '🔄' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
@@ -161,17 +168,17 @@ export default function AdminPanel() {
       {/* HEADER */}
       <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-6 shrink-0">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-text-muted hover:text-gold transition-colors">
+          <Link to="/" className="text-text-muted hover:text-brand transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
           </Link>
           <div className="flex items-center gap-3">
             <h1 className="font-heading font-bold text-xl text-text-primary">Admin Panel</h1>
-            <span className="bg-terracotta/20 text-terracotta text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">FilmDba Admin</span>
+            <span className="bg-brand/20 text-brand text-[10px] font-black px-3 py-1 rounded uppercase tracking-[0.2em]">Lumi Admin</span>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-full bg-gold text-bg flex items-center justify-center font-bold text-sm">
+          <div className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm shadow-lg shadow-brand/20">
             {user.name.charAt(0)}
           </div>
         </div>
@@ -185,10 +192,10 @@ export default function AdminPanel() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
                   activeTab === tab.id 
-                    ? 'bg-gold/10 text-gold border-l-2 border-gold' 
-                    : 'text-text-muted hover:text-gold hover:bg-surface-2 border-l-2 border-transparent'
+                    ? 'bg-brand/10 text-brand border-l-2 border-brand' 
+                    : 'text-text-muted hover:text-brand hover:bg-surface-2 border-l-2 border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -257,7 +264,7 @@ export default function AdminPanel() {
                 <h3 className="font-bold text-xl text-text-primary mb-6">Recent Activity</h3>
                 <div className="bg-surface border border-border rounded-2xl overflow-hidden">
                   <div className="divide-y divide-border">
-                    <div className="p-4 flex items-start gap-4 border-l-4 border-gold bg-surface-2/50">
+                    <div className="p-4 flex items-start gap-4 border-l-4 border-brand bg-surface-2/50">
                       <div className="text-2xl mt-1">⭐</div>
                       <div>
                         <p className="text-text-primary font-medium">New review on King of Boys</p>
@@ -295,7 +302,7 @@ export default function AdminPanel() {
               <div className="animate-in fade-in duration-500">
                 <div className="flex justify-between items-center mb-8">
                   <h2 className="font-heading font-bold text-3xl text-text-primary">Films Database</h2>
-                  <button onClick={() => openDrawer('film')} className="bg-gold text-bg px-6 py-2 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all">
+                  <button onClick={() => openDrawer('film')} className="bg-brand text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg shadow-brand/20">
                     + Add Film
                   </button>
                 </div>
@@ -478,93 +485,95 @@ export default function AdminPanel() {
               </div>
             )}
 
-            {/* PENDING CLAIMS TAB */}
-            {activeTab === 'claims' && (
+            {/* VERIFICATIONS TAB */}
+            {activeTab === 'verifications' && (
               <div className="animate-in fade-in duration-500">
-                <div className="flex items-center gap-4 mb-8">
-                  <h2 className="font-heading font-bold text-3xl text-text-primary">Pending Profile Claims</h2>
-                  {claims.length > 0 && (
-                    <span className="bg-amber-500 text-bg text-sm font-bold px-3 py-1 rounded-full">{claims.length}</span>
-                  )}
+                <div className="flex items-center justify-between mb-10">
+                  <div className="space-y-1">
+                    <h2 className="font-heading font-bold text-3xl text-text-primary uppercase tracking-tighter italic">Verification Center</h2>
+                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-60">Manage professional identity and archive integrity</p>
+                  </div>
+                  <div className="flex bg-surface border border-border p-1 rounded-xl">
+                    <button 
+                      onClick={() => setVerifySubTab('new')} 
+                      className={`px-6 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${verifySubTab === 'new' ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'text-text-muted hover:text-text-primary'}`}
+                    >
+                      New Profiles ({verifications.length})
+                    </button>
+                    <button 
+                      onClick={() => setVerifySubTab('claims')} 
+                      className={`px-6 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${verifySubTab === 'claims' ? 'bg-brand text-white shadow-lg shadow-brand/20' : 'text-text-muted hover:text-text-primary'}`}
+                    >
+                      Claims ({claims.length})
+                    </button>
+                  </div>
                 </div>
 
-                {claims.length > 0 ? (
-                  <div className="space-y-6">
-                    {claims.map(claim => (
-                      <div key={claim.id} className="bg-surface border border-border rounded-2xl p-6 flex flex-col lg:flex-row gap-6 items-start">
-                        <div className="w-full lg:w-64 shrink-0">
-                          <PersonCard person={claim.person} />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h3 className="font-bold text-lg text-text-primary">{claim.claimantName}</h3>
-                              <p className="text-text-muted text-sm">{claim.claimantEmail}</p>
-                            </div>
-                            <span className="text-xs text-text-muted">Submitted {claim.submittedAt}</span>
-                          </div>
-                          <div className="bg-bg border border-border rounded-xl p-4 mb-6">
-                            <p className="text-sm text-text-primary italic">{claim.message}</p>
-                          </div>
-                          
-                          {rejectingClaimId === claim.id ? (
-                            <div className="bg-surface-2 border border-border rounded-xl p-4 animate-in fade-in duration-300">
-                              <label className="block text-sm font-bold text-text-primary mb-2">Reason for rejection</label>
-                              <textarea 
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                                placeholder="Explain why this claim is being rejected..."
-                                className="w-full bg-bg border border-border text-text-primary rounded-lg px-3 py-2 focus:outline-none focus:border-red-500 mb-3 text-sm min-h-[80px]"
-                                autoFocus
-                              ></textarea>
-                              <div className="flex gap-3">
-                                <button 
-                                  onClick={() => handleRejectClaim(claim.id)}
-                                  disabled={!rejectReason.trim()}
-                                  className="bg-red-500 text-bg px-4 py-2 rounded-lg font-bold hover:bg-red-600 transition-colors text-sm disabled:opacity-50"
-                                >
-                                  Confirm Rejection
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    setRejectingClaimId(null);
-                                    setRejectReason('');
-                                  }}
-                                  className="text-text-muted hover:text-text-primary px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex gap-3">
-                              <button 
-                                onClick={() => handleApproveClaim(claim.id, claim.person.id, claim.person.name)}
-                                className="bg-green-500/10 text-green-500 border border-green-500/20 px-6 py-2 rounded-xl font-bold hover:bg-green-500 hover:text-bg transition-colors"
-                              >
-                                Approve
-                              </button>
-                              <button 
-                                onClick={() => setRejectingClaimId(claim.id)}
-                                className="border border-red-500 text-red-500 px-6 py-2 rounded-xl font-bold hover:bg-red-500 hover:text-bg transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="bg-surface border border-border rounded-2xl p-12 text-center flex flex-col items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center mb-4">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary mb-2">All claims reviewed</h3>
-                    <p className="text-text-muted">You're up to date. There are no pending profile claims at this time.</p>
-                  </div>
-                )}
+                <div className="space-y-8">
+                    {verifySubTab === 'new' ? (
+                        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {verifications.length > 0 ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {verifications.map(p => (
+                                        <div key={p.id} className="bg-surface border border-border rounded-2xl p-6 flex gap-6">
+                                            <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-border">
+                                                <img src={p.photo_url || p.photo || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="flex-1 space-y-4">
+                                                <div>
+                                                    <h4 className="font-bold text-text-primary">{p.name}</h4>
+                                                    <p className="text-brand text-[10px] font-black uppercase tracking-widest">{p.role}</p>
+                                                </div>
+                                                <p className="text-[10px] text-text-muted italic line-clamp-2">"{p.bio}"</p>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => handleApproveVerification(p)} className="flex-1 bg-green-500/10 text-green-500 text-[9px] font-black uppercase py-2 rounded-lg border border-green-500/20 hover:bg-green-500 hover:text-bg transition-all">APPROVE</button>
+                                                    <button className="flex-1 bg-red-500/10 text-red-500 text-[9px] font-black uppercase py-2 rounded-lg border border-red-500/20 hover:bg-red-500 hover:text-bg transition-all">REJECT</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-20 border-2 border-dashed border-border rounded-3xl text-center space-y-4">
+                                    <div className="text-4xl opacity-20">✨</div>
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40">No new profile requests at this time</p>
+                                </div>
+                            )}
+                        </section>
+                    ) : (
+                        <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {claims.length > 0 ? (
+                                <div className="space-y-4">
+                                    {claims.map(claim => (
+                                        <div key={claim.id} className="bg-surface border border-border rounded-2xl p-6 flex flex-col md:flex-row gap-8 items-center">
+                                            <div className="flex items-center gap-4 min-w-[200px]">
+                                                <img src={claim.people?.photo_url || claim.people?.photo} className="w-12 h-12 rounded-full object-cover border border-border" />
+                                                <div>
+                                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest">Archive Profile</p>
+                                                    <p className="font-bold text-text-primary">{claim.people?.name}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 text-center md:text-left">
+                                                <p className="text-[10px] font-black text-text-muted uppercase tracking-widest mb-1">Claimant Identity</p>
+                                                <p className="text-sm font-medium text-text-primary">{claim.claimantName} ({claim.claimantEmail})</p>
+                                                <p className="text-[10px] text-text-muted mt-2 italic">"{claim.message}"</p>
+                                            </div>
+                                            <div className="flex gap-2 shrink-0">
+                                                <button onClick={() => handleApproveClaim(claim)} className="bg-brand text-white text-[9px] font-black uppercase px-6 py-3 rounded-xl hover:scale-105 transition-all shadow-lg shadow-brand/20">APPROVE CLAIM</button>
+                                                <button className="text-red-500 text-[9px] font-black uppercase px-6 py-3 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-all">REJECT</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-20 border-2 border-dashed border-border rounded-3xl text-center space-y-4">
+                                    <div className="text-4xl opacity-20">📋</div>
+                                    <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-40">No profile claims pending review</p>
+                                </div>
+                            )}
+                        </section>
+                    )}
+                </div>
               </div>
             )}
 

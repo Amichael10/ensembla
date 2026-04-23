@@ -11,6 +11,7 @@ import Search from './pages/Search';
 import Browse from './pages/Browse';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import ProDashboard from './pages/ProDashboard';
 import ClaimProfile from './pages/ClaimProfile';
@@ -49,9 +50,20 @@ import Footer from './components/layout/Footer';
 // Protected Route Wrapper
 function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
+  
+  // Force onboarding if not complete
+  if (!user.onboarded && user.role !== 'admin' && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // Prevent accessing onboarding if already complete
+  if (user.onboarded && location.pathname === '/onboarding') {
+    return <Navigate to={user.role === 'professional' ? '/pro-dashboard' : '/dashboard'} replace />;
+  }
   
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
@@ -81,15 +93,16 @@ function BackToTop() {
 function Layout({ children }) {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith('/admin');
+  const isOnboardingPath = location.pathname === '/onboarding';
   
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text-primary">
-      {!isAdminPath && <Navbar />}
-      <main className={`flex-grow ${!isAdminPath ? 'pt-24' : ''}`}>
+      {!isAdminPath && !isOnboardingPath && <Navbar />}
+      <main className={`flex-grow ${!isAdminPath && !isOnboardingPath ? 'pt-24' : ''}`}>
         {children}
       </main>
-      {!isAdminPath && <Footer />}
-      {!isAdminPath && <BackToTop />}
+      {!isAdminPath && !isOnboardingPath && <Footer />}
+      {!isAdminPath && !isOnboardingPath && <BackToTop />}
     </div>
   );
 }
@@ -114,7 +127,7 @@ export default function App() {
               {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/films/:id" element={<FilmDetail />} />
-        <Route path="/film/:id" element={<FilmDetail />} />
+              <Route path="/film/:id" element={<FilmDetail />} />
               <Route path="/search" element={<Search />} />
               <Route path="/browse" element={<Browse />} />
               <Route path="/login" element={<Login />} />
@@ -128,6 +141,9 @@ export default function App() {
               <Route path="/channels/:id" element={<ChannelDetail />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/companies/:id" element={<CompanyDetail />} />
+
+              {/* Onboarding */}
+              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
 
               {/* Protected Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

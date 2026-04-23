@@ -26,10 +26,11 @@
   --color-gold: #FF5C00;
   
   /* Shared Defaults */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
   --radius-pill: 9999px;
 }
 
@@ -95,6 +96,7 @@
   --radius-md: var(--radius-md);
   --radius-lg: var(--radius-lg);
   --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
   
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
@@ -145,6 +147,13 @@
     animation: shimmer 1.5s infinite linear;
     background: linear-gradient(to right, var(--color-surface-2) 4%, var(--color-surface-3) 25%, var(--color-surface-2) 36%);
     background-size: 1000px 100%;
+  }
+
+  .grid-bg {
+    background-image: 
+      linear-gradient(var(--color-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+    background-size: 40px 40px;
   }
 
   /* Premium interactions */

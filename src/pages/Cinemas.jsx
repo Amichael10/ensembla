@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { Skeleton } from '../components/ui/Skeleton'
 
 // Extract chain name from the cinema's display name
 function extractChain(name = '') {
@@ -9,13 +10,13 @@ function extractChain(name = '') {
 }
 
 const chainStyles = {
-  Filmhouse:  'bg-brand/20 text-brand',
-  Genesis:    'bg-blue-500/20 text-blue-400',
-  Silverbird: 'bg-purple-500/20 text-purple-400',
-  Ozone:      'bg-green-500/20 text-green-400',
-  'Blu Star': 'bg-orange-500/20 text-orange-400',
-  Kada:       'bg-teal-500/20 text-teal-400',
-  Viva:       'bg-pink-500/20 text-pink-400',
+  Filmhouse:  'bg-brand text-white border-brand/20',
+  Genesis:    'bg-blue-600 text-white border-blue-600/20',
+  Silverbird: 'bg-purple-600 text-white border-purple-600/20',
+  Ozone:      'bg-green-600 text-white border-green-600/20',
+  'Blu Star': 'bg-orange-600 text-white border-orange-600/20',
+  Kada:       'bg-teal-600 text-white border-teal-600/20',
+  Viva:       'bg-pink-600 text-white border-pink-600/20',
 }
 
 const CinemaCard = ({ cinema, showCount }) => {
@@ -25,70 +26,88 @@ const CinemaCard = ({ cinema, showCount }) => {
   return (
     <Link
       to={`/cinemas/${cinema.id}`}
-      className="group block bg-surface rounded-2xl overflow-hidden border border-border hover:border-brand/40 transition-all hover:shadow-lg hover:shadow-brand/5"
+      className="group block bg-surface rounded-xl overflow-hidden border border-border hover:border-brand transition-all shadow-sm"
     >
-      {/* Top section */}
-      <div className="p-5">
-        <div className="flex items-start gap-4">
-          {/* Logo / initials */}
-          <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold flex-shrink-0 ${
-            chainStyles[chain] || 'bg-surface-2 text-text-muted'
+      <div className="p-6">
+        <div className="flex items-start gap-5">
+          <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold font-heading flex-shrink-0 transition-all ${
+            chain ? chainStyles[chain] : 'bg-surface-2 text-text-muted border border-border'
           }`}>
             {initials}
           </div>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-text-primary font-bold text-base group-hover:text-brand transition-colors line-clamp-1">
+            <h3 className="text-text-primary font-bold text-sm uppercase tracking-tight group-hover:text-brand transition-colors line-clamp-2 leading-tight">
               {cinema.name}
             </h3>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               {chain && (
-                <span className={`text-xs px-2 py-0.5 rounded-full ${chainStyles[chain] || 'bg-surface-2 text-text-muted'}`}>
+                <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${chainStyles[chain]}`}>
                   {chain}
                 </span>
               )}
               {!cinema.is_active && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-red-900/40 text-red-400">
-                  Closed
+                <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-red-500/10 text-red-500 border border-red-500/20">
+                  CLOSED
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Location */}
         {(cinema.address || cinema.city) && (
-          <p className="text-text-muted text-sm mt-3 line-clamp-1">
-            📍 {[cinema.address, cinema.city].filter(Boolean).join(', ')}
+          <p className="text-text-muted text-[10px] font-black uppercase tracking-widest mt-4 line-clamp-1 opacity-60">
+             {[cinema.city, cinema.state].filter(Boolean).join(', ')}
           </p>
         )}
 
-        {/* Now showing badge */}
         {showCount > 0 && (
-          <p className="text-brand text-xs font-medium mt-2">
-            🎬 {showCount} film{showCount !== 1 ? 's' : ''} showing now
-          </p>
+          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
+            <p className="text-brand text-[9px] font-black uppercase tracking-widest">
+              {showCount} FILMS ARCHIVED TODAY
+            </p>
+          </div>
         )}
       </div>
 
-      {/* Bottom bar */}
-      <div className="px-5 py-3 bg-surface-2/50 border-t border-border flex items-center justify-between">
-        <span className="text-text-muted text-xs truncate">
-          {cinema.city || '—'}
+      <div className="px-6 py-4 bg-surface-2/30 border-t border-border flex items-center justify-between">
+        <span className="text-text-muted text-[9px] font-black uppercase tracking-widest truncate max-w-[120px]">
+          {cinema.address || 'VIEW LOCATION'}
         </span>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-4 flex-shrink-0">
           {cinema.booking_url && (
-            <span className="text-brand text-xs">🎟 Book</span>
+            <span className="text-brand text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+               TICKETS
+            </span>
           )}
-          <span className="text-text-muted text-xs group-hover:text-brand transition-colors">
-            View →
-          </span>
+          <svg className="w-4 h-4 text-text-muted group-hover:text-brand group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
         </div>
       </div>
     </Link>
   )
 }
+
+const CinemaSkeleton = () => (
+    <div className="bg-surface rounded-xl overflow-hidden border border-border animate-pulse">
+        <div className="p-6 space-y-4">
+            <div className="flex gap-5">
+                <Skeleton className="w-14 h-14 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/4" />
+                </div>
+            </div>
+            <Skeleton className="h-3 w-1/2 mt-4" />
+        </div>
+        <div className="px-6 py-4 bg-surface-2/30 border-t border-border flex justify-between">
+            <Skeleton className="h-3 w-1/3" />
+            <Skeleton className="h-3 w-1/4" />
+        </div>
+    </div>
+)
 
 const Cinemas = () => {
   const [cinemas, setCinemas] = useState([])
@@ -117,7 +136,6 @@ const Cinemas = () => {
 
     setCinemas(data || [])
 
-    // Fetch showtime counts
     if (data?.length) {
       const today = new Date().toISOString().split('T')[0]
       const { data: showtimes } = await supabase
@@ -139,10 +157,8 @@ const Cinemas = () => {
     setLoading(false)
   }
 
-  // Derive unique cities for filter dropdown
   const cities = ['All', ...Array.from(new Set(cinemas.map(c => c.city).filter(Boolean))).sort()]
 
-  // Filter
   const filtered = cinemas.filter(c => {
     const chain = extractChain(c.name)
     const matchCity  = selectedCity  === 'All' || c.city === selectedCity
@@ -154,7 +170,6 @@ const Cinemas = () => {
     return matchCity && matchChain && matchSearch
   })
 
-  // Group by city
   const groupedByCity = filtered.reduce((acc, cinema) => {
     const city = cinema.city || 'Other'
     if (!acc[city]) acc[city] = []
@@ -163,83 +178,92 @@ const Cinemas = () => {
   }, {})
 
   return (
-    <div className="min-h-screen bg-bg pt-20">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Cinemas</h1>
-          <p className="text-text-muted">Find Nollywood films showing near you</p>
+    <div className="min-h-screen bg-bg">
+      {/* Page Header */}
+      <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-4 py-16 pt-32 border-x border-border relative z-10">
+          <h1 className="text-4xl md:text-6xl font-heading font-bold text-text-primary mb-4 tracking-tighter uppercase italic">
+            Exhibition Hubs
+          </h1>
+          <p className="text-text-muted text-sm max-w-xl italic border-l-2 border-brand pl-6">
+            Discover premier cinema locations across Nigeria and find where your favorite Nollywood blockbusters are playing today.
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto border-x border-border min-h-[600px] pb-20">
+        {/* Filters Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+          <div className="lg:col-span-2 p-8 space-y-4 bg-surface-2/5">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="SEARCH THEATRES..."
+              className="w-full bg-surface border border-border text-text-primary rounded-lg px-6 py-4 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+            />
+          </div>
+          
+          <div className="lg:col-span-1 p-8">
+            <select
+              value={selectedCity}
+              onChange={e => setSelectedCity(e.target.value)}
+              className="w-full bg-surface border border-border text-text-primary rounded-lg px-6 py-4 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+            >
+              {cities.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            </select>
+          </div>
+
+          <div className="lg:col-span-1 p-8 bg-surface-2/5">
+            <select
+              value={selectedChain}
+              onChange={e => setSelectedChain(e.target.value)}
+              className="w-full bg-surface border border-border text-text-primary rounded-lg px-6 py-4 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+            >
+              {CHAINS.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+            </select>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search cinemas…"
-            className="bg-surface border border-border text-text-primary rounded-xl px-4 py-2.5 text-sm focus:border-brand focus:outline-none placeholder-text-muted"
-          />
-          <select
-            value={selectedCity}
-            onChange={e => setSelectedCity(e.target.value)}
-            className="bg-surface border border-border text-text-primary rounded-xl px-4 py-2.5 text-sm focus:border-brand focus:outline-none"
-          >
-            {cities.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select
-            value={selectedChain}
-            onChange={e => setSelectedChain(e.target.value)}
-            className="bg-surface border border-border text-text-primary rounded-xl px-4 py-2.5 text-sm focus:border-brand focus:outline-none"
-          >
-            {CHAINS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+        {/* Content Section */}
+        <div className="p-8 md:p-12">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map(i => <CinemaSkeleton key={i} />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-32 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+              <p className="text-4xl mb-4">🎭</p>
+              <h3 className="text-text-muted font-black uppercase tracking-widest text-xs">No theatres discovered in this sector</h3>
+            </div>
+          ) : (
+            <div className="space-y-16">
+              {Object.entries(groupedByCity).map(([city, cityCinemas]) => (
+                <div key={city} className="space-y-8">
+                  <div className="flex items-center justify-between border-b border-border pb-4">
+                    <h2 className="text-text-primary text-2xl font-bold font-heading tracking-tighter uppercase italic">{city}</h2>
+                    <span className="text-text-muted text-[10px] font-black uppercase tracking-widest border border-border px-3 py-1 rounded">
+                      {cityCinemas.length} SECTORS
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {cityCinemas.map(cinema => (
+                      <CinemaCard
+                        key={cinema.id}
+                        cinema={cinema}
+                        showCount={showCounts[cinema.id] || 0}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Loading */}
-        {loading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-surface border border-border rounded-2xl h-44 animate-pulse" />
-            ))}
-          </div>
-        )}
-
-        {/* Empty */}
-        {!loading && filtered.length === 0 && (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🎭</div>
-            <h3 className="text-text-primary text-xl font-bold mb-2">No cinemas found</h3>
-            <p className="text-text-muted">Try adjusting your filters</p>
-          </div>
-        )}
-
-        {/* Grouped list */}
-        {!loading && filtered.length > 0 && (
-          <div className="space-y-10">
-            {Object.entries(groupedByCity).map(([city, cityCinemas]) => (
-              <div key={city}>
-                <div className="flex items-center gap-3 mb-4">
-                  <h2 className="text-text-primary text-xl font-bold">{city}</h2>
-                  <span className="text-text-muted text-sm">
-                    {cityCinemas.length} cinema{cityCinemas.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {cityCinemas.map(cinema => (
-                    <CinemaCard
-                      key={cinema.id}
-                      cinema={cinema}
-                      showCount={showCounts[cinema.id] || 0}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
 }
 
-export default Cinemas
+export default Cinemas;

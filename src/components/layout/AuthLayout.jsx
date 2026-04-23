@@ -1,97 +1,96 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { films } from '../../data/mockData';
-import FilmCard from '../film/FilmCard';
 
 export default function AuthLayout({ children }) {
-  // Use the first 3 films for the decorative stack
-  const stackFilms = films.slice(0, 3);
+  const [currentFilmIndex, setCurrentFilmIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentFilmIndex((prev) => (prev + 1) % films.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <div className="min-h-screen flex w-full bg-surface">
       {/* LEFT PANEL (Desktop Only) */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-bg overflow-hidden flex-col justify-between p-12">
-        {/* Background Image with Gradient */}
+      <div className="hidden lg:flex lg:w-1/2 relative bg-bg overflow-hidden flex-col justify-between p-16 border-r border-border">
+        {/* Background Ticker */}
         <div className="absolute inset-0 z-0">
-          <img 
-            src={films[0]?.backdrop || "https://placehold.co/1920x1080/0A0F1E/D4A017?text=Backdrop"} 
-            alt="Background" 
-            className="w-full h-full object-cover opacity-40"
-          />
+          {films.map((film, index) => (
+            <div 
+              key={film.id}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
+                index === currentFilmIndex ? 'opacity-40 scale-105' : 'opacity-0 scale-100'
+              } transition-transform duration-[5000ms]`}
+            >
+              <img 
+                src={film.backdrop || film.poster} 
+                alt={film.title} 
+                className="w-full h-full object-cover grayscale blur-[1px]"
+              />
+            </div>
+          ))}
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/80 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-r from-bg/90 via-bg/50 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-bg via-bg/40 to-transparent"></div>
+          <div className="absolute inset-0 grid-bg opacity-10"></div>
         </div>
 
-        {/* Logo */}
-        <div className="relative z-10">
-          <Link to="/" className="flex items-center gap-2 text-brand font-heading font-bold text-2xl hover:opacity-80 transition-opacity">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-              <line x1="7" y1="2" x2="7" y2="22"/>
-              <line x1="17" y1="2" x2="17" y2="22"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <line x1="2" y1="7" x2="7" y2="7"/>
-              <line x1="2" y1="17" x2="7" y2="17"/>
-              <line x1="17" y1="17" x2="22" y2="17"/>
-              <line x1="17" y1="7" x2="22" y2="7"/>
-            </svg>
-            FilmDba
-          </Link>
-        </div>
+        {/* Empty Spacer (Logo was here) */}
+        <div className="relative z-10 h-10" />
 
-        {/* Decorative Film Stack */}
-        <div className="relative z-10 flex-1 flex items-center justify-center mt-12">
-          <div className="relative w-64 h-96">
-            {stackFilms.map((film, index) => {
-              const rotations = ['rotate-3', 'rotate-0', '-rotate-2'];
-              const zIndexes = ['z-10', 'z-20', 'z-30'];
-              const translations = ['translate-x-8 translate-y-4', 'translate-x-0 translate-y-0', '-translate-x-8 -translate-y-4'];
-              
-              return (
-                <div 
-                  key={film.id} 
-                  className={`absolute inset-0 ${rotations[index]} ${zIndexes[index]} ${translations[index]} transition-transform duration-500 hover:scale-105`}
-                  style={{ pointerEvents: 'none' }}
-                >
-                  <div className="w-full h-full rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-border/50 bg-bg">
-                    <img src={film.poster} alt={film.title} className="w-full h-full object-cover" />
-                  </div>
+        {/* Poster Ticker */}
+        <div className="relative z-10 flex-1 flex items-center justify-center">
+          <div className="relative w-80 h-[500px] perspective-1000">
+            {films.map((film, index) => (
+              <div 
+                key={film.id}
+                className={`absolute inset-0 transition-all duration-1000 ease-in-out transform ${
+                  index === currentFilmIndex 
+                    ? 'opacity-100 translate-x-0 rotate-0 scale-100' 
+                    : 'opacity-0 translate-x-12 rotate-6 scale-95 pointer-events-none'
+                }`}
+              >
+                <div className="w-full h-full rounded-2xl overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.9)] border border-white/10 bg-bg group">
+                  <img 
+                    src={film.poster} 
+                    alt={film.title} 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
 
         {/* Bottom Text */}
-        <div className="relative z-10 mt-12">
-          <h1 className="font-heading font-bold text-5xl text-text-primary mb-4 leading-tight">
-            The home of <br />African cinema.
+        <div className="relative z-10 mt-12 space-y-6">
+          <h1 className="font-heading font-bold text-6xl text-white tracking-tighter uppercase italic leading-[0.9]">
+            The Digital <br />Archive of <br /><span className="text-brand">Nollywood.</span>
           </h1>
-          <p className="text-xl text-text-muted">
-            Discover. Rate. Celebrate Nollywood.
+          <p className="text-[10px] font-black text-text-muted uppercase tracking-[0.5em] opacity-60">
+            SECURE. VERIFIED. CINEMATIC.
           </p>
         </div>
       </div>
 
       {/* RIGHT PANEL */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-surface relative">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-16 bg-surface relative">
+        <div className="absolute inset-0 grid-bg opacity-[0.03] pointer-events-none"></div>
+        
         {/* Mobile Logo */}
-        <div className="absolute top-6 left-6 lg:hidden">
-          <Link to="/" className="flex items-center gap-2 text-brand font-heading font-bold text-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/>
-              <line x1="7" y1="2" x2="7" y2="22"/>
-              <line x1="17" y1="2" x2="17" y2="22"/>
-              <line x1="2" y1="12" x2="22" y2="12"/>
-              <line x1="2" y1="7" x2="7" y2="7"/>
-              <line x1="2" y1="17" x2="7" y2="17"/>
-              <line x1="17" y1="17" x2="22" y2="17"/>
-              <line x1="17" y1="7" x2="22" y2="7"/>
-            </svg>
-            FilmDba
+        <div className="absolute top-10 left-10 lg:hidden">
+          <Link to="/" className="flex items-center gap-3 text-brand font-heading font-bold text-2xl">
+            <div className="w-8 h-8 bg-brand text-white flex items-center justify-center rounded-lg shadow-lg shadow-brand/20">
+                <span className="text-lg">L</span>
+            </div>
+            <span className="uppercase tracking-tighter italic">Lumi</span>
           </Link>
         </div>
 
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md relative z-10">
           {children}
         </div>
       </div>

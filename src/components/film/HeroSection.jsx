@@ -49,18 +49,18 @@ export default function HeroSection({ featuredFilms: featuredFilmsProp, featured
               className="w-full h-full object-cover"
             />
             
-            {/* Gradient Overlay: Transparent right to dark left */}
-            <div className="absolute inset-0 bg-gradient-to-r from-bg/95 via-bg/70 to-transparent"></div>
+            {/* Gradient Overlay: Darker on the left for text readability, fading out quickly */}
+            <div className="absolute inset-0 bg-gradient-to-r from-bg/90 via-bg/20 to-transparent w-full md:w-1/2"></div>
             
             {/* Subtle animated gradient shimmer */}
             <div className="absolute inset-0 bg-gradient-to-tr from-brand/5 via-transparent to-brand/5 animate-gradient-x mix-blend-overlay"></div>
             
-            {/* Bottom fade into page background */}
-            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent"></div>
+            {/* Bottom fade into page background - reduced height */}
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent"></div>
           </div>
 
           {/* Content Container */}
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full h-full flex flex-col justify-end pb-24 pt-32">
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full h-full flex flex-col justify-end pb-24 pt-32 border-x border-white/10">
             <div className="flex justify-between items-end w-full">
               
               {/* Left Content */}
@@ -162,11 +162,11 @@ export default function HeroSection({ featuredFilms: featuredFilmsProp, featured
                 className="hidden lg:block relative group cursor-pointer"
               >
                 <Link to={`/films/${featuredFilm.id}`} className="block relative">
-                  <div className="absolute inset-0 bg-brand rounded-2xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+                  <div className="absolute inset-0 bg-brand rounded-xl blur-md opacity-10 group-hover:opacity-30 transition-opacity duration-500"></div>
                   <img 
                     src={featuredFilm.poster_url || featuredFilm.poster} 
                     alt={`${featuredFilm.title} Poster`} 
-                    className="relative w-64 h-auto rounded-2xl border border-brand/30 shadow-[0_0_20px_var(--color-brand-muted)] opacity-90 object-cover transform transition-transform duration-500 group-hover:scale-105"
+                    className="relative w-64 h-auto rounded-xl border border-brand/30 shadow-[0_0_20px_var(--color-brand-muted)] opacity-90 object-cover transform transition-transform duration-500 group-hover:scale-105"
                   />
                 </Link>
               </motion.div>

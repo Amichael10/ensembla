@@ -17,17 +17,21 @@ export function AuthProvider({ children }) {
     }
     
     try {
-      // Use the dedicated RPC function to bypass restricted table access
-      const { data: serverRole } = await supabase.rpc('get_my_role');
+      // Check public.users table directly for the role
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', authUser.id)
+        .single();
       
       const defaultAdminEmail = 'amichaelwale@gmail.com';
       const isDefaultAdmin = authUser.email === defaultAdminEmail;
       
-      let finalRole = serverRole || 'fan';
+      // Prioritize DB role, fallback to metadata
+      let finalRole = (profile?.role) || authUser.user_metadata?.role || null;
+      
       if (isDefaultAdmin) {
         finalRole = 'admin';
-      } else {
-        finalRole = authUser.user_metadata?.role || serverRole || 'fan';
       }
 
       setAuthState({
@@ -39,7 +43,7 @@ export function AuthProvider({ children }) {
       console.error('Error fetching user profile:', err);
       setAuthState({
         user: authUser,
-        role: authUser.user_metadata?.role || 'fan',
+        role: authUser.user_metadata?.role || null,
         loading: false,
       });
     }
@@ -88,7 +92,7 @@ export function AuthProvider({ children }) {
     if (error) console.error('Google login error:', error);
   };
 
-  const signup = async (name, email, password, userRole) => {
+  const signup = async (name, email, password, userRole, onboarded = false) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -96,10 +100,24 @@ export function AuthProvider({ children }) {
         data: {
           name,
           role: userRole,
+          onboarded: onboarded
         }
       }
     });
     if (error) throw error;
+    return data;
+  };
+
+  const updateUserProfile = async (updates) => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: updates
+    });
+    if (error) throw error;
+    
+    // Refresh the local state
+    if (data.user) {
+      await fetchUserProfile(data.user);
+    }
     return data;
   };
 
@@ -117,7 +135,8 @@ export function AuthProvider({ children }) {
     name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0],
     email: user.email,
     avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
-    role: role || 'fan'
+    role: role,
+    onboarded: user.user_metadata?.onboarded || (role && role !== 'new_user' && role !== 'admin') || role === 'admin'
   } : null;
 
   const value = {
@@ -126,6 +145,7 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     signup,
     logout,
+    updateUserProfile,
     isAuthenticated: !!user,
     role: formattedUser?.role || null,
     loading: authState.loading
@@ -153,4 +173,3 @@ export function useAuth() {
   }
   return context;
 }
-

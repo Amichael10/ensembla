@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatViewCount, parseDuration } from '../utils/youtube';
+import { Skeleton } from '../components/ui/Skeleton';
 
 const CATEGORY_LABELS = {
   skit_maker: 'Skit Makers', movie_channel: 'Movie Channel',
@@ -42,58 +43,55 @@ function FlagModal({ channelId, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4" onClick={onClose}>
-      <div className="bg-[#13192B] border border-[#252D45] rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-bg/95 backdrop-blur-md px-4" onClick={onClose}>
+      <div className="bg-surface border border-border rounded-xl p-8 w-full max-w-md relative overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
         {done ? (
-          <div className="text-center py-4">
-            <p className="text-4xl mb-3">✅</p>
-            <h3 className="text-[#F5F0E8] font-bold text-lg mb-2">Report submitted</h3>
-            <p className="text-[#7A8099] text-sm mb-4">Our team will review this channel.</p>
-            <button onClick={onClose} className="bg-[#D4A017] text-black font-bold px-6 py-2 rounded-xl text-sm">
-              Close
+          <div className="relative z-10 text-center py-6">
+            <p className="text-4xl mb-4">✅</p>
+            <h3 className="text-text-primary font-heading font-bold text-xl uppercase tracking-tighter italic mb-3">Report submitted</h3>
+            <p className="text-text-muted text-[11px] font-black uppercase tracking-widest mb-8">Our security team will review this hub shortly.</p>
+            <button onClick={onClose} className="w-full bg-brand text-white font-black uppercase tracking-widest py-4 rounded-lg text-[10px]">
+              CLOSE ARCHIVE
             </button>
           </div>
         ) : (
-          <>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[#F5F0E8] font-bold text-lg">Flag this channel</h3>
-              <button onClick={onClose} className="text-[#7A8099] hover:text-[#F5F0E8] text-xl">✕</button>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-text-primary font-heading font-bold text-xl uppercase tracking-tighter italic">Flag this hub</h3>
+              <button onClick={onClose} className="text-text-muted hover:text-text-primary transition-colors">✕</button>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="text-[#7A8099] text-xs font-bold uppercase tracking-wider block mb-2">Reason *</label>
-                <div className="space-y-2">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-4">
+                <label className="text-text-muted text-[10px] font-black uppercase tracking-widest block pl-1">SELECT REASON</label>
+                <div className="space-y-3">
                   {REASONS.map(r => (
                     <label key={r} className="flex items-center gap-3 cursor-pointer group">
-                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${reason === r ? 'border-[#D4A017] bg-[#D4A017]' : 'border-[#252D45] group-hover:border-[#D4A017]/50'}`} />
+                      <div className={`w-4 h-4 rounded-full border-2 transition-all ${reason === r ? 'border-brand bg-brand shadow-[0_0_8px_var(--brand)]' : 'border-border group-hover:border-brand/50'}`} />
                       <input type="radio" name="reason" value={r} onChange={() => setReason(r)} className="sr-only" />
-                      <span className="text-sm text-[#F5F0E8]">{r}</span>
+                      <span className={`text-[11px] font-black uppercase tracking-widest transition-colors ${reason === r ? 'text-brand' : 'text-text-primary'}`}>{r}</span>
                     </label>
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="text-[#7A8099] text-xs font-bold uppercase tracking-wider block mb-2">Additional details (optional)</label>
+              <div className="space-y-2">
+                <label className="text-text-muted text-[10px] font-black uppercase tracking-widest block pl-1">ADDITIONAL DETAILS</label>
                 <textarea
                   value={details}
                   onChange={e => setDetails(e.target.value)}
                   rows={3}
-                  placeholder="Tell us more…"
-                  className="w-full bg-[#0A0F1E] border border-[#252D45] rounded-xl px-3 py-2 text-[#F5F0E8] text-sm placeholder-[#7A8099] focus:outline-none focus:border-[#D4A017] resize-none"
+                  placeholder="PROVIDE CONTEXT..."
+                  className="w-full bg-surface-2 border border-border rounded-lg px-4 py-3 text-[10px] font-black tracking-widest text-text-primary placeholder-text-muted/30 focus:outline-none focus:border-brand resize-none transition-all"
                 />
               </div>
-              <div className="flex gap-3 pt-1">
-                <button type="button" onClick={onClose}
-                  className="flex-1 border border-[#252D45] text-[#7A8099] hover:text-[#F5F0E8] rounded-xl py-2.5 text-sm font-medium transition-colors">
-                  Cancel
-                </button>
+              <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={!reason || submitting}
-                  className="flex-1 bg-red-600/80 hover:bg-red-600 disabled:opacity-40 text-white font-bold rounded-xl py-2.5 text-sm transition-colors">
-                  {submitting ? 'Submitting…' : 'Submit Report'}
+                  className="w-full bg-red-500 hover:bg-red-600 disabled:opacity-40 text-white font-black uppercase tracking-widest py-4 rounded-lg text-[10px] transition-all shadow-lg shadow-red-500/20">
+                  {submitting ? 'PROCESSING...' : 'SUBMIT REPORT'}
                 </button>
               </div>
             </form>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -106,43 +104,42 @@ function VideoCard({ video }) {
 
   return (
     <a href={youtubeUrl} target="_blank" rel="noopener noreferrer"
-      className="group block bg-[#13192B] rounded-xl overflow-hidden border border-[#252D45] hover:border-[#D4A017]/40 transition-all duration-200">
-      <div className="relative aspect-video bg-[#0A0F1E] overflow-hidden">
+      className="group block bg-surface rounded-lg overflow-hidden border border-border hover:border-brand transition-all duration-500 shadow-sm">
+      <div className="relative aspect-video bg-surface-2/10 overflow-hidden">
         {video.thumbnail_url ? (
           <img src={video.thumbnail_url} alt={video.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-[#D4A017]/30" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-10 h-10 text-brand/20" fill="currentColor" viewBox="0 0 24 24">
               <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
             </svg>
           </div>
         )}
         {duration && (
-          <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-[10px] font-mono px-1.5 py-0.5 rounded">
+          <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md text-white text-[9px] font-black px-2 py-0.5 rounded border border-white/10 uppercase tracking-widest">
             {duration.formatted}
           </span>
         )}
         {video.film_id && (
-          <span className="absolute top-1.5 left-1.5 bg-[#D4A017] text-black text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">
-            Film
+          <span className="absolute top-2 left-2 bg-brand text-white text-[8px] font-black px-2 py-0.5 rounded border border-brand/20 uppercase tracking-widest shadow-lg">
+            FILM
           </span>
         )}
-        {/* Play overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
-          <div className="w-12 h-12 bg-[#D4A017] rounded-full flex items-center justify-center shadow-lg">
-            <svg className="w-5 h-5 text-black ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-black/20 backdrop-blur-[2px]">
+          <div className="w-12 h-12 bg-brand text-white rounded-full flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform">
+            <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>
             </svg>
           </div>
         </div>
       </div>
-      <div className="p-3">
-        <p className="text-[#F5F0E8] text-xs font-medium line-clamp-2 leading-snug group-hover:text-[#D4A017] transition-colors">
+      <div className="p-4">
+        <p className="text-text-primary text-[11px] font-bold uppercase tracking-tight line-clamp-2 leading-tight group-hover:text-brand transition-colors">
           {video.title}
         </p>
         {video.published_at && (
-          <p className="text-[#7A8099] text-[10px] mt-1">
+          <p className="text-text-muted text-[9px] font-black uppercase tracking-widest mt-2 opacity-60">
             {new Date(video.published_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
         )}
@@ -151,7 +148,59 @@ function VideoCard({ video }) {
   );
 }
 
+const ChannelDetailSkeleton = () => (
+    <div className="min-h-screen bg-bg">
+        <div className="relative h-52 md:h-72 bg-surface-2/10 border-b border-border animate-pulse" />
+        <div className="max-w-7xl mx-auto border-x border-border -mt-12 px-4 sm:px-6 lg:px-8 pb-12">
+            <div className="flex flex-col md:flex-row gap-8 items-end md:items-start animate-pulse">
+                <Skeleton className="w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-bg" />
+                <div className="flex-1 pt-4 md:pt-16 space-y-4">
+                    <Skeleton className="h-10 w-1/3" />
+                    <Skeleton className="h-4 w-1/4" />
+                </div>
+            </div>
+        </div>
+        <div className="max-w-7xl mx-auto border-x border-border border-t border-border">
+            <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
+                <div className="lg:col-span-3 p-8 md:p-12 space-y-8">
+                    <Skeleton className="h-8 w-1/4" />
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {[1,2,3,4].map(i => <div key={i} className="aspect-video bg-surface-2/10 rounded-lg border border-border animate-pulse" />)}
+                    </div>
+                </div>
+                <div className="lg:col-span-1 p-8 space-y-4">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-32 w-full rounded-xl" />
+                </div>
+            </div>
+        </div>
+    </div>
+)
+
+const Description = ({ text }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isLong = text.length > 280;
+  const displayText = isExpanded ? text : text.slice(0, 280) + (isLong ? '...' : '');
+
+  return (
+    <div className="space-y-4">
+      <p className="text-text-muted text-sm leading-relaxed max-w-3xl italic opacity-80 border-l-2 border-border pl-6">
+        {displayText}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-brand text-[9px] font-black uppercase tracking-widest hover:underline ml-7 transition-all"
+        >
+          {isExpanded ? 'READ LESS ↑' : 'READ FULL DESCRIPTION ↓'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 export default function ChannelDetail() {
+
   const { id } = useParams();
   const navigate = useNavigate();
   const [channel, setChannel] = useState(null);
@@ -161,9 +210,8 @@ export default function ChannelDetail() {
   const [error, setError] = useState(null);
   const [showFlag, setShowFlag] = useState(false);
   
-  // Search & Filter
   const [search, setSearch] = useState('');
-  const [onlyMovies, setOnlyMovies] = useState(false); // Default to false to show latest skits
+  const [onlyMovies, setOnlyMovies] = useState(false);
 
   useEffect(() => {
     fetchChannel();
@@ -173,7 +221,6 @@ export default function ChannelDetail() {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch Channel
       const { data: ch, error: chErr } = await supabase
         .from('channels')
         .select('*')
@@ -184,7 +231,6 @@ export default function ChannelDetail() {
       setChannel(ch);
       document.title = `Lumi | ${ch.name}`;
 
-      // 2. Fetch Owner if linked
       if (ch.owner_person_id) {
         const { data: p } = await supabase
           .from('people')
@@ -194,14 +240,11 @@ export default function ChannelDetail() {
         setOwner(p);
       }
 
-      // 3. Fetch Videos
-      let vidQuery = supabase
+      const { data: vids } = await supabase
         .from('channel_videos')
         .select('id, video_id, title, thumbnail_url, published_at, duration_seconds, film_id, match_status')
         .eq('channel_id', id)
         .order('published_at', { ascending: false });
-
-      const { data: vids } = await vidQuery;
       setVideos(vids || []);
 
     } catch (err) {
@@ -213,218 +256,211 @@ export default function ChannelDetail() {
 
   const filteredVideos = videos.filter(v => {
     if (search.trim() && !v.title.toLowerCase().includes(search.toLowerCase())) return false;
-    
-    // Minimal filter: hide anything under 1 min
     if (onlyMovies && v.duration_seconds && v.duration_seconds < 60) return false;
-    
-    // If it's a very short video and we don't have duration data, still show it 
-    // unless the user is specifically looking for movies.
     return true;
   });
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#0A0F1E] pt-20 animate-pulse">
-      <div className="h-52 bg-[#13192B]" />
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-4">
-        <div className="h-8 bg-[#13192B] rounded w-64" />
-        <div className="h-4 bg-[#13192B] rounded w-96" />
-      </div>
-    </div>
-  );
+  if (loading) return <ChannelDetailSkeleton />;
 
   if (error || !channel) return (
-    <div className="min-h-screen bg-[#0A0F1E] pt-20 flex items-center justify-center">
-      <div className="text-center">
-        <p className="text-5xl mb-4">📺</p>
-        <p className="text-[#F5F0E8] text-lg font-bold mb-2">{error || 'Channel not found'}</p>
-        <button onClick={() => navigate('/channels')} className="text-[#D4A017] hover:underline text-sm">
-          ← Back to Channels
+    <div className="min-h-screen bg-bg flex items-center justify-center">
+      <div className="max-w-7xl mx-auto px-4 border-x border-border py-32 text-center w-full">
+        <p className="text-4xl mb-4">📺</p>
+        <p className="text-text-primary font-heading font-bold text-xl uppercase tracking-tighter italic mb-8">{error || 'Channel not found'}</p>
+        <button onClick={() => navigate('/channels')} className="bg-brand text-white font-black uppercase tracking-widest px-8 py-4 rounded-lg hover:shadow-brand/20 transition-all">
+          ← BACK TO HUBS
         </button>
       </div>
     </div>
   );
 
-
   return (
-    <div className="min-h-screen bg-[#0A0F1E] pb-20">
-      {/* Banner */}
-      <div className="relative h-52 md:h-64 bg-[#13192B] overflow-hidden">
-        {channel.banner_url ? (
-          <img src={channel.banner_url} alt="" className="w-full h-full object-cover opacity-80" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-[#D4A017]/20 via-[#C1440E]/10 to-[#0A0F1E]" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F1E] via-[#0A0F1E]/20 to-transparent" />
-
-        {/* Back button */}
-        <button onClick={() => navigate('/channels')}
-          className="absolute top-4 left-4 flex items-center gap-2 text-[#F5F0E8] text-sm bg-black/40 hover:bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg transition-colors mt-16">
-          ← Channels
-        </button>
-      </div>
-
-      {/* Profile section */}
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex flex-col sm:flex-row gap-5 -mt-12 relative z-10">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            {channel.thumbnail_url ? (
-              <img src={channel.thumbnail_url} alt={channel.name}
-                className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-[#0A0F1E] object-cover shadow-2xl" />
-            ) : (
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-full border-4 border-[#0A0F1E] bg-[#1C2440] flex items-center justify-center shadow-2xl">
-                <span className="text-[#D4A017] font-bold text-4xl">{channel.name?.charAt(0)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 pt-2 sm:pt-6">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-[#F5F0E8] font-bold text-2xl md:text-3xl">{channel.name}</h1>
-                  {channel.is_featured && (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#D4A017] bg-[#D4A017]/10 px-2 py-1 rounded-full">
-                      Featured
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 mt-1 flex-wrap">
-                  {channel.channel_handle && (
-                    <span className="text-[#7A8099] text-sm">{channel.channel_handle}</span>
-                  )}
-                  {channel.category && (
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#7A8099] bg-[#1C2440] px-2 py-0.5 rounded-full">
-                      {CATEGORY_LABELS[channel.category] || channel.category}
-                    </span>
-                  )}
-                </div>
-                {channel.subscriber_count > 0 && (
-                  <p className="text-[#D4A017] font-bold text-lg mt-1">
-                    {formatViewCount(channel.subscriber_count)}
-                    <span className="text-[#7A8099] font-normal text-sm ml-1">subscribers</span>
-                  </p>
-                )}
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex items-center gap-3 flex-wrap">
-                {channel.channel_url && (
-                  <a href={channel.channel_url} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2 bg-[#FF0000] hover:bg-[#FF0000]/90 text-white font-bold px-5 py-2.5 rounded-full text-sm transition-colors shadow-lg">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-                    </svg>
-                    Subscribe
-                  </a>
-                )}
-                <button onClick={() => setShowFlag(true)}
-                  className="flex items-center gap-2 border border-[#252D45] hover:border-red-500/50 text-[#7A8099] hover:text-red-400 font-medium px-4 py-2.5 rounded-full text-sm transition-all">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V4m0 0l6-1 5 1 5-1v13l-5 1-5-1-6 1V4z" />
-                  </svg>
-                  Flag Channel
-                </button>
-              </div>
-            </div>
-
-            {/* Description */}
-            {channel.description && (
-              <p className="text-[#7A8099] text-sm mt-4 leading-relaxed max-w-2xl line-clamp-3">
-                {channel.description}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Owner person card */}
-        {owner && (
-          <div className="mt-8 bg-[#13192B] border border-[#252D45] rounded-2xl p-5 flex items-center gap-4">
-            <Link to={`/people/${owner.id}`} className="flex items-center gap-4 group flex-1">
-              {owner.photo_url ? (
-                <img src={owner.photo_url} alt={owner.name}
-                  className="w-12 h-12 rounded-full object-cover group-hover:ring-2 group-hover:ring-[#D4A017] transition-all" />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-[#1C2440] flex items-center justify-center">
-                  <span className="text-[#D4A017] font-bold">{owner.name?.charAt(0)}</span>
-                </div>
-              )}
-              <div>
-                <p className="text-[#7A8099] text-xs uppercase tracking-wider font-bold mb-0.5">Channel Owner</p>
-                <p className="text-[#F5F0E8] font-bold group-hover:text-[#D4A017] transition-colors">{owner.name}</p>
-                {owner.known_for_department && (
-                  <p className="text-[#7A8099] text-xs">{owner.known_for_department}</p>
-                )}
-              </div>
-            </Link>
-            <Link to={`/people/${owner.id}`}
-              className="text-[#D4A017] text-sm font-medium hover:underline shrink-0">
-              View Profile →
-            </Link>
-          </div>
-        )}
-
-        {/* Videos section */}
-        <div className="mt-10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-            <h2 className="text-[#F5F0E8] font-bold text-xl flex items-center gap-2">
-              Videos
-              <span className="text-xs font-normal text-[#7A8099] bg-[#1C2440] px-2 py-0.5 rounded-full">
-                {filteredVideos.length}
-              </span>
-            </h2>
-            
-            <div className="flex item-center gap-3 flex-wrap">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search videos..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="bg-[#13192B] border border-[#252D45] text-[#F5F0E8] rounded-xl px-4 py-1.5 pl-9 text-sm focus:border-[#D4A017] focus:outline-none w-48 md:w-64"
-                />
-                <span className="absolute left-3 top-2 text-[#7A8099]">🔍</span>
-              </div>
-              
-              <button
-                onClick={() => setOnlyMovies(!onlyMovies)}
-                className={`text-xs font-bold px-4 py-2 rounded-xl border transition-all flex items-center gap-2 ${
-                  onlyMovies 
-                    ? 'bg-[#D4A017]/10 border-[#D4A017] text-[#D4A017]' 
-                    : 'bg-[#13192B] border-[#252D45] text-[#7A8099] hover:text-[#F5F0E8]'
-                }`}
-              >
-                <div className={`w-2 h-2 rounded-full ${onlyMovies ? 'bg-[#D4A017] shadow-[0_0_8px_#D4A017]' : 'bg-[#7A8099]'}`} />
-                Movies Only (30m+)
-              </button>
-
-              {channel.channel_url && (
-                <a href={`${channel.channel_url}/videos`} target="_blank" rel="noopener noreferrer"
-                  className="text-[#D4A017] text-sm hover:underline hidden sm:block self-center ml-2">
-                  View on YouTube →
-                </a>
-              )}
-            </div>
-          </div>
-
-          {filteredVideos.length === 0 ? (
-            <div className="text-center py-16 bg-[#13192B] rounded-2xl border border-[#252D45]">
-              <p className="text-4xl mb-3">🎬</p>
-              <p className="text-[#F5F0E8] font-medium mb-1">No videos found</p>
-              <p className="text-[#7A8099] text-sm">Try adjusting your search or filters</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {filteredVideos.map((video) => (
-                <VideoCard key={video.video_id} video={video} />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-bg">
       {showFlag && <FlagModal channelId={id} onClose={() => setShowFlag(false)} />}
+      
+      <div className="relative border-b border-border bg-surface-2/10 overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+        <div className="relative h-52 md:h-72 overflow-hidden border-b border-border">
+          {channel.banner_url ? (
+            <img src={channel.banner_url} alt="" className="w-full h-full object-cover opacity-60" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-brand/20 via-transparent to-bg" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/20 to-transparent" />
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-x border-white/5 h-full relative">
+            <button onClick={() => navigate('/channels')}
+              className="absolute top-24 left-4 md:left-8 flex items-center gap-2 text-text-primary text-[10px] font-black uppercase tracking-widest bg-bg/60 hover:bg-brand hover:text-white backdrop-blur-sm px-4 py-2 rounded-lg border border-white/10 transition-all z-20">
+              ← CHANNELS
+            </button>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto border-x border-border relative z-10 px-4 sm:px-6 lg:px-8 -mt-12 pb-12">
+          <div className="flex flex-col md:flex-row gap-8 items-end md:items-start">
+            <div className="flex-shrink-0 relative">
+              <div className="absolute -inset-1 bg-brand/20 blur-xl rounded-full"></div>
+              {channel.thumbnail_url ? (
+                <img src={channel.thumbnail_url} alt={channel.name}
+                  className="relative w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-bg object-cover shadow-2xl" />
+              ) : (
+                <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-bg bg-surface flex items-center justify-center shadow-2xl">
+                  <span className="text-brand font-bold text-5xl font-heading">{channel.name?.charAt(0)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 pt-4 md:pt-16">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-3 flex-wrap mb-2">
+                    <h1 className="text-3xl md:text-5xl font-heading font-bold text-text-primary tracking-tighter uppercase italic">{channel.name}</h1>
+                    {channel.is_featured && (
+                      <span className="text-[10px] font-black uppercase tracking-widest text-brand bg-brand/10 px-3 py-1 rounded-lg border border-brand/20">
+                        FEATURED HUB
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {channel.channel_handle && (
+                      <span className="text-text-muted text-xs font-bold uppercase tracking-widest">{channel.channel_handle}</span>
+                    )}
+                    <span className="w-1 h-1 rounded-full bg-border"></span>
+                    {channel.category && (
+                      <span className="text-[10px] font-black uppercase tracking-widest text-text-primary bg-surface-2 px-3 py-1 rounded-md border border-border">
+                        {CATEGORY_LABELS[channel.category] || channel.category}
+                      </span>
+                    )}
+                  </div>
+                  {channel.subscriber_count > 0 && (
+                    <p className="text-brand font-bold text-xl mt-4 font-heading">
+                      {formatViewCount(channel.subscriber_count)}
+                      <span className="text-text-muted font-black text-[10px] uppercase tracking-widest ml-2">SUBSCRIBERS</span>
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 flex-wrap">
+                  {channel.channel_url && (
+                    <a href={channel.channel_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-[#FF0000] hover:bg-[#FF0000]/90 text-white font-black text-[10px] uppercase tracking-[0.2em] px-8 py-4 rounded-lg transition-all shadow-xl hover:scale-[1.02]">
+                      SUBSCRIBE
+                    </a>
+                  )}
+                  <button onClick={() => setShowFlag(true)}
+                    className="flex items-center gap-2 border border-border bg-surface text-text-muted hover:text-red-400 hover:border-red-400/50 font-black text-[10px] uppercase tracking-[0.2em] px-6 py-4 rounded-lg transition-all">
+                    REPORT
+                  </button>
+                </div>
+              </div>
+
+              {channel.description && (
+                <Description text={channel.description} />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto border-x border-border">
+        <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
+          <div className="lg:col-span-3">
+            <div className="p-8 md:p-12 border-b border-border bg-surface-2/5 relative overflow-hidden">
+               <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
+               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <h2 className="text-text-primary font-bold text-2xl font-heading tracking-tighter uppercase italic">
+                    Media Archive
+                    <span className="ml-4 text-[10px] font-black tracking-[0.2em] text-text-muted bg-surface px-3 py-1 rounded-full border border-border">
+                      {filteredVideos.length} ITEMS
+                    </span>
+                  </h2>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="SEARCH ARCHIVE..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="bg-surface border border-border text-text-primary rounded-lg px-6 py-2 pl-12 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none w-full md:w-64 transition-all"
+                      />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30">🔍</span>
+                    </div>
+                    <button
+                      onClick={() => setOnlyMovies(!onlyMovies)}
+                      className={`text-[9px] font-black uppercase tracking-widest px-6 py-2.5 rounded-lg border transition-all flex items-center gap-3 ${
+                        onlyMovies 
+                          ? 'bg-brand text-white border-brand shadow-lg shadow-brand/20' 
+                          : 'bg-surface border-border text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      <div className={`w-1.5 h-1.5 rounded-full ${onlyMovies ? 'bg-white animate-pulse' : 'bg-text-muted'}`} />
+                      MOVIES ONLY
+                    </button>
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-8 md:p-12 min-h-[400px]">
+              {filteredVideos.length === 0 ? (
+                <div className="text-center py-24 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+                  <p className="text-4xl mb-4">🎬</p>
+                  <p className="text-text-muted font-black tracking-widest uppercase text-xs">No media matching your archive filters</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {filteredVideos.map((video) => (
+                    <VideoCard key={video.video_id} video={video} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="lg:col-span-1 divide-y divide-border">
+            {owner && (
+              <div className="p-8">
+                <h3 className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-6">Archive Lead</h3>
+                <Link to={`/people/${owner.id}`} className="group flex flex-col items-center text-center p-6 bg-surface-2/20 rounded-xl border border-border hover:border-brand transition-all duration-300">
+                  {owner.photo_url ? (
+                    <img src={owner.photo_url} alt={owner.name}
+                      className="w-20 h-20 rounded-xl object-cover border border-border mb-4 group-hover:scale-105 transition-transform" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl bg-surface flex items-center justify-center border border-border mb-4">
+                      <span className="text-brand font-bold text-2xl font-heading">{owner.name?.charAt(0)}</span>
+                    </div>
+                  )}
+                  <p className="text-text-primary font-bold uppercase tracking-tight group-hover:text-brand transition-colors">{owner.name}</p>
+                  {owner.known_for_department && (
+                    <p className="text-text-muted text-[10px] uppercase font-black tracking-widest mt-1 italic">{owner.known_for_department}</p>
+                  )}
+                  <div className="mt-6 w-full border-t border-border pt-4 text-[9px] font-black uppercase tracking-widest text-brand group-hover:tracking-[0.2em] transition-all">
+                    VIEW ARCHIVE PROFILE →
+                  </div>
+                </Link>
+              </div>
+            )}
+
+            <div className="p-8">
+               <h3 className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-6">External Hubs</h3>
+               <div className="space-y-3">
+                  {channel.channel_url && (
+                    <a href={channel.channel_url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-between p-4 bg-surface rounded-lg border border-border hover:border-brand group transition-all">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-text-primary group-hover:text-brand">YouTube</span>
+                      <span className="text-text-muted group-hover:translate-x-1 transition-transform">↗</span>
+                    </a>
+                  )}
+                  {channel.channel_url && (
+                    <a href={`${channel.channel_url}/videos`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-between p-4 bg-surface rounded-lg border border-border hover:border-brand group transition-all">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-text-primary group-hover:text-brand">Full Archive</span>
+                      <span className="text-text-muted group-hover:translate-x-1 transition-transform">↗</span>
+                    </a>
+                  )}
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

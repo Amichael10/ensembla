@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useFollow } from '../hooks/useFollow'
 import { useAuth } from '../context/AuthContext'
 import { formatViewCount } from '../utils/youtube'
+import { Skeleton } from '../components/ui/Skeleton'
 
 const PersonCard = ({ person, currentUser }) => {
   const navigate = useNavigate()
@@ -38,8 +39,7 @@ const PersonCard = ({ person, currentUser }) => {
     .slice(0, 2)
 
   const creditCount = person.credits?.length || 0
-
-  const primaryRole = 'filmmaker'
+  const primaryRole = person.known_for_department || 'filmmaker'
 
   const roleLabels = {
     actor: 'Actor',
@@ -52,80 +52,80 @@ const PersonCard = ({ person, currentUser }) => {
   return (
     <Link
       to={`/people/${person.id}`}
-      className="group block bg-surface rounded-2xl overflow-hidden border border-border hover:border-brand/40 transition-all hover:shadow-lg hover:shadow-brand/5"
+      className="group block bg-surface rounded-xl overflow-hidden border border-border hover:border-brand transition-all shadow-sm"
     >
-      {/* Photo */}
-      <div className="relative aspect-square overflow-hidden">
+      <div className="relative aspect-[4/5] overflow-hidden">
         {person.photo_url ? (
           <img
             src={person.photo_url}
             alt={person.name}
-            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover object-top group-hover:scale-110 transition-transform duration-700"
           />
         ) : (
           <div className="w-full h-full bg-surface-2 flex items-center justify-center">
-            <span className="text-5xl font-bold text-brand">
+            <span className="text-4xl font-heading font-bold text-brand/30">
               {initials}
             </span>
           </div>
         )}
 
-        {/* Verified badge */}
         {person.is_verified && (
-          <div className="absolute top-2 right-2 bg-brand text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-            Verified
+          <div className="absolute top-2 right-2 bg-brand text-white text-[8px] font-black px-2 py-0.5 rounded border border-brand/20 uppercase tracking-widest shadow-lg">
+            VERIFIED
           </div>
         )}
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-bg via-transparent to-transparent opacity-60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-transparent to-transparent opacity-60" />
       </div>
 
-      {/* Info */}
       <div className="p-4">
-        <h3 className="text-text-primary font-bold text-base group-hover:text-brand transition-colors line-clamp-1">
+        <h3 className="text-text-primary font-bold text-sm uppercase tracking-tight group-hover:text-brand transition-colors line-clamp-1">
           {person.name}
         </h3>
 
-        <p className="text-text-secondary text-xs mt-0.5 capitalize">
-          {roleLabels[primaryRole]}
+        <p className="text-text-muted text-[10px] font-black uppercase tracking-widest mt-1 opacity-60">
+          {primaryRole}
         </p>
 
-        {/* Stats */}
-        <div className="flex items-center justify-between mt-3">
+        <div className="flex items-center justify-between mt-4">
           <div className="flex items-center gap-3">
-            <span className="text-text-muted text-xs">
-              🎬 {creditCount} films
+            <span className="text-text-muted text-[9px] font-black uppercase tracking-widest">
+              🎬 {creditCount} FILMS
             </span>
-            {person.popularity_score > 0 && (
-              <span className="text-text-muted text-xs">
-                👁 {formatViewCount(person.popularity_score)}
-              </span>
-            )}
           </div>
         </div>
 
-        {/* Follow button */}
         <button
           onClick={handleFollow}
           disabled={followLoading}
-          className={`w-full mt-3 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50 ${
+          className={`w-full mt-4 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-50 ${
             isFollowing
-              ? 'bg-transparent border border-border text-text-secondary hover:border-red-500/50 hover:text-red-500'
-              : 'bg-brand text-white hover:brightness-110'
+              ? 'bg-surface border border-border text-text-muted hover:border-red-500/50 hover:text-red-500'
+              : 'bg-brand text-white hover:shadow-lg hover:shadow-brand/20'
           }`}
         >
           {followLoading
             ? '...'
             : isFollowing
-            ? 'Following'
-            : '+ Follow'
+            ? 'FOLLOWING'
+            : '+ FOLLOW'
           }
         </button>
       </div>
     </Link>
   )
 }
+
+const PersonSkeleton = () => (
+    <div className="bg-surface rounded-xl overflow-hidden border border-border animate-pulse">
+        <div className="aspect-[4/5] bg-surface-2/20" />
+        <div className="p-4 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+            <Skeleton className="h-10 w-full rounded-lg mt-2" />
+        </div>
+    </div>
+)
 
 const PeopleList = () => {
   const { user } = useAuth()
@@ -139,11 +139,6 @@ const PeopleList = () => {
 
   const PAGE_SIZE = 20
   const roles = ['All', 'Actor', 'Director', 'Writer', 'Producer']
-  const sortOptions = [
-    { value: 'popularity', label: 'Most Popular' },
-    { value: 'name', label: 'A-Z' },
-    { value: 'credits', label: 'Most Credits' }
-  ]
 
   useEffect(() => {
     setPeople([])
@@ -160,24 +155,20 @@ const PeopleList = () => {
       .select(`
         id, name, photo_url,
         popularity_score, is_verified,
-        youtube_handle, youtube_stats,
         known_for_department,
-        credits(role)
+        credits(id)
       `)
 
-    // Search
     if (search) {
       query = query.ilike('name', `%${search}%`)
     }
 
-    // Sort
     if (sortBy === 'popularity') {
       query = query.order('popularity_score', { ascending: false })
     } else if (sortBy === 'name') {
       query = query.order('name', { ascending: true })
     }
 
-    // Pagination
     query = query.range(
       pageNum * PAGE_SIZE,
       (pageNum + 1) * PAGE_SIZE - 1
@@ -189,13 +180,11 @@ const PeopleList = () => {
       setHasMore(false)
     }
 
-    // Filter by role (checks both credits and primary department)
     let filtered = data || []
     if (roleFilter !== 'All') {
       const roleKey = roleFilter.toLowerCase()
       filtered = filtered.filter(p =>
-        p.known_for_department?.toLowerCase().includes(roleKey) ||
-        p.credits?.some(c => c.role.toLowerCase() === roleKey)
+        p.known_for_department?.toLowerCase().includes(roleKey)
       )
     }
 
@@ -215,40 +204,44 @@ const PeopleList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg pt-20">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-heading font-bold text-text-primary mb-2">
-            People
+    <div className="min-h-screen bg-bg">
+      {/* Page Header */}
+      <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-4 py-16 pt-32 border-x border-border relative z-10">
+          <h1 className="text-4xl md:text-6xl font-heading font-bold text-text-primary mb-4 tracking-tighter uppercase italic">
+            The Talent
           </h1>
-          <p className="text-text-secondary">
-            The actors, directors and creatives behind Nollywood
+          <p className="text-text-muted text-sm max-w-xl italic border-l-2 border-brand pl-6">
+            The actors, directors, and creatives shaping the future of Nollywood cinema. Explore their journey and filmography.
           </p>
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
-          {/* Search */}
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name..."
-            className="bg-surface border border-border text-text-primary rounded-xl px-4 py-2.5 text-sm focus:border-brand focus:outline-none placeholder-text-muted"
-          />
-
-          {/* Role filter */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="max-w-7xl mx-auto border-x border-border min-h-[600px] pb-20">
+        {/* Filters Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+          <div className="lg:col-span-1 p-8 space-y-4 bg-surface-2/5">
+             <div className="relative">
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="SEARCH ARCHIVE..."
+                  className="w-full bg-surface border border-border text-text-primary rounded-lg px-6 py-4 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+                />
+             </div>
+          </div>
+          
+          <div className="lg:col-span-2 p-8 flex items-center gap-3 overflow-x-auto no-scrollbar">
             {roles.map(role => (
               <button
                 key={role}
                 onClick={() => setRoleFilter(role)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
+                className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                   roleFilter === role
-                    ? 'bg-brand text-white'
-                    : 'bg-surface border border-border text-text-secondary hover:text-text-primary'
+                    ? 'bg-brand text-white shadow-lg shadow-brand/20'
+                    : 'bg-surface border border-border text-text-muted hover:text-text-primary'
                 }`}
               >
                 {role}
@@ -256,93 +249,54 @@ const PeopleList = () => {
             ))}
           </div>
 
-          {/* Sort */}
-          <select
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            className="bg-surface border border-border text-text-primary rounded-xl px-4 py-2.5 text-sm focus:border-brand focus:outline-none appearance-none"
-          >
-            <option value="popularity">Most Popular</option>
-            <option value="name">A-Z Name</option>
-          </select>
+          <div className="lg:col-span-1 p-8 bg-surface-2/5">
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="w-full bg-surface border border-border text-text-primary rounded-lg px-6 py-3.5 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+            >
+              <option value="popularity">MOST POPULAR</option>
+              <option value="name">A-Z FILTERS</option>
+            </select>
+          </div>
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-          {people.map(person => (
-            <PersonCard key={person.id} person={person} currentUser={user} />
-          ))}
-        </div>
-
-        {/* Loading skeleton */}
-        {loading && people.length === 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-              <div
-                key={i}
-                className="bg-surface rounded-2xl animate-pulse"
-              >
-                <div className="aspect-square bg-surface-2 rounded-t-2xl" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 bg-surface-2 rounded w-3/4" />
-                  <div className="h-3 bg-surface-2 rounded w-1/2" />
-                  <div className="h-8 bg-surface-2 rounded mt-3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && people.length === 0 && (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">👤</div>
-            <h3 className="text-text-primary text-xl font-bold mb-2">
-              No people found
-            </h3>
-            <p className="text-text-muted">
-              Try a different search or filter
-            </p>
-          </div>
-        )}
-
-        {/* People grid */}
-        {people.length > 0 && (
-          <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {people.map(person => (
-                <PersonCard
-                  key={person.id}
-                  person={person}
-                  currentUser={user}
-                />
-              ))}
+        {/* Content Grid */}
+        <div className="p-8 md:p-12">
+          {loading && people.length === 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => <PersonSkeleton key={i} />)}
             </div>
-
-            {/* Load more */}
-            {hasMore && (
-              <div className="text-center mt-10">
-                <button
-                  onClick={loadMore}
-                  disabled={loading}
-                  className="bg-surface border border-border text-text-primary px-8 py-3 rounded-xl text-sm font-medium hover:border-brand hover:text-brand transition-all disabled:opacity-50"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-                      Loading...
-                    </span>
-                  ) : (
-                    'Load More'
-                  )}
-                </button>
+          ) : people.length === 0 ? (
+            <div className="text-center py-32 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+              <p className="text-4xl mb-4">👤</p>
+              <h3 className="text-text-muted font-black uppercase tracking-widest text-xs">No talent discovered in this search</h3>
+            </div>
+          ) : (
+            <div className="space-y-12">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                {people.map(person => (
+                  <PersonCard key={person.id} person={person} currentUser={user} />
+                ))}
               </div>
-            )}
-          </>
-        )}
+
+              {hasMore && (
+                <div className="text-center pt-8 border-t border-border/50">
+                  <button
+                    onClick={loadMore}
+                    disabled={loading}
+                    className="bg-surface border border-border text-text-primary px-12 py-4 rounded-lg text-[10px] font-black uppercase tracking-[0.2em] hover:border-brand hover:text-brand transition-all disabled:opacity-50"
+                  >
+                    {loading ? 'SYNCING...' : 'LOAD MORE TALENT'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
 }
 
-export default PeopleList
+export default PeopleList;

@@ -26,8 +26,8 @@ const FilmCard = ({ film }) => (
 
       {/* Rating */}
       {film.average_rating > 0 && (
-        <div className="absolute top-2 right-2 bg-[#D4A017] text-black text-xs font-bold px-2 py-0.5 rounded-lg">
-          {film.average_rating} ★
+        <div className="absolute top-2 right-2 bg-brand text-bg text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-brand/20">
+          OFFICIAL
         </div>
       )}
 
@@ -44,7 +44,30 @@ const FilmCard = ({ film }) => (
   </Link>
 )
 
+const Description = ({ text }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isLong = text.length > 280;
+  const displayText = isExpanded ? text : text.slice(0, 280) + (isLong ? '...' : '');
+
+  return (
+    <div className="space-y-4">
+      <p className="text-text-muted text-sm leading-relaxed max-w-2xl italic border-l-2 border-border pl-6">
+        {displayText}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-brand text-[9px] font-black uppercase tracking-widest hover:underline ml-7 transition-all"
+        >
+          {isExpanded ? 'READ LESS ↑' : 'READ FULL DESCRIPTION ↓'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const CompanyDetail = () => {
+
   const { id } = useParams()
   const navigate = useNavigate()
   const [company, setCompany] = useState(null)
@@ -139,7 +162,7 @@ const CompanyDetail = () => {
           </p>
           <button
             onClick={() => navigate('/companies')}
-            className="text-[#D4A017] hover:underline"
+            className="text-brand font-bold hover:underline tracking-widest uppercase text-[10px]"
           >
             Back to Companies
           </button>
@@ -149,76 +172,80 @@ const CompanyDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E]">
-
+    <div className="min-h-screen bg-bg">
       {/* Header */}
-      <div className="bg-[#13192B] border-b border-[#252D45]">
-        <div className="max-w-5xl mx-auto px-4 py-8 pt-24">
-          <div className="flex items-start gap-6">
+      <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-4 py-12 pt-24 border-x border-border relative z-10">
+          <div className="flex flex-col md:flex-row gap-10 items-center md:items-start text-center md:text-left">
 
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
+              <div className="absolute -inset-1 bg-brand/20 blur-xl rounded-full"></div>
               {company.logo_url ? (
                 <img
                   src={company.logo_url}
                   alt={company.name}
-                  className="w-24 h-24 rounded-2xl object-contain bg-white p-2"
+                  className="relative w-32 h-32 rounded-xl object-contain bg-white p-4 shadow-2xl border border-border"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-2xl bg-[#1C2440] flex items-center justify-center text-3xl font-bold text-[#D4A017]">
+                <div className="relative w-32 h-32 rounded-xl bg-surface flex items-center justify-center text-4xl font-heading font-bold text-brand shadow-2xl border border-border">
                   {company.name?.charAt(0)}
                 </div>
               )}
             </div>
 
             {/* Info */}
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-[#F5F0E8] mb-1">
-                {company.name}
-              </h1>
-
-              {company.founded_year && (
-                <p className="text-[#7A8099] text-sm mb-3">
-                  Est. {company.founded_year}
+            <div className="flex-1 space-y-6">
+              <div>
+                <div className="flex items-center gap-3 flex-wrap justify-center md:justify-start mb-2">
+                  <h1 className="text-3xl md:text-5xl font-heading font-bold text-text-primary tracking-tighter uppercase italic">
+                    {company.name}
+                  </h1>
+                  {company.founded_year && (
+                    <span className="bg-surface-2 text-text-muted text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border border-border">
+                      EST. {company.founded_year}
+                    </span>
+                  )}
+                </div>
+                
+                <p className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center md:justify-start gap-2">
+                  <span className="text-brand">OFFICIAL HUB</span> ARCHIVE VERIFIED
                 </p>
-              )}
+              </div>
 
               {company.description && (
-                <p className="text-[#F5F0E8] text-sm leading-relaxed mb-4 max-w-2xl">
-                  {company.description}
-                </p>
+                <Description text={company.description} />
               )}
 
-              {/* Stats */}
-              <div className="flex flex-wrap gap-6 mb-4">
-                <div>
-                  <p className="text-[#D4A017] text-2xl font-bold">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 gap-0 border border-border rounded-lg overflow-hidden bg-surface max-w-sm mx-auto md:mx-0 shadow-sm">
+                <div className="p-4 border-r border-border text-center">
+                  <p className="text-brand text-xl font-bold font-heading">
                     {totalFilms}
                   </p>
-                  <p className="text-[#7A8099] text-xs">
-                    Films
-                  </p>
+                  <p className="text-text-muted text-[9px] font-black uppercase tracking-widest">Films</p>
                 </div>
-                <div>
-                  <p className="text-[#D4A017] text-2xl font-bold">
+                <div className="p-4 text-center">
+                  <p className="text-text-primary text-xl font-bold font-heading">
                     {formatViewCount(totalViews)}
                   </p>
-                  <p className="text-[#7A8099] text-xs">
-                    Total Views
-                  </p>
+                  <p className="text-text-muted text-[9px] font-black uppercase tracking-widest">Total Views</p>
                 </div>
               </div>
 
               {/* Website */}
               {company.website && (
-                <a
-                  href={company.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-[#D4A017] text-black text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#D4A017]/90 transition-colors"
-                >
-                  Visit Website ↗
-                </a>
+                <div className="flex justify-center md:justify-start pt-2">
+                  <a
+                    href={company.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-brand text-white text-[10px] font-black uppercase tracking-widest px-8 py-4 rounded-lg hover:shadow-brand/20 hover:scale-[1.02] transition-all min-h-[44px]"
+                  >
+                    VISIT WEBSITE ↗
+                  </a>
+                </div>
               )}
             </div>
           </div>
@@ -226,73 +253,70 @@ const CompanyDetail = () => {
       </div>
 
       {/* Films Section */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto border-x border-border pb-20 min-h-[400px]">
+        {/* Section Header */}
+        <div className="p-8 md:p-12 border-b border-border bg-surface-2/5 relative overflow-hidden">
+           <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
+           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <h2 className="text-text-primary text-2xl font-bold font-heading tracking-tighter uppercase italic">
+                Credit Archive
+              </h2>
 
-        {/* Tabs */}
-        {availableTabs.length > 1 && (
-          <div className="flex gap-2 mb-6">
-            {availableTabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-5 py-2 rounded-full text-sm font-medium capitalize transition-all ${
-                  activeTab === tab
-                    ? 'bg-[#D4A017] text-black'
-                    : 'bg-[#13192B] text-[#7A8099] hover:text-[#F5F0E8]'
-                }`}
-              >
-                {tab} ({
-                  tab === 'production'
-                    ? productionFilms.length
-                    : distributionFilms.length
-                })
-              </button>
-            ))}
-          </div>
-        )}
+              {/* Tabs */}
+              {availableTabs.length > 1 && (
+                <div className="flex bg-surface p-1 rounded-lg border border-border w-fit overflow-x-auto no-scrollbar">
+                  {availableTabs.map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`px-6 py-2 rounded-md text-[10px] font-black tracking-widest uppercase transition-all whitespace-nowrap ${
+                        activeTab === tab
+                          ? 'bg-brand text-white shadow-md'
+                          : 'text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      {tab} ({tab === 'production' ? productionFilms.length : distributionFilms.length})
+                    </button>
+                  ))}
+                </div>
+              )}
+           </div>
+        </div>
 
         {/* Films grid */}
-        {activeTab === 'production' && (
-          <>
-            <h2 className="text-[#F5F0E8] text-xl font-bold mb-5">
-              Productions
-            </h2>
-            {productionFilms.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {productionFilms.map(film => (
-                  <FilmCard key={film.id} film={film} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-[#7A8099]">
-                  No production credits yet
-                </p>
-              </div>
-            )}
-          </>
-        )}
+        <div className="p-8 md:p-12">
+          {activeTab === 'production' && (
+            <>
+              {productionFilms.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                  {productionFilms.map(film => (
+                    <FilmCard key={film.id} film={film} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+                  <p className="text-text-muted font-black tracking-widest uppercase text-xs">No production credits archived</p>
+                </div>
+              )}
+            </>
+          )}
 
-        {activeTab === 'distribution' && (
-          <>
-            <h2 className="text-[#F5F0E8] text-xl font-bold mb-5">
-              Distribution
-            </h2>
-            {distributionFilms.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {distributionFilms.map(film => (
-                  <FilmCard key={film.id} film={film} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-[#7A8099]">
-                  No distribution credits yet
-                </p>
-              </div>
-            )}
-          </>
-        )}
+          {activeTab === 'distribution' && (
+            <>
+              {distributionFilms.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                  {distributionFilms.map(film => (
+                    <FilmCard key={film.id} film={film} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+                  <p className="text-text-muted font-black tracking-widest uppercase text-xs">No distribution credits archived</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

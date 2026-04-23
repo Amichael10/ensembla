@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { Skeleton } from '../components/ui/Skeleton'
 
 const formatTime = (timeStr) => {
     if (!timeStr) return ''
@@ -40,17 +41,131 @@ const getNext7Days = () => {
     return days
 }
 
-const formatBadgeColor = (format) => {
-    switch (format) {
-        case 'IMAX': return 'bg-[#D4A017] text-black'
-        case '3D': return 'bg-blue-600 text-white'
-        case '4DX': return 'bg-purple-600 text-white'
-        case 'Dolby': return 'bg-green-700 text-white'
-        default: return 'bg-[#252D45] text-[#F5F0E8]'
-    }
+const ShowtimeSkeleton = () => (
+    <div className="bg-surface rounded-xl overflow-hidden border border-border">
+        <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-border">
+            <div className="sm:w-48 lg:w-80 h-48 bg-surface-2/20 animate-pulse" />
+            <div className="flex-1 p-6 sm:p-8 space-y-4">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-3 w-1/4" />
+                <div className="flex gap-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-16" />
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            </div>
+        </div>
+    </div>
+)
+
+const ShowtimeGrid = ({ times }) => {
+    const [isExpanded, setIsExpanded] = useState(false)
+    const displayTimes = isExpanded ? times : times.slice(0, 4)
+    const hasMore = times.length > 4
+
+    return (
+        <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {displayTimes.map(showtime => (
+                    <a
+                        key={showtime.id}
+                        href={showtime.ticket_url || '#'}
+                        target={showtime.ticket_url ? "_blank" : "_self"}
+                        rel="noopener noreferrer"
+                        className={`flex flex-col items-center justify-center p-2.5 rounded-lg border transition-all text-center ${
+                            showtime.format !== 'Standard'
+                                ? 'bg-brand/10 border-brand/30 text-brand hover:bg-brand hover:text-white'
+                                : 'bg-surface border-border text-text-primary hover:border-brand hover:text-brand'
+                        } ${!showtime.ticket_url && 'cursor-default opacity-80'}`}
+                    >
+                        <span className="text-[10px] font-black tracking-tight">
+                            {formatTime(showtime.show_time)}
+                        </span>
+                        <span className="text-[8px] font-black uppercase tracking-widest mt-0.5 opacity-60">
+                            {showtime.format}
+                        </span>
+                    </a>
+                ))}
+            </div>
+            {hasMore && (
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-surface-2/30 hover:bg-surface-2 border border-border hover:border-brand rounded-lg text-[9px] font-black uppercase tracking-[0.2em] text-text-muted hover:text-brand transition-all flex items-center justify-center gap-3 group shadow-sm"
+                >
+                    {isExpanded ? (
+                        <>
+                            <span>COLLAPSE TIMES</span>
+                            <span className="text-xs group-hover:-translate-y-0.5 transition-transform">↑</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>+ {times.length - 4} MORE SHOWINGS</span>
+                            <span className="text-xs group-hover:translate-y-0.5 transition-transform">↓</span>
+                        </>
+                    )}
+                </button>
+            )}
+        </div>
+    )
+}
+
+const CinemaList = ({ filmCinemas }) => {
+    const [isExpanded, setIsExpanded] = useState(false)
+    const cinemasArray = Object.values(filmCinemas)
+    const displayCinemas = isExpanded ? cinemasArray : cinemasArray.slice(0, 3)
+    const hasMore = cinemasArray.length > 3
+
+    return (
+        <div className="space-y-6 mt-8">
+            {displayCinemas.map(({ cinema, times }) => (
+                <div key={cinema?.id} className="pt-6 border-t border-border/50 first:border-0 first:pt-0">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <Link to={`/cinemas/${cinema?.id}`} className="text-text-primary font-bold text-xs uppercase tracking-tight hover:text-brand transition-colors">
+                                {cinema?.name}
+                            </Link>
+                            <p className="text-text-muted text-[9px] font-black uppercase tracking-widest mt-0.5">
+                                📍 {cinema?.city} {cinema?.address && ` · ${cinema.address}`}
+                            </p>
+                        </div>
+                        {cinema?.google_maps_url && (
+                            <a href={cinema.google_maps_url} target="_blank" rel="noopener noreferrer" className="text-brand text-[9px] font-black uppercase tracking-widest hover:underline">
+                                DIRECTIONS →
+                            </a>
+                        )}
+                    </div>
+
+                    <ShowtimeGrid times={times} />
+                </div>
+            ))}
+
+            {hasMore && (
+                <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-full py-4 border-2 border-dashed border-border rounded-xl text-[10px] font-black uppercase tracking-[0.2em] text-text-muted hover:text-brand hover:border-brand transition-all bg-surface-2/5 flex items-center justify-center gap-3 group mt-4"
+                >
+                    {isExpanded ? (
+                        <>
+                            <span>COLLAPSE CINEMA LIST</span>
+                            <span className="text-xs group-hover:-translate-y-0.5 transition-transform">↑</span>
+                        </>
+                    ) : (
+                        <>
+                            <span>+ {cinemasArray.length - 3} MORE CINEMAS SHOWING THIS</span>
+                            <span className="text-xs group-hover:translate-y-0.5 transition-transform">↓</span>
+                        </>
+                    )}
+                </button>
+            )}
+        </div>
+    )
 }
 
 const Showtimes = () => {
+
     const [showtimes, setShowtimes] = useState([])
     const [loading, setLoading] = useState(true)
     const [selectedCity, setSelectedCity] = useState('All')
@@ -106,7 +221,6 @@ const Showtimes = () => {
         setLoading(false)
     }
 
-    // Filter showtimes
     const filtered = showtimes.filter(s => {
         const matchCity = selectedCity === 'All' ||
             s.cinemas?.city === selectedCity
@@ -118,7 +232,6 @@ const Showtimes = () => {
         return matchCity && matchDate && matchCinema && matchFormat
     })
 
-    // Group by film
     const groupedByFilm = filtered.reduce((acc, showtime) => {
         const filmId = showtime.film_id
         if (!acc[filmId]) {
@@ -139,290 +252,169 @@ const Showtimes = () => {
     }, {})
 
     return (
-        <div className="min-h-screen bg-[#0A0F1E] pt-20">
-            <div className="max-w-6xl mx-auto px-4 py-8">
-
-                {/* Page Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-[#F5F0E8] mb-2">
-                        Now Showing
+        <div className="min-h-screen bg-bg">
+            {/* Page Header */}
+            <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+                <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+                <div className="max-w-7xl mx-auto px-4 py-16 pt-32 border-x border-border relative z-10">
+                    <h1 className="text-4xl md:text-6xl font-heading font-bold text-text-primary mb-4 tracking-tighter uppercase italic">
+                        The Big Screen
                     </h1>
-                    <p className="text-[#7A8099]">
-                        Find Nigerian films showing in cinemas near you
+                    <p className="text-text-muted text-sm max-w-xl italic border-l-2 border-brand pl-6">
+                        Experience Nollywood as it was meant to be seen. Real-time showtimes across all major cinema chains in Nigeria.
                     </p>
                 </div>
+            </div>
 
-                {/* Date Tabs */}
-                <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
-                    {next7Days.map(date => (
-                        <button
-                            key={date}
-                            onClick={() => setSelectedDate(date)}
-                            className={`px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${selectedDate === date
-                                    ? 'bg-[#D4A017] text-black'
-                                    : 'bg-[#13192B] text-[#7A8099] hover:text-[#F5F0E8] border border-[#252D45]'
-                                }`}
-                        >
-                            {formatDate(date)}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Filters */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-                    {/* City filter */}
-                    <select
-                        value={selectedCity}
-                        onChange={e => setSelectedCity(e.target.value)}
-                        className="bg-[#13192B] border border-[#252D45] text-[#F5F0E8] rounded-xl px-4 py-2.5 text-sm focus:border-[#D4A017] focus:outline-none"
-                    >
-                        {cities.map(city => (
-                            <option key={city} value={city}>{city}</option>
-                        ))}
-                    </select>
-
-                    {/* Cinema filter */}
-                    <select
-                        value={selectedCinema}
-                        onChange={e => setSelectedCinema(e.target.value)}
-                        className="bg-[#13192B] border border-[#252D45] text-[#F5F0E8] rounded-xl px-4 py-2.5 text-sm focus:border-[#D4A017] focus:outline-none"
-                    >
-                        <option value="All">All Cinemas</option>
-                        {cinemas
-                            .filter(c => selectedCity === 'All' ||
-                                c.city === selectedCity)
-                            .map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
-                            ))
-                        }
-                    </select>
-
-                    {/* Format filter */}
-                    <select
-                        value={selectedFormat}
-                        onChange={e => setSelectedFormat(e.target.value)}
-                        className="bg-[#13192B] border border-[#252D45] text-[#F5F0E8] rounded-xl px-4 py-2.5 text-sm focus:border-[#D4A017] focus:outline-none"
-                    >
-                        {formats.map(f => (
-                            <option key={f} value={f}>{f}</option>
-                        ))}
-                    </select>
-
-                    {/* Results count */}
-                    <div className="flex items-center px-4 py-2.5 bg-[#13192B] border border-[#252D45] rounded-xl">
-                        <span className="text-[#7A8099] text-sm">
-                            {Object.keys(groupedByFilm).length} film
-                            {Object.keys(groupedByFilm).length !== 1 ? 's' : ''}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Loading */}
-                {loading && (
-                    <div className="space-y-4">
-                        {[1, 2, 3].map(i => (
-                            <div
-                                key={i}
-                                className="bg-[#13192B] rounded-2xl h-48 animate-pulse"
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* Empty state */}
-                {!loading && Object.keys(groupedByFilm).length === 0 && (
-                    <div className="text-center py-20">
-                        <div className="text-6xl mb-4">🎭</div>
-                        <h3 className="text-[#F5F0E8] text-xl font-bold mb-2">
-                            No films showing
-                        </h3>
-                        <p className="text-[#7A8099]">
-                            No Nollywood films are showing on this date.
-                        </p>
-                        <p className="text-[#7A8099] text-sm mt-1">
-                            Try a different date or city.
-                        </p>
-                    </div>
-                )}
-
-                {/* Showtimes grouped by film */}
-                {!loading && (
-                    <div className="space-y-6">
-                        {Object.values(groupedByFilm).map(({ film, cinemas: filmCinemas }) => (
-                            <div
-                                key={film?.id}
-                                className="bg-[#13192B] rounded-2xl overflow-hidden border border-[#252D45]"
-                            >
-                                {/* Film header */}
-                                <div className="flex gap-4 p-5">
-                                    {/* Poster */}
-                                    <Link
-                                        to={`/films/${film?.id}`}
-                                        className="flex-shrink-0"
+            <div className="max-w-7xl mx-auto border-x border-border min-h-[600px] pb-20">
+                {/* Controls Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border border-b border-border">
+                    {/* Date Sidebar */}
+                    <div className="lg:col-span-1 p-8 space-y-8 bg-surface-2/5">
+                        <div>
+                            <h3 className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-4">SELECT DATE</h3>
+                            <div className="flex flex-col gap-2">
+                                {next7Days.map(date => (
+                                    <button
+                                        key={date}
+                                        onClick={() => setSelectedDate(date)}
+                                        className={`w-full flex items-center justify-between p-4 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                            selectedDate === date
+                                                ? 'bg-brand text-white shadow-lg shadow-brand/20'
+                                                : 'bg-surface border border-border text-text-muted hover:text-text-primary'
+                                        }`}
                                     >
-                                        {film?.poster_url ? (
-                                            <img
-                                                src={film.poster_url}
-                                                alt={film.title}
-                                                className="w-20 h-28 object-cover rounded-xl hover:opacity-80 transition-opacity"
-                                            />
-                                        ) : (
-                                            <div className="w-20 h-28 bg-[#1C2440] rounded-xl flex items-center justify-center">
-                                                <span className="text-2xl">🎬</span>
-                                            </div>
-                                        )}
-                                    </Link>
+                                        <span>{formatDate(date)}</span>
+                                        {selectedDate === date && <span className="animate-pulse">→</span>}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
 
-                                    {/* Film info */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div>
+                    {/* Main Filters & Content */}
+                    <div className="lg:col-span-3">
+                        <div className="p-8 border-b border-border bg-surface-2/5">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* City filter */}
+                                <div className="space-y-2">
+                                    <label className="text-text-muted text-[9px] font-black uppercase tracking-widest pl-1">CITY</label>
+                                    <select
+                                        value={selectedCity}
+                                        onChange={e => setSelectedCity(e.target.value)}
+                                        className="w-full bg-surface border border-border text-text-primary rounded-lg px-4 py-3 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+                                    >
+                                        {cities.map(city => (
+                                            <option key={city} value={city}>{city.toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Cinema filter */}
+                                <div className="space-y-2">
+                                    <label className="text-text-muted text-[9px] font-black uppercase tracking-widest pl-1">CINEMA</label>
+                                    <select
+                                        value={selectedCinema}
+                                        onChange={e => setSelectedCinema(e.target.value)}
+                                        className="w-full bg-surface border border-border text-text-primary rounded-lg px-4 py-3 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+                                    >
+                                        <option value="All">ALL CINEMAS</option>
+                                        {cinemas
+                                            .filter(c => selectedCity === 'All' || c.city === selectedCity)
+                                            .map(c => (
+                                                <option key={c.id} value={c.id}>{c.name.toUpperCase()}</option>
+                                            ))
+                                        }
+                                    </select>
+                                </div>
+
+                                {/* Format filter */}
+                                <div className="space-y-2">
+                                    <label className="text-text-muted text-[9px] font-black uppercase tracking-widest pl-1">EXPERIENCE</label>
+                                    <select
+                                        value={selectedFormat}
+                                        onChange={e => setSelectedFormat(e.target.value)}
+                                        className="w-full bg-surface border border-border text-text-primary rounded-lg px-4 py-3 text-[10px] font-black tracking-widest focus:border-brand focus:outline-none transition-all"
+                                    >
+                                        {formats.map(f => (
+                                            <option key={f} value={f}>{f.toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-8 md:p-12">
+                            {/* Loading */}
+                            {loading ? (
+                                <div className="space-y-8">
+                                    {[1, 2, 3].map(i => <ShowtimeSkeleton key={i} />)}
+                                </div>
+                            ) : Object.keys(groupedByFilm).length === 0 ? (
+                                <div className="text-center py-32 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+                                    <p className="text-4xl mb-4">🎭</p>
+                                    <h3 className="text-text-muted font-black uppercase tracking-widest text-xs">No screenings archived for this search</h3>
+                                </div>
+                            ) : (
+                                <div className="space-y-12">
+                                    {Object.values(groupedByFilm).map(({ film, cinemas: filmCinemas }) => (
+                                        <div
+                                            key={film?.id}
+                                            className="group bg-surface rounded-xl overflow-hidden border border-border hover:border-brand transition-all shadow-sm"
+                                        >
+                                            {/* Film Header */}
+                                            <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-border">
                                                 <Link
                                                     to={`/films/${film?.id}`}
-                                                    className="text-[#F5F0E8] font-bold text-lg hover:text-[#D4A017] transition-colors"
+                                                    className="sm:w-48 lg:w-80 flex-shrink-0 relative overflow-hidden"
                                                 >
-                                                    {film?.title}
-                                                </Link>
-                                                <p className="text-[#7A8099] text-sm mt-0.5">
-                                                    {film?.year}
-                                                </p>
-                                            </div>
-                                            {film?.average_rating > 0 && (
-                                                <span className="bg-[#D4A017] text-black text-sm font-bold px-3 py-1 rounded-xl flex-shrink-0">
-                                                    {film.average_rating} ★
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Genres */}
-                                        <div className="flex flex-wrap gap-1.5 mt-2">
-                                            {film?.film_genres?.map(fg => (
-                                                <span
-                                                    key={fg.genres?.name}
-                                                    className="text-xs bg-[#252D45] text-[#7A8099] px-2 py-0.5 rounded-full"
-                                                >
-                                                    {fg.genres?.name}
-                                                </span>
-                                            ))}
-                                        </div>
-
-                                        {/* NOW SHOWING badge */}
-                                        <span className="inline-block mt-2 bg-[#C1440E]/20 text-[#C1440E] text-xs font-bold px-3 py-1 rounded-full border border-[#C1440E]/30">
-                                            NOW SHOWING
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Cinemas and times */}
-                                <div className="border-t border-[#252D45]">
-                                    {Object.values(filmCinemas).map(
-                                        ({ cinema, times }) => (
-                                            <div
-                                                key={cinema?.id}
-                                                className="p-5 border-b border-[#252D45]/50 last:border-0"
-                                            >
-                                                {/* Cinema name */}
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Link
-                                                                to={`/cinemas/${cinema?.id}`}
-                                                                className="text-[#F5F0E8] font-medium text-sm hover:text-[#D4A017] transition-colors"
-                                                            >
-                                                                {cinema?.name}
-                                                            </Link>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full ${cinema?.chain === 'Filmhouse'
-                                                                    ? 'bg-[#D4A017]/20 text-[#D4A017]'
-                                                                    : cinema?.chain === 'Genesis'
-                                                                        ? 'bg-blue-900/40 text-blue-400'
-                                                                        : cinema?.chain === 'Silverbird'
-                                                                            ? 'bg-purple-900/40 text-purple-400'
-                                                                            : 'bg-[#252D45] text-[#7A8099]'
-                                                                }`}>
-                                                                {cinema?.chain}
-                                                            </span>
+                                                    {film?.poster_url ? (
+                                                        <img
+                                                            src={film.poster_url}
+                                                            alt={film.title}
+                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-48 sm:h-full bg-surface-2 flex items-center justify-center">
+                                                            <span className="text-3xl">🎬</span>
                                                         </div>
-                                                        <p className="text-[#7A8099] text-xs mt-0.5">
-                                                            📍 {cinema?.city}
-                                                            {cinema?.address &&
-                                                                ` · ${cinema.address}`}
-                                                        </p>
-                                                    </div>
-                                                    {cinema?.google_maps_url && (
-                                                        <a
-                                                        href={cinema.google_maps_url}
-                              target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-[#D4A017] text-xs hover:underline"
-                            >
-                                                    Directions ↗
-                                                </a>
-                          )}
-                                            </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-bg/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                </Link>
 
-                        {/* Time pills */ }
-                                        < div className = "flex flex-wrap gap-2" >
-                                        {
-                                            times.map(showtime => (
-                                                showtime.ticket_url ? (
-                                                  <a
-                                                    key={showtime.id}
-                                                    href={showtime.ticket_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className={`inline-flex flex-col items-center px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105 hover:shadow-lg ${showtime.format !== 'Standard'
-                                                        ? 'bg-[#D4A017] text-black hover:bg-[#D4A017]/90'
-                                                        : 'bg-[#1C2440] text-[#F5F0E8] hover:bg-[#252D45] border border-[#252D45]'
-                                                    }`}
-                                        >
-                                        <span>
-                                            {formatTime(showtime.show_time)}
-                                        </span>
-                                {
-                                            showtime.format !== 'Standard' && (
-                                                <span className={`text-xs mt-0.5 font-bold ${showtime.format !== 'Standard'
-                                                        ? 'text-black'
-                                                        : 'text-[#7A8099]'
-                                                    }`}>
-                                                    {showtime.format}
-                                                </span>
-                                            )
-                                        }
-                              </a>
-                                ) : (
-                                <div
-                                    key={showtime.id}
-                                    className={`inline-flex flex-col items-center px-4 py-2 rounded-xl text-sm font-medium ${showtime.format !== 'Standard'
-                                            ? 'bg-[#D4A017]/20 text-[#D4A017] border border-[#D4A017]/30'
-                                            : 'bg-[#1C2440] text-[#F5F0E8] border border-[#252D45]'
-                                        }`}
-                                >
-                                    <span>
-                                        {formatTime(showtime.show_time)}
-                                    </span>
-                                    {showtime.format !== 'Standard' && (
-                                        <span className="text-xs mt-0.5 font-bold">
-                                            {showtime.format}
-                                        </span>
-                                    )}
+                                                <div className="flex-1 p-6 sm:p-8">
+                                                    <div className="flex items-start justify-between gap-4 mb-4">
+                                                        <div>
+                                                            <Link
+                                                                to={`/films/${film?.id}`}
+                                                                className="text-text-primary font-bold text-xl uppercase tracking-tighter group-hover:text-brand transition-colors"
+                                                            >
+                                                                {film?.title}
+                                                            </Link>
+                                                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest mt-1">
+                                                                RELEASED: {film?.year} • {film?.average_rating} ★ RATING
+                                                            </p>
+                                                        </div>
+                                                        <span className="bg-brand/10 text-brand text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded border border-brand/30">
+                                                            IN CINEMAS
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Cinemas & Times */}
+                                                    <CinemaList filmCinemas={filmCinemas} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                                )
-                          ))}
-                            </div>
-                      </div>
-                )
-                  )}
+                            )}
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
-    ))
-}
-          </div >
-        )}
-      </div >
-    </div >
-  )
+    )
 }
 
 export default Showtimes

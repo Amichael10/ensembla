@@ -70,9 +70,9 @@ export default function Navbar() {
       <nav 
         className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 border-b border-transparent
           ${isScrolled ? 'bg-surface/80 backdrop-blur-xl border-border h-[64px]' : 'bg-transparent h-[80px] md:h-[90px]'}
-          flex items-center justify-between px-4 md:px-8 lg:px-12
         `}
       >
+        <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-4 sm:px-6 lg:px-8 border-x border-white/5">
         {/* Left: Logo */}
         <Link to="/" className="flex items-center gap-2 group shrink-0">
           <div className="w-10 h-10 bg-brand rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand/20 group-hover:scale-110 transition-transform">
@@ -136,8 +136,14 @@ export default function Navbar() {
               <div className="relative">
                 <button 
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-1 pl-1 pr-3 bg-surface-2 hover:bg-surface-3 border border-border rounded-full transition-all active:scale-95 shadow-sm"
+                  className="flex items-center gap-3 p-1 pl-3 pr-3 bg-surface-2 hover:bg-surface-3 border border-border rounded-full transition-all active:scale-95 shadow-sm group"
                 >
+                  <div className="text-right hidden sm:block">
+                    <p className="text-[10px] font-black uppercase tracking-tight text-text-primary group-hover:text-brand transition-colors">{user.name}</p>
+                    <p className="text-[8px] font-bold text-brand uppercase tracking-widest">
+                      {user.role === 'user' ? 'FAN' : user.role === 'professional' ? 'PRO' : user.role}
+                    </p>
+                  </div>
                   <div className="w-8 h-8 rounded-full bg-brand/20 border border-brand/30 flex items-center justify-center text-brand font-bold text-xs">
                     {user.name?.charAt(0) || 'U'}
                   </div>
@@ -157,7 +163,10 @@ export default function Navbar() {
                       )}
                     </div>
                     <div className="p-2">
-                      <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors">
+                      <Link 
+                        to={(user.role === 'professional' || user.role === 'admin') ? "/pro-dashboard" : "/dashboard"} 
+                        className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors"
+                      >
                         <User size={16} />
                         My Profile
                       </Link>
@@ -188,7 +197,8 @@ export default function Navbar() {
             </Link>
           )}
         </div>
-      </nav>
+      </div>
+    </nav>
 
       {/* Search Overlay */}
       {isSearchOpen && (

@@ -216,10 +216,38 @@ export default function AdminYouTubeVideos() {
   const [syncing,      setSyncing]      = useState(false);
   const [selectedIds,   setSelectedIds]   = useState(new Set());
   const [isBulkAction,  setIsBulkAction]  = useState(false);
+  
+  // Pagination State
+  const [page, setPage] = useState(0);
+  const [pageSize] = useState(100);
+  const [totalCount, setTotalCount] = useState(0);
+  const [globalStats, setGlobalStats] = useState({ total: 0, pending: 0, verified: 0, unmatched: 0, hidden: 0 });
+
+  const fetchGlobalStats = useCallback(async () => {
+    // We can run these in parallel for speed
+    const [totalRes, pendingRes, verifiedRes, unmatchedRes, hiddenRes] = await Promise.all([
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).not('film_id', 'is', null).filter('films.needs_review', 'eq', true).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).not('film_id', 'is', null).filter('films.needs_review', 'eq', false).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).is('film_id', null).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', true).gte('duration_seconds', FILM_MIN)
+    ]);
+
+    setGlobalStats({
+      total: totalRes.count || 0,
+      pending: pendingRes.count || 0,
+      verified: verifiedRes.count || 0,
+      unmatched: unmatchedRes.count || 0,
+      hidden: hiddenRes.count || 0
+    });
+    setTotalCount(totalRes.count || 0);
+  }, []);
 
   const fetchVideos = useCallback(async () => {
     setLoading(true);
-    // Add logic to bypass cache if needed
+    const from = page * pageSize;
+    const to = from + pageSize - 1;
+
     let query = supabase
       .from('channel_videos')
       .select(`
@@ -227,21 +255,35 @@ export default function AdminYouTubeVideos() {
         duration_seconds, is_hidden, film_id, match_status,
         channels(id, name),
         films(id, title, needs_review, release_type, year, synopsis)
-      `)
+      `, { count: 'exact' })
       .gte('duration_seconds', FILM_MIN)
       .order('published_at', { ascending: false });
 
-    // Force fresh data by limiting and ordering
     if (channelFilter !== 'all') query = query.eq('channel_id', channelFilter);
     if (searchQuery.trim()) query = query.ilike('title', `%${searchQuery}%`);
+    
+    // Apply Status Filter at Database Level
+    if (statusFilter === 'needs_review') query = query.not('film_id', 'is', null).filter('films.needs_review', 'eq', true);
+    if (statusFilter === 'matched')      query = query.not('film_id', 'is', null).filter('films.needs_review', 'eq', false);
+    if (statusFilter === 'unmatched')    query = query.is('film_id', null);
+    if (statusFilter === 'hidden')       query = query.eq('is_hidden', true);
 
-    const { data, error } = await query.limit(500);
+    const { data, error, count } = await query.range(from, to);
+    
     if (error) console.error('Fetch Error:', error);
     setVideos(data || []);
+    setTotalCount(count || 0);
     setLoading(false);
-  }, [channelFilter, searchQuery]);
+  }, [channelFilter, searchQuery, statusFilter, page, pageSize]);
 
-  useEffect(() => { fetchVideos(); setSelectedIds(new Set()); }, [fetchVideos]);
+  useEffect(() => { 
+    fetchVideos(); 
+    fetchGlobalStats();
+    setSelectedIds(new Set()); 
+  }, [fetchVideos, fetchGlobalStats]);
+  
+  // Reset to page 0 when filters change
+  useEffect(() => { setPage(0); }, [channelFilter, searchQuery, statusFilter]);
 
   const toggleSelect = id => {
     setSelectedIds(prev => {
@@ -258,86 +300,78 @@ export default function AdminYouTubeVideos() {
   };
 
   const handleBulkAction = async (action) => {
-    setIsBulkAction(true);
-    const ids = Array.from(selectedIds);
-    const selectedVideos = videos.filter(v => ids.includes(v.id));
-
     try {
+      setIsBulkAction(true);
+      const ids = Array.from(selectedIds);
+      const actionVideos = videos.filter(v => ids.includes(v.id));
+      const results = {};
+
       if (action === 'create_films') {
-        toast.loading(`Processing ${ids.length} videos...`, { id: 'bulk' });
+        toast.loading(`Processing ${ids.length} films on server...`, { id: 'bulk' });
         
-        const updatedVideos = [...videos];
-        let successCount = 0;
-        let failCount = 0;
+        const { data: rpcData, error: rpcErr } = await supabase.rpc('batch_create_films_from_videos', {
+          video_db_ids: ids
+        });
 
-        for (const v of selectedVideos) {
-           if (!v.film_id) {
-             // 1. Create the film
-             const { data: f, error: fErr } = await supabase.from('films').insert({ 
-               title: v.title, 
-               release_type: 'youtube', 
-               needs_review: true,
-               synopsis: 'Imported from YouTube.'
-             }).select().single();
-             
-             if (fErr) { 
-               console.error('Film Creation Error:', fErr); 
-               toast.error(`'${v.title}' failed: ${fErr.message}`, { id: `err-${v.id}` });
-               failCount++;
-               continue; 
-             }
-
-             if (f) {
-               // 2. Link the video
-               const { error: vErr } = await supabase.from('channel_videos').update({ film_id: f.id }).eq('id', v.id);
-               if (vErr) {
-                 console.error('Linking Error:', vErr);
-                 toast.error(`Link failed for '${v.title}': ${vErr.message}`, { id: `err-link-${v.id}` });
-                 failCount++;
-               } else {
-                 successCount++;
-                 // Update the local copy
-                 const idx = updatedVideos.findIndex(vid => vid.id === v.id);
-                 if (idx !== -1) {
-                   updatedVideos[idx] = { ...updatedVideos[idx], film_id: f.id, films: f };
-                 }
-               }
-             }
-           }
-        }
-        
-        setVideos(updatedVideos);
-        if (successCount > 0) toast.success(`Created ${successCount} films!`, { id: 'bulk' });
-        if (failCount > 0) toast.error(`${failCount} items failed.`, { id: 'bulk-fail' });
-
-      } else if (action === 'certify') {
-        const filmIds = selectedVideos.map(v => v.film_id).filter(Boolean);
-        const { error } = await supabase.from('films').update({ needs_review: false }).in('id', filmIds);
-        if (error) {
-           toast.error(`Certify failed: ${error.message}`, { id: 'bulk' });
+        if (rpcErr) {
+          console.error('Batch RPC Error:', rpcErr);
+          toast.error(`Critical Error: ${rpcErr.message}`, { id: 'bulk' });
         } else {
-           setVideos(prev => prev.map(v => ids.includes(v.id) ? { ...v, films: { ...v.films, needs_review: false } } : v));
-           toast.success(`Certified ${filmIds.length} films`, { id: 'bulk' });
+          const processed = rpcData || [];
+          
+          // Use real Film IDs from the database immediately
+          processed.forEach(item => {
+             results[item.video_id] = { film_id: item.new_film_id, match_status: 'manual' };
+          });
+
+          if (processed.length < ids.length) {
+            toast.error(`${ids.length - processed.length} items failed or were duplicates.`, { id: 'bulk', duration: 4000 });
+          } else {
+            toast.success(`Successfully processed ${processed.length} items!`, { id: 'bulk' });
+          }
+        }
+      } else if (action === 'certify') {
+        const filmIds = actionVideos.map(v => v.film_id).filter(id => id && typeof id === 'string' && id.length > 30);
+        
+        if (filmIds.length > 0) {
+          toast.loading(`Certifying ${filmIds.length} films...`, { id: 'bulk' });
+          const { data: count, error: certifyErr } = await supabase.rpc('batch_certify_films', {
+            film_uuids: filmIds
+          });
+
+          if (certifyErr) {
+            console.error('Batch Certify Error:', certifyErr);
+            toast.error(`Certify failed: ${certifyErr.message}`, { id: 'bulk' });
+          } else {
+             actionVideos.forEach(v => {
+               if (v.film_id) results[v.id] = { films: { ...v.films, needs_review: false } };
+             });
+             toast.success(`Verified ${count || filmIds.length} films!`, { id: 'bulk' });
+          }
+        } else {
+           toast.error("Please select 'Matched' items to verify.", { id: 'bulk' });
         }
       } else if (action === 'hide') {
         const { error } = await supabase.from('channel_videos').update({ is_hidden: true }).in('id', ids);
         if (error) {
            toast.error(`Hide failed: ${error.message}`, { id: 'bulk' });
         } else {
-           setVideos(prev => prev.map(v => ids.includes(v.id) ? { ...v, is_hidden: true } : v));
-           toast.success(`Hidden ${ids.length} videos`, { id: 'bulk' });
+          ids.forEach(id => { results[id] = { is_hidden: true }; });
+          toast.success(`Hidden ${ids.length} videos`, { id: 'bulk' });
         }
       }
 
+      // Apply changes to local state immediately
+      setVideos(prev => prev.map(v => results[v.id] ? { ...v, ...results[v.id] } : v));
       setSelectedIds(new Set());
-      // No immediate fetchVideos() - rely on optimistic 'setVideos(updatedVideos)' 
-      // to avoid stale overwrites. User can refresh manually or wait for next interval.
     } catch (e) {
       console.error('Bulk Action Exception:', e);
-      toast.error(`Fatal Error: ${e.message}`, { id: 'bulk' });
-      fetchVideos();
+      toast.error(`Unexpected Error: ${e.message}`, { id: 'bulk' });
+    } finally {
+      setIsBulkAction(false);
+      // Background refresh to get full metadata
+      setTimeout(() => fetchVideos(), 5000);
     }
-    setIsBulkAction(false);
   };
 
   useEffect(() => {
@@ -428,20 +462,14 @@ export default function AdminYouTubeVideos() {
   };
 
   const stats = useMemo(() => ({
-    total: videos.length,
-    pending: videos.filter(v => v.film_id && v.films?.needs_review).length,
-    verified: videos.filter(v => v.film_id && !v.films?.needs_review).length,
-    unmatched: videos.filter(v => !v.film_id).length,
-    hidden: videos.filter(v => v.is_hidden).length,
-  }), [videos]);
+    total: globalStats.total,
+    pending: globalStats.pending,
+    verified: globalStats.verified,
+    unmatched: globalStats.unmatched,
+    hidden: globalStats.hidden,
+  }), [globalStats]);
 
-  const filtered = videos.filter(v => {
-    if (statusFilter === 'needs_review' && !(v.film_id && v.films?.needs_review)) return false;
-    if (statusFilter === 'matched'   && !(v.film_id && !v.films?.needs_review)) return false;
-    if (statusFilter === 'unmatched' && v.film_id) return false;
-    if (statusFilter === 'hidden'    && !v.is_hidden) return false;
-    return true;
-  });
+  const filtered = videos; // Already filtered by DB
 
   return (
     <div className="space-y-10 animate-in fade-in duration-500 pb-32">
@@ -659,6 +687,31 @@ export default function AdminYouTubeVideos() {
               </tbody>
             </table>
           )}
+        </div>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between pt-10 border-t border-border/50">
+        <div className="space-y-1">
+          <p className="text-[10px] font-black text-text-muted uppercase tracking-widest opacity-60">
+            Showing {page * pageSize + 1} - {Math.min((page + 1) * pageSize, totalCount)} of {totalCount} Records
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button 
+            disabled={page === 0 || loading}
+            onClick={() => setPage(p => p - 1)}
+            className="h-12 px-8 rounded-xl border border-border bg-surface-2 text-text-primary text-[10px] font-black uppercase tracking-widest hover:border-brand/30 transition-all disabled:opacity-30"
+          >
+            Previous
+          </button>
+          <button 
+            disabled={(page + 1) * pageSize >= totalCount || loading}
+            onClick={() => setPage(p => p + 1)}
+            className="h-12 px-8 rounded-xl bg-brand text-white text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-brand/20 disabled:opacity-30"
+          >
+            Next
+          </button>
         </div>
       </div>
 

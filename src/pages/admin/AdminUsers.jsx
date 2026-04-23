@@ -22,6 +22,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
+      console.log('--- ADMIN DEBUG: Fetching Users ---');
       const { data, error } = await supabase
         .from('users')
         .select(`
@@ -30,11 +31,16 @@ export default function AdminUsers() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Error:', error);
+        toast.error(`Load failed: ${error.message}`);
+        throw error;
+      }
+      
+      console.log('Raw Data Received:', data);
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      toast.error('Failed to load users');
+      console.error('Fetch Exception:', error);
     } finally {
       setIsLoading(false);
     }
@@ -60,13 +66,16 @@ export default function AdminUsers() {
         new_role: newRole 
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating role:', error);
+        toast.error(`Update failed: ${error.message}`);
+        throw error;
+      }
 
       toast.success(`Role updated to ${newRole}`);
       setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
     } catch (error) {
       console.error('Error updating role:', error);
-      toast.error('Failed to update role');
     } finally {
       setIsProcessing(false);
       setRoleChangeData(null);
@@ -165,9 +174,9 @@ export default function AdminUsers() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
         {[
           { label: 'Total Base', count: users.length, icon: '👥', color: 'from-brand/10 to-transparent' },
+          { label: 'Fans', count: users.filter(u => u.role === 'user').length, icon: '🎭', color: 'from-blue-500/10 to-transparent' },
           { label: 'Professionals', count: users.filter(u => u.role === 'professional').length, icon: '🌟', color: 'from-orange-500/10 to-transparent' },
           { label: 'Lumi Admins', count: users.filter(u => u.role === 'admin').length, icon: '🛡️', color: 'from-brand/10 to-transparent' },
-          { label: 'Banned Users', count: users.filter(u => u.is_banned).length, icon: '⛔', color: 'from-red-500/10 to-transparent' }
         ].map((stat, i) => (
           <div key={i} className="relative group bg-surface border border-border p-5 rounded-md overflow-hidden transition-all duration-300 hover:border-brand/30">
             <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-br ${stat.color} opacity-40`} />
@@ -204,9 +213,9 @@ export default function AdminUsers() {
               className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-text-primary text-sm focus:border-brand focus:outline-none appearance-none cursor-pointer pr-10"
             >
               <option value="All">ALL ROLES</option>
-              <option value="Fan">FANS / GENERAL</option>
-              <option value="Professional">PROFESSIONALS</option>
-              <option value="Admin">SYSTEM ADMINS</option>
+              <option value="user">FANS / GENERAL</option>
+              <option value="professional">PROFESSIONALS</option>
+              <option value="admin">SYSTEM ADMINS</option>
             </select>
           </div>
         </div>
@@ -310,7 +319,7 @@ export default function AdminUsers() {
                             disabled={u.id === currentUser?.id || isProcessing}
                             className="bg-surface-2 border border-border text-text-primary rounded-md pl-3 pr-8 py-2 text-[10px] font-black uppercase tracking-widest focus:border-brand focus:outline-none appearance-none disabled:opacity-50 cursor-pointer group-hover/select:border-brand/50 transition-all"
                           >
-                            <option value="fan">FAN</option>
+                            <option value="user">FAN</option>
                             <option value="professional">PRO</option>
                             <option value="admin">ADMIN</option>
                           </select>

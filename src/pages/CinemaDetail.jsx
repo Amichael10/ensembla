@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+import { Skeleton } from '../components/ui/Skeleton'
+
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
   const [hours, minutes] = timeStr.split(':')
@@ -28,7 +30,7 @@ const formatDate = (dateStr) => {
 }
 
 const chainColors = {
-  Filmhouse: 'bg-[#D4A017]/20 text-[#D4A017]',
+  Filmhouse: 'bg-brand/20 text-brand',
   Genesis: 'bg-blue-900/40 text-blue-400',
   Silverbird: 'bg-purple-900/40 text-purple-400',
   Ozone: 'bg-green-900/40 text-green-400',
@@ -36,7 +38,118 @@ const chainColors = {
   Kada: 'bg-teal-900/40 text-teal-400'
 }
 
+const CinemaDetailSkeleton = () => (
+    <div className="min-h-screen bg-bg">
+        <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 py-12 pt-24 border-x border-border relative z-10">
+                <div className="flex flex-col md:flex-row gap-8 items-center md:items-start animate-pulse">
+                    <Skeleton className="w-32 h-32 rounded-xl" />
+                    <div className="flex-1 space-y-4">
+                        <Skeleton className="h-10 w-1/3" />
+                        <Skeleton className="h-4 w-1/4" />
+                        <div className="grid grid-cols-3 gap-0 border border-border rounded-lg max-w-md">
+                            <div className="p-4 border-r border-border"><Skeleton className="h-8 w-full" /></div>
+                            <div className="p-4 border-r border-border"><Skeleton className="h-8 w-full" /></div>
+                            <div className="p-4"><Skeleton className="h-8 w-full" /></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div className="max-w-7xl mx-auto border-x border-border">
+            <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
+                <div className="lg:col-span-1 p-8 space-y-4">
+                    <Skeleton className="h-4 w-1/2" />
+                    <div className="space-y-2">
+                        {[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                    </div>
+                </div>
+                <div className="lg:col-span-3 p-8 space-y-8">
+                    <Skeleton className="h-8 w-1/4" />
+                    {[1,2].map(i => (
+                        <div key={i} className="bg-surface rounded-xl border border-border h-48 animate-pulse" />
+                    ))}
+                </div>
+            </div>
+        </div>
+    </div>
+)
+
+const ShowtimeGrid = ({ times }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const displayTimes = isExpanded ? times : times.slice(0, 4)
+  const hasMore = times.length > 4
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        {displayTimes.map(showtime => (
+          <a
+            key={showtime.id}
+            href={showtime.ticket_url || '#'}
+            target={showtime.ticket_url ? "_blank" : "_self"}
+            rel="noopener noreferrer"
+            className={`flex flex-col items-center justify-center p-3 rounded-lg border transition-all text-center ${
+              showtime.format !== 'Standard'
+                ? 'bg-brand/10 border-brand/30 text-brand hover:bg-brand hover:text-white'
+                : 'bg-surface border-border text-text-primary hover:border-brand hover:text-brand'
+            } ${!showtime.ticket_url && 'cursor-default opacity-80'}`}
+          >
+            <span className="text-[11px] font-black tracking-tight">
+              {formatTime(showtime.show_time)}
+            </span>
+            <span className="text-[9px] font-black uppercase tracking-widest mt-1 opacity-60">
+              {showtime.format}
+            </span>
+          </a>
+        ))}
+      </div>
+      {hasMore && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full sm:w-auto px-6 py-2.5 bg-surface-2/30 hover:bg-surface-2 border border-border hover:border-brand rounded-lg text-[9px] font-black uppercase tracking-[0.2em] text-text-muted hover:text-brand transition-all flex items-center justify-center gap-3 group shadow-sm"
+        >
+          {isExpanded ? (
+            <>
+              <span>COLLAPSE TIMES</span>
+              <span className="text-xs group-hover:-translate-y-0.5 transition-transform">↑</span>
+            </>
+          ) : (
+            <>
+              <span>+ {times.length - 4} MORE SHOWINGS</span>
+              <span className="text-xs group-hover:translate-y-0.5 transition-transform">↓</span>
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  )
+}
+
+const Description = ({ text }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isLong = text.length > 280;
+  const displayText = isExpanded ? text : text.slice(0, 280) + (isLong ? '...' : '');
+
+  return (
+    <div className="space-y-4">
+      <p className="text-text-muted text-sm leading-relaxed max-w-2xl italic border-l-2 border-border pl-6">
+        {displayText}
+      </p>
+      {isLong && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-brand text-[9px] font-black uppercase tracking-widest hover:underline ml-7 transition-all"
+        >
+          {isExpanded ? 'READ LESS ↑' : 'READ FULL DESCRIPTION ↓'}
+        </button>
+      )}
+    </div>
+  );
+};
+
 const CinemaDetail = () => {
+
   const { id } = useParams()
   const navigate = useNavigate()
   const [cinema, setCinema] = useState(null)
@@ -115,35 +228,21 @@ const CinemaDetail = () => {
   }, {})
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0A0F1E] pt-20">
-        <div className="max-w-5xl mx-auto px-4 py-8 animate-pulse">
-          <div className="h-48 bg-[#13192B] rounded-2xl mb-6" />
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div
-                key={i}
-                className="h-40 bg-[#13192B] rounded-2xl"
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    )
+    return <CinemaDetailSkeleton />
   }
 
   if (error || !cinema) {
     return (
-      <div className="min-h-screen bg-[#0A0F1E] pt-20 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 text-lg mb-4">
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <div className="max-w-7xl mx-auto px-4 border-x border-border py-32 text-center w-full">
+          <p className="text-red-400 text-lg mb-8 font-black uppercase tracking-widest">
             {error || 'Cinema not found'}
           </p>
           <button
             onClick={() => navigate('/cinemas')}
-            className="text-[#D4A017] hover:underline"
+            className="bg-brand text-white font-black uppercase tracking-widest px-8 py-4 rounded-lg hover:shadow-brand/20 transition-all"
           >
-            Back to Cinemas
+            BACK TO CINEMAS
           </button>
         </div>
       </div>
@@ -151,85 +250,88 @@ const CinemaDetail = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0F1E] pt-20">
-
+    <div className="min-h-screen bg-bg">
       {/* Cinema Header */}
-      <div className="bg-[#13192B] border-b border-[#252D45]">
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <div className="flex items-start gap-6">
+      <div className="bg-surface-2/10 border-b border-border relative overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
+        <div className="max-w-7xl mx-auto px-4 py-12 pt-24 border-x border-border relative z-10">
+          <div className="flex flex-col md:flex-row gap-8 items-center md:items-start text-center md:text-left">
 
             {/* Logo */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 relative">
+              <div className="absolute -inset-1 bg-brand/20 blur-xl rounded-full"></div>
               {cinema.logo_url ? (
                 <img
                   src={cinema.logo_url}
                   alt={cinema.name}
-                  className="w-24 h-24 rounded-2xl object-contain bg-white p-2"
+                  className="relative w-32 h-32 rounded-xl object-contain bg-white p-4 shadow-2xl border border-border"
                 />
               ) : (
-                <div className={`w-24 h-24 rounded-2xl flex items-center justify-center text-3xl font-bold ${
-                  chainColors[cinema.chain] ||
-                  'bg-[#1C2440] text-[#7A8099]'
+                <div className={`relative w-32 h-32 rounded-xl flex items-center justify-center text-4xl font-heading font-bold shadow-2xl border border-border ${
+                  chainColors[cinema.chain] || 'bg-surface text-text-muted'
                 }`}>
-                  {cinema.chain?.charAt(0) ||
-                    cinema.name?.charAt(0)}
+                  {cinema.chain?.charAt(0) || cinema.name?.charAt(0)}
                 </div>
               )}
             </div>
 
             {/* Info */}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 flex-wrap mb-2">
-                <h1 className="text-2xl md:text-3xl font-bold text-[#F5F0E8]">
-                  {cinema.name}
-                </h1>
-                <span className={`text-sm px-3 py-1 rounded-full ${
-                  chainColors[cinema.chain] ||
-                  'bg-[#252D45] text-[#7A8099]'
-                }`}>
-                  {cinema.chain}
-                </span>
+            <div className="flex-1 space-y-6">
+              <div>
+                <div className="flex items-center gap-3 flex-wrap justify-center md:justify-start mb-2">
+                  <h1 className="text-3xl md:text-5xl font-heading font-bold text-text-primary tracking-tighter uppercase italic">
+                    {cinema.name}
+                  </h1>
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-lg border ${
+                    chainColors[cinema.chain] || 'bg-surface-2 text-text-muted border-border'
+                  }`}>
+                    {cinema.chain}
+                  </span>
+                </div>
+
+                {cinema.address && (
+                  <p className="text-text-muted text-[11px] font-black uppercase tracking-widest flex items-center justify-center md:justify-start gap-2">
+                    <span className="text-brand">LOCATION</span> {cinema.address}, {cinema.city}, {cinema.state}
+                  </p>
+                )}
               </div>
 
-              {cinema.address && (
-                <p className="text-[#7A8099] text-sm mb-3">
-                  📍 {cinema.address}, {cinema.city}, {cinema.state}
-                </p>
-              )}
-
               {cinema.description && (
-                <p className="text-[#F5F0E8] text-sm leading-relaxed mb-4 max-w-2xl">
-                  {cinema.description}
-                </p>
+                <Description text={cinema.description} />
               )}
 
-              {/* Meta */}
-              <div className="flex flex-wrap gap-4 mb-4">
-                {cinema.screens_count && (
-                  <span className="text-[#7A8099] text-sm">
-                    🎬 {cinema.screens_count} screens
-                  </span>
-                )}
-                {cinema.seating_capacity && (
-                  <span className="text-[#7A8099] text-sm">
-                    💺 {cinema.seating_capacity.toLocaleString()} seats
-                  </span>
-                )}
-                <span className="text-[#D4A017] text-sm font-medium">
-                  🎭 {Object.keys(groupedByFilm).length} showing today
-                </span>
+              {/* Meta Grid */}
+              <div className="grid grid-cols-3 gap-0 border border-border rounded-lg overflow-hidden bg-surface max-w-md mx-auto md:mx-0 shadow-sm">
+                <div className="p-4 border-r border-border text-center">
+                  <p className="text-brand text-xl font-bold font-heading">
+                    {cinema.screens_count || '0'}
+                  </p>
+                  <p className="text-text-muted text-[9px] font-black uppercase tracking-widest">Screens</p>
+                </div>
+                <div className="p-4 border-r border-border text-center">
+                  <p className="text-text-primary text-xl font-bold font-heading">
+                    {cinema.seating_capacity ? (cinema.seating_capacity / 1000).toFixed(1) + 'k' : '—'}
+                  </p>
+                  <p className="text-text-muted text-[9px] font-black uppercase tracking-widest">Capacity</p>
+                </div>
+                <div className="p-4 text-center">
+                  <p className="text-text-primary text-xl font-bold font-heading">
+                    {Object.keys(groupedByFilm).length}
+                  </p>
+                  <p className="text-text-muted text-[9px] font-black uppercase tracking-widest">Now Playing</p>
+                </div>
               </div>
 
               {/* Links */}
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex gap-4 flex-wrap justify-center md:justify-start pt-2">
                 {cinema.google_maps_url && (
                   <a
                     href={cinema.google_maps_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#1C2440] text-[#F5F0E8] text-sm px-4 py-2 rounded-xl hover:bg-[#252D45] transition-colors"
+                    className="inline-flex items-center gap-2 bg-surface border border-border text-text-primary text-[10px] font-black uppercase tracking-widest px-8 py-4 rounded-lg hover:border-brand hover:text-brand transition-all min-h-[44px]"
                   >
-                    📍 Get Directions
+                    DIRECTIONS
                   </a>
                 )}
                 {cinema.website && (
@@ -237,9 +339,9 @@ const CinemaDetail = () => {
                     href={cinema.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 bg-[#D4A017] text-black text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#D4A017]/90 transition-colors"
+                    className="inline-flex items-center gap-2 bg-brand text-white text-[10px] font-black uppercase tracking-widest px-8 py-4 rounded-lg hover:shadow-brand/20 hover:scale-[1.02] transition-all min-h-[44px]"
                   >
-                    Buy Tickets ↗
+                    OFFICIAL SITE
                   </a>
                 )}
               </div>
@@ -249,118 +351,104 @@ const CinemaDetail = () => {
       </div>
 
       {/* Showtimes Section */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto border-x border-border">
+        <div className="grid grid-cols-1 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-border">
+          
+          {/* Sidebar / Filters (25%) */}
+          <div className="lg:col-span-1 p-8 md:p-12 space-y-12">
+             <div>
+                <h3 className="text-text-muted text-[10px] font-black uppercase tracking-[0.2em] mb-6">Select Date</h3>
+                <div className="flex flex-col gap-2">
+                  {availableDates.map(date => (
+                    <button
+                      key={date}
+                      onClick={() => setSelectedDate(date)}
+                      className={`w-full flex items-center justify-between p-4 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                        selectedDate === date
+                          ? 'bg-brand text-white shadow-lg shadow-brand/20 border-brand'
+                          : 'bg-surface border border-border text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      <span>{formatDate(date)}</span>
+                      {selectedDate === date && <span className="text-white/60">→</span>}
+                    </button>
+                  ))}
+                </div>
+             </div>
 
-        {/* Section heading */}
-        <h2 className="text-[#F5F0E8] text-2xl font-bold mb-6">
-          Now Showing
-        </h2>
-
-        {/* No showtimes at all */}
-        {showtimes.length === 0 && (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-4">🎬</div>
-            <h3 className="text-[#F5F0E8] text-xl font-bold mb-2">
-              No upcoming showtimes
-            </h3>
-            <p className="text-[#7A8099]">
-              Check back soon for upcoming screenings.
-            </p>
-            <Link
-              to="/cinemas"
-              className="inline-block mt-4 text-[#D4A017] hover:underline text-sm"
-            >
-              ← Back to Cinemas
-            </Link>
+             {/* Booking Note */}
+             <div className="p-6 bg-surface-2/10 rounded-xl border border-border italic text-[11px] text-text-muted leading-relaxed">
+                "Showtimes are subject to change by cinema management. Online booking is recommended where available."
+             </div>
           </div>
-        )}
 
-        {showtimes.length > 0 && (
-          <>
-            {/* Date tabs */}
-            <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-hide">
-              {availableDates.map(date => (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDate(date)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex-shrink-0 ${
-                    selectedDate === date
-                      ? 'bg-[#D4A017] text-black'
-                      : 'bg-[#13192B] text-[#7A8099] hover:text-[#F5F0E8] border border-[#252D45]'
-                  }`}
-                >
-                  {formatDate(date)}
-                </button>
-              ))}
+          {/* Main List (75%) */}
+          <div className="lg:col-span-3">
+            <div className="p-8 md:p-12 border-b border-border bg-surface-2/5 relative overflow-hidden">
+               <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
+               <h2 className="relative z-10 text-text-primary text-2xl font-bold font-heading tracking-tighter uppercase italic">
+                 Now Playing Archive
+               </h2>
             </div>
 
-            {/* No films on selected date */}
-            {Object.keys(groupedByFilm).length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-[#7A8099]">
-                  No screenings on this date.
-                </p>
-                <p className="text-[#7A8099] text-sm mt-1">
-                  Try another date above.
-                </p>
-              </div>
-            )}
+            <div className="p-8 md:p-12 min-h-[400px]">
+              {/* No films on selected date */}
+              {Object.keys(groupedByFilm).length === 0 && (
+                <div className="text-center py-24 bg-surface-2/10 rounded-xl border-2 border-dashed border-border">
+                  <p className="text-4xl mb-4">🎬</p>
+                  <p className="text-text-muted font-black tracking-widest uppercase text-xs">No screenings archived for this date</p>
+                </div>
+              )}
 
-            {/* Films showing */}
-            <div className="space-y-5">
-              {Object.values(groupedByFilm).map(
-                ({ film, times }) => (
+              {/* Films showing */}
+              <div className="space-y-8">
+                {Object.values(groupedByFilm).map(({ film, times }) => (
                   <div
                     key={film?.id}
-                    className="bg-[#13192B] rounded-2xl overflow-hidden border border-[#252D45]"
+                    className="group bg-surface rounded-xl overflow-hidden border border-border hover:border-brand transition-all shadow-sm"
                   >
-                    <div className="flex gap-4 p-5">
-
+                    <div className="flex flex-col sm:flex-row divide-y sm:divide-y-0 sm:divide-x divide-border">
                       {/* Poster */}
                       <Link
                         to={`/films/${film?.id}`}
-                        className="flex-shrink-0"
+                        className="sm:w-32 lg:w-40 flex-shrink-0 relative overflow-hidden"
                       >
                         {film?.poster_url ? (
                           <img
                             src={film.poster_url}
                             alt={film.title}
-                            className="w-20 h-28 object-cover rounded-xl hover:opacity-80 transition-opacity"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                           />
                         ) : (
-                          <div className="w-20 h-28 bg-[#1C2440] rounded-xl flex items-center justify-center">
-                            <span className="text-2xl">🎬</span>
+                          <div className="w-full h-48 sm:h-full bg-surface-2 flex items-center justify-center">
+                            <span className="text-3xl">🎬</span>
                           </div>
                         )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-bg/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       </Link>
 
                       {/* Film info + times */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 p-6 sm:p-8">
+                        <div className="flex items-start justify-between gap-4 mb-4">
                           <div>
                             <Link
                               to={`/films/${film?.id}`}
-                              className="text-[#F5F0E8] font-bold text-lg hover:text-[#D4A017] transition-colors"
+                              className="text-text-primary font-bold text-xl uppercase tracking-tighter group-hover:text-brand transition-colors"
                             >
                               {film?.title}
                             </Link>
-                            <p className="text-[#7A8099] text-sm">
-                              {film?.year}
+                            <p className="text-text-muted text-[10px] font-black uppercase tracking-widest mt-1">
+                              RELEASED: {film?.year} • {film?.average_rating} ★ RATING
                             </p>
                           </div>
-                          {film?.average_rating > 0 && (
-                            <span className="bg-[#D4A017] text-black text-sm font-bold px-3 py-1 rounded-xl flex-shrink-0">
-                              {film.average_rating} ★
-                            </span>
-                          )}
                         </div>
 
                         {/* Genres */}
-                        <div className="flex flex-wrap gap-1.5 mb-4">
+                        <div className="flex flex-wrap gap-2 mb-8">
                           {film?.film_genres?.map(fg => (
                             <span
                               key={fg.genres?.name}
-                              className="text-xs bg-[#252D45] text-[#7A8099] px-2 py-0.5 rounded-full"
+                              className="text-[9px] font-black uppercase tracking-widest text-text-primary bg-surface-2 px-3 py-1 rounded border border-border"
                             >
                               {fg.genres?.name}
                             </span>
@@ -368,60 +456,17 @@ const CinemaDetail = () => {
                         </div>
 
                         {/* Time pills */}
-                        <div className="flex flex-wrap gap-2">
-                          {times.map(showtime => (
-                            showtime.ticket_url ? (
-                              <a
-                                key={showtime.id}
-                                href={showtime.ticket_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`inline-flex flex-col items-center px-4 py-2 rounded-xl text-sm font-medium transition-all hover:scale-105 ${
-                                  showtime.format !== 'Standard'
-                                    ? 'bg-[#D4A017] text-black'
-                                    : 'bg-[#1C2440] text-[#F5F0E8] border border-[#252D45] hover:bg-[#252D45]'
-                                }`}
-                              >
-                                <span>
-                                  {formatTime(showtime.show_time)}
-                                </span>
-                                {showtime.format !== 'Standard' && (
-                                  <span className="text-xs font-bold mt-0.5">
-                                    {showtime.format}
-                                  </span>
-                                )}
-                              </a>
-                            ) : (
-                              <div
-                                key={showtime.id}
-                                title="Available at box office"
-                                className={`inline-flex flex-col items-center px-4 py-2 rounded-xl text-sm font-medium cursor-default ${
-                                  showtime.format !== 'Standard'
-                                    ? 'bg-[#D4A017]/20 text-[#D4A017] border border-[#D4A017]/30'
-                                    : 'bg-[#1C2440] text-[#F5F0E8] border border-[#252D45]'
-                                }`}
-                              >
-                                <span>
-                                  {formatTime(showtime.show_time)}
-                                </span>
-                                {showtime.format !== 'Standard' && (
-                                  <span className="text-xs font-bold mt-0.5">
-                                    {showtime.format}
-                                  </span>
-                                )}
-                              </div>
-                            )
-                          ))}
-                        </div>
+                        <ShowtimeGrid times={times} />
                       </div>
                     </div>
                   </div>
-                )
-              )}
+                ))}
+              </div>
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </div>
+
     </div>
   )
 }
