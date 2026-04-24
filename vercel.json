@@ -1,10 +1,12 @@
 {
-  "rewrites": [
-    { "source": "/api/film/:id", "destination": "/api/films?id=:id" },
-    { "source": "/api/channel/:id", "destination": "/api/channels?id=:id" },
-    { "source": "/api/youtube", "destination": "/api/external?provider=youtube" },
-    { "source": "/api/tmdb", "destination": "/api/external?provider=tmdb" },
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+  "routes": [
+    { "src": "/api/film/(?<id>.*)", "dest": "/api/films?id=$id" },
+    { "src": "/api/channel/(?<id>.*)", "dest": "/api/channels?id=$id" },
+    { "src": "/api/youtube", "dest": "/api/external?provider=youtube" },
+    { "src": "/api/tmdb", "dest": "/api/external?provider=tmdb" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(?!(?:src|node_modules|@vite|@id|@react-refresh|api|favicon\\.ico|manifest\\.webmanifest|.*\\.(?:js|css|png|jpg|svg|ico|json|map))).*", "dest": "/index.html" }
   ],
   "crons": [
     {
