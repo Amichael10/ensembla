@@ -31,30 +31,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!endpoint || typeof endpoint !== 'string' || !YT_ALLOWED.has(endpoint)) {
       return res.status(400).json({ error: 'Invalid or missing endpoint' });
     }
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'YouTube not configured' });
+    const apiKey = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.error('[API] YouTube API Key is missing');
+      return res.status(500).json({ error: 'YouTube API Key not configured in environment variables' });
+    }
     const url = new URL(`${YOUTUBE_BASE}/${endpoint}`);
     url.searchParams.set('key', apiKey);
     Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, String(v)));
     try {
       const ytRes = await fetch(url.toString());
-      return res.status(ytRes.status).json(await ytRes.json());
-    } catch (e) { return res.status(500).json({ error: 'Failed to reach YouTube' }); }
+      const data = await ytRes.json();
+      if (!ytRes.ok) {
+        console.error('[YouTube API Error]', ytRes.status, data);
+        return res.status(ytRes.status).json(data);
+      }
+      return res.status(200).json(data);
+    } catch (e) { 
+      console.error('[API] YouTube Fetch Exception:', e);
+      return res.status(500).json({ error: 'Failed to reach YouTube API' }); 
+    }
   }
 
   if (provider === 'tmdb') {
     if (!endpoint || typeof endpoint !== 'string' || !TMDB_ALLOWED.some(p => p.test(endpoint))) {
       return res.status(403).json({ error: 'Endpoint not permitted or missing' });
     }
-    const apiKey = process.env.TMDB_API_KEY;
-    if (!apiKey) return res.status(500).json({ error: 'TMDB not configured' });
+    const apiKey = process.env.TMDB_API_KEY || process.env.VITE_TMDB_API_KEY;
+    if (!apiKey) {
+      console.error('[API] TMDB API Key is missing');
+      return res.status(500).json({ error: 'TMDB API Key not configured in environment variables' });
+    }
     const url = new URL(`${TMDB_BASE}${endpoint}`);
     url.searchParams.set('api_key', apiKey);
     Object.entries(params).forEach(([k, v]) => v && url.searchParams.set(k, String(v)));
     try {
       const tmdbRes = await fetch(url.toString());
-      return res.status(tmdbRes.status).json(await tmdbRes.json());
-    } catch (e) { return res.status(500).json({ error: 'Failed to reach TMDB' }); }
+      const data = await tmdbRes.json();
+      if (!tmdbRes.ok) {
+        console.error('[TMDB API Error]', tmdbRes.status, data);
+        return res.status(tmdbRes.status).json(data);
+      }
+      return res.status(200).json(data);
+    } catch (e) { 
+      console.error('[API] TMDB Fetch Exception:', e);
+      return res.status(500).json({ error: 'Failed to reach TMDB API' }); 
+    }
   }
 
   return res.status(400).json({ error: 'Invalid provider' });
