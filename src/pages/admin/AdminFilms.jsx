@@ -40,6 +40,7 @@ export default function AdminFilms() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [featuredFilter, setFeaturedFilter] = useState('all'); // all, featured, regular
+  const [trendingFilter, setTrendingFilter] = useState('all'); // all, trending, regular
   const [sortBy, setSortBy] = useState('newest'); // newest, oldest, a-z
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState('library'); // library, youtube_buffer
@@ -92,7 +93,7 @@ export default function AdminFilms() {
   useEffect(() => {
     setPage(1);
     setSelectedFilmIds([]);
-  }, [searchTerm, statusFilter, yearFilter, featuredFilter, sortBy]);
+  }, [searchTerm, statusFilter, yearFilter, featuredFilter, trendingFilter, sortBy]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -176,6 +177,8 @@ export default function AdminFilms() {
       if (yearFilter !== 'all') query = query.eq('year', parseInt(yearFilter));
       if (featuredFilter === 'featured') query = query.eq('is_featured', true);
       if (featuredFilter === 'regular') query = query.eq('is_featured', false);
+      if (trendingFilter === 'trending') query = query.eq('is_trending', true);
+      if (trendingFilter === 'regular') query = query.eq('is_trending', false);
 
       const from = (page - 1) * pageSize;
       const to = from + pageSize - 1;
@@ -849,11 +852,20 @@ export default function AdminFilms() {
           <select
             value={featuredFilter}
             onChange={(e) => setFeaturedFilter(e.target.value)}
-            className="bg-surface border border-border rounded-md px-4 py-3 text-text-primary text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 shadow-sm transition-all appearance-none cursor-pointer min-w-[120px]"
+            className="bg-surface border border-border rounded-md px-4 py-3 text-text-primary text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 shadow-sm transition-all appearance-none cursor-pointer"
           >
-            <option value="all">Any Spotlight</option>
-            <option value="featured">Featured Only</option>
+            <option value="all">Any Placement</option>
+            <option value="featured">Featured Hero</option>
             <option value="regular">Regular Only</option>
+          </select>
+          <select
+            value={trendingFilter}
+            onChange={(e) => setTrendingFilter(e.target.value)}
+            className="bg-surface border border-border rounded-md px-4 py-3 text-text-primary text-sm focus:border-brand focus:ring-4 focus:ring-brand/5 shadow-sm transition-all appearance-none cursor-pointer"
+          >
+            <option value="all">Any Trend</option>
+            <option value="trending">Trending Now</option>
+            <option value="regular">Normal Feed</option>
           </select>
           <select
             value={sortBy}

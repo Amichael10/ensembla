@@ -153,8 +153,12 @@ export default function Home() {
 
   const featuredFilms = films.filter(f => f.is_featured);
   const trendingFilms = films.filter(f => f.is_trending || f.view_count > 500);
-  // Show 2026/2025 movies for New Releases
-  const newReleases = films.filter(f => f.year === 2026 || f.year === 2025).sort((a, b) => b.year - a.year);
+  
+  // New Releases: Combination of latest additions (synced today/recently) 
+  // filtered for modern titles (2024-2026)
+  const newReleases = films
+    .filter(f => f.year >= 2024)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const formatViews = (count) => {
     if (!count) return '0';
@@ -189,12 +193,12 @@ export default function Home() {
           )}
         </div>
 
-        {/* New Releases (2026/2025) */}
+        {/* New Releases (Dynamic Daily Sync) */}
         {newReleases.length > 0 && (
           <div className="border-b border-border py-12">
             <FilmRow
               title="New Releases"
-              subtitle="Recently added movies"
+              subtitle="Latest additions to the library"
               films={newReleases}
               isLoading={isLoading}
             />
@@ -347,7 +351,8 @@ export default function Home() {
           </div>
         )}
 
-        {/* Closing Row */}
+        {/* Top Rated hidden for now */}
+        {/* 
         <div className="py-16 relative overflow-hidden">
           <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
           <FilmRow
@@ -358,6 +363,7 @@ export default function Home() {
             isLoading={isLoading}
           />
         </div>
+        */}
       </div>
     </div>
   );

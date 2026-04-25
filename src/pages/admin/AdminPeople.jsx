@@ -96,7 +96,7 @@ export default function AdminPeople() {
       const sort = sortConfigs[sortBy] || sortConfigs['Most Popular'];
       
       const { data, error } = await supabase.rpc('get_people_with_counts', {
-        p_search: search.trim(),
+        p_search: search,
         p_verified: verifiedFilter.toLowerCase(),
         p_spotlight: spotlightFilter.toLowerCase(),
         p_sort_col: sort.col,
@@ -122,13 +122,8 @@ export default function AdminPeople() {
   }, [search, verifiedFilter, spotlightFilter, profileStatus, sortBy]);
 
   useEffect(() => {
-    // Debounced search to avoid spamming the DB
-    const timer = setTimeout(() => {
-      fetchPeople();
-    }, search ? 400 : 0);
-
-    return () => clearTimeout(timer);
-  }, [page, search, verifiedFilter, spotlightFilter, profileStatus, sortBy]);
+    fetchPeople();
+  }, [page, search, sortBy, profileStatus, spotlightFilter, verifiedFilter]);
 
   const handleToggleVerify = async (person) => {
     try {
@@ -452,9 +447,19 @@ export default function AdminPeople() {
             />
           </div>
           <select value={profileStatus} onChange={(e) => setProfileStatus(e.target.value)} className="bg-surface-2 border border-border rounded-md px-4 py-2 text-sm text-text-primary cursor-pointer">
-            <option value="All">All Profiles</option>
-            <option value="Incomplete">Incomplete (No Bio/Photo)</option>
-            <option value="Complete">Complete Profiles</option>
+            <option value="All">All Status</option>
+            <option value="Incomplete">Incomplete</option>
+            <option value="Complete">Complete</option>
+          </select>
+          <select value={spotlightFilter} onChange={(e) => setSpotlightFilter(e.target.value)} className="bg-surface-2 border border-border rounded-md px-4 py-2 text-sm text-text-primary cursor-pointer">
+            <option value="All">Any Spotlight</option>
+            <option value="Spotlight">Spotlight Only</option>
+            <option value="Regular">Regular Only</option>
+          </select>
+          <select value={verifiedFilter} onChange={(e) => setVerifiedFilter(e.target.value)} className="bg-surface-2 border border-border rounded-md px-4 py-2 text-sm text-text-primary cursor-pointer">
+            <option value="All">Any Verification</option>
+            <option value="Verified">Verified Only</option>
+            <option value="Member">Members Only</option>
           </select>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="bg-surface-2 border border-border rounded-md px-4 py-2 text-sm text-text-primary cursor-pointer">
             <option value="Recently Added">Recently Added</option>
