@@ -7,7 +7,8 @@ CREATE OR REPLACE FUNCTION get_people_with_counts(
   p_sort_col TEXT DEFAULT 'popularity_score',
   p_sort_asc BOOLEAN DEFAULT FALSE,
   p_offset INT DEFAULT 0,
-  p_limit INT DEFAULT 25
+  p_limit INT DEFAULT 25,
+  p_status TEXT DEFAULT 'all'
 )
 RETURNS TABLE (
   id UUID,
@@ -16,7 +17,7 @@ RETURNS TABLE (
   is_verified BOOLEAN,
   is_spotlight BOOLEAN,
   popularity_score FLOAT,
-  primary_role TEXT,
+  known_for_department TEXT,
   traditional_credits_count BIGINT,
   youtube_filmography_count BIGINT,
   total_filmography_count BIGINT,
@@ -31,7 +32,7 @@ BEGIN
     p.is_verified,
     p.is_spotlight,
     p.popularity_score,
-    p.primary_role,
+    p.known_for_department,
     (SELECT COUNT(*) FROM credits WHERE person_id = p.id) as traditional_credits_count,
     (
       SELECT COALESCE(COUNT(*), 0)
@@ -39,9 +40,9 @@ BEGIN
       JOIN channels ch ON ch.id = cv.channel_id
       WHERE ch.owner_person_id = p.id
       AND (
-        (p.primary_role = 'Actor' AND cv.duration_seconds >= 2100) OR -- 35 mins
-        (p.primary_role = 'Skit Maker' AND cv.duration_seconds >= 900) OR -- 15 mins
-        (p.primary_role NOT IN ('Actor', 'Skit Maker') AND cv.duration_seconds >= 900) -- Default to 15 mins
+        (p.known_for_department = 'Actor' AND cv.duration_seconds >= 2100) OR -- 35 mins
+        (p.known_for_department = 'Skit Maker' AND cv.duration_seconds >= 900) OR -- 15 mins
+        (p.known_for_department NOT IN ('Actor', 'Skit Maker') AND cv.duration_seconds >= 900) -- Default to 15 mins
       )
     ) as youtube_filmography_count,
     (
@@ -52,9 +53,9 @@ BEGIN
         JOIN channels ch ON ch.id = cv.channel_id
         WHERE ch.owner_person_id = p.id
         AND (
-          (p.primary_role = 'Actor' AND cv.duration_seconds >= 2100) OR -- 35 mins
-          (p.primary_role = 'Skit Maker' AND cv.duration_seconds >= 900) OR -- 15 mins
-          (p.primary_role NOT IN ('Actor', 'Skit Maker') AND cv.duration_seconds >= 900)
+          (p.known_for_department = 'Actor' AND cv.duration_seconds >= 2100) OR -- 35 mins
+          (p.known_for_department = 'Skit Maker' AND cv.duration_seconds >= 900) OR -- 15 mins
+          (p.known_for_department NOT IN ('Actor', 'Skit Maker') AND cv.duration_seconds >= 900)
         )
       )
     ) as total_filmography_count,
@@ -63,6 +64,10 @@ BEGIN
   WHERE (p_search = '' OR p.name ILIKE '%' || p_search || '%')
     AND (p_verified = 'all' OR p.is_verified = (p_verified = 'verified'))
     AND (p_spotlight = 'all' OR p.is_spotlight = (p_spotlight = 'spotlight'))
+    AND (p_status = 'all' OR (
+        (p_status = 'incomplete' AND (p.bio IS NULL OR p.photo_url IS NULL OR p.bio = '' OR p.photo_url = '')) OR
+        (p_status = 'complete' AND (p.bio IS NOT NULL AND p.photo_url IS NOT NULL AND p.bio != '' AND p.photo_url != ''))
+    ))
   ORDER BY 
     CASE WHEN p_sort_col = 'popularity_score' AND p_sort_asc = FALSE THEN p.popularity_score END DESC,
     CASE WHEN p_sort_col = 'popularity_score' AND p_sort_asc = TRUE THEN p.popularity_score END ASC,

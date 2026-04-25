@@ -30,7 +30,6 @@ export default function MergeModal({
     { key: 'photo_url', label: 'Photo', type: 'image' },
     { key: 'nationality', label: 'Nationality' },
     { key: 'gender', label: 'Gender' },
-    { key: 'primary_role', label: 'Primary Role' },
     { key: 'youtube_handle', label: 'YouTube Handle' },
     { key: 'youtube_channel_id', label: 'Channel ID' },
   ] : [

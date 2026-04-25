@@ -21,7 +21,6 @@ const EMPTY_FORM = {
   subscriber_count: '',
   thumbnail_url: '',
   banner_url: '',
-  backdrop_url: '',
   is_featured: false,
 };
 
@@ -211,7 +210,6 @@ function ChannelModal({ channel, onSave, onClose }) {
     subscriber_count: channel.subscriber_count ?? '',
     thumbnail_url: channel.thumbnail_url || '',
     banner_url: channel.banner_url || '',
-    backdrop_url: channel.backdrop_url || '',
     is_featured: channel.is_featured || false,
     channel_id: channel.channel_id || '',
   } : { ...EMPTY_FORM });
@@ -248,7 +246,7 @@ function ChannelModal({ channel, onSave, onClose }) {
       owner_person_id: owner?.id ?? null,
       owner_name:      owner?.name ?? null,
       owner_company_id: company?.id ?? null,
-      backdrop_url: form.backdrop_url || null,
+      banner_url: form.banner_url || null,
     };
 
     let err;
@@ -329,8 +327,8 @@ function ChannelModal({ channel, onSave, onClose }) {
             <div>
               <label className="block text-text-muted text-[10px] font-black uppercase tracking-widest mb-2">Backdrop Asset URL</label>
               <div className="flex gap-2">
-                <input name="backdrop_url" value={form.backdrop_url} onChange={handleChange} className="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-sm focus:border-brand outline-none" placeholder="https://..." />
-                {form.backdrop_url && <img src={form.backdrop_url} alt="" className="w-10 h-10 rounded border border-border object-cover" />}
+                <input name="banner_url" value={form.banner_url} onChange={handleChange} className="flex-1 bg-surface-2 border border-border rounded-lg px-4 py-2.5 text-sm focus:border-brand outline-none" placeholder="https://..." />
+                {form.banner_url && <img src={form.banner_url} alt="" className="w-10 h-10 rounded border border-border object-cover" />}
               </div>
             </div>
           </div>

@@ -37,6 +37,7 @@
     "@types/node": "^22.14.0",
     "@vercel/node": "^5.7.11",
     "autoprefixer": "^10.4.21",
+    "supabase": "^2.95.3",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

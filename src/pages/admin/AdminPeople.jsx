@@ -171,7 +171,10 @@ export default function AdminPeople() {
       // 2. Unlink any channels owned by this person
       await supabase.from('channels').update({ owner_person_id: null }).eq('owner_person_id', deletingPerson.id);
 
-      // 3. Delete from people
+      // 3. Unlink any user accounts linked to this person
+      await supabase.from('users').update({ linked_profile_id: null }).eq('linked_profile_id', deletingPerson.id);
+
+      // 4. Delete from people
       const { error } = await supabase
         .from('people')
         .delete()
@@ -245,7 +248,7 @@ export default function AdminPeople() {
 
     // Fetch qualifying YT videos
     if (person.youtube_channel_id) {
-       const minDuration = person.primary_role === 'Actor' ? 2100 : 900; // 35m or 15m
+       const minDuration = person.known_for_department === 'Actor' ? 2100 : 900; // 35m or 15m
        const { data: ytVideos } = await supabase
          .from('channel_videos')
          .select('*')
@@ -373,6 +376,30 @@ export default function AdminPeople() {
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
+
+  const handleBatchDelete = async () => {
+    if (!personBatchDeleteIds || personBatchDeleteIds.length === 0) return;
+    setIsBatchDeletingPeople(true);
+    const t = toast.loading(`Deleting ${personBatchDeleteIds.length} profiles...`);
+    try {
+      await supabase.from('credits').delete().in('person_id', personBatchDeleteIds);
+      await supabase.from('channels').update({ owner_person_id: null }).in('owner_person_id', personBatchDeleteIds);
+      await supabase.from('users').update({ linked_profile_id: null }).in('linked_profile_id', personBatchDeleteIds);
+      const { error } = await supabase.from('people').delete().in('id', personBatchDeleteIds);
+      if (error) throw error;
+      
+      toast.success(`Deleted ${personBatchDeleteIds.length} profiles`, { id: t });
+      setPeople(people.filter(p => !personBatchDeleteIds.includes(p.id)));
+      setSelectedPersonIds([]);
+      setPersonBatchDeleteIds(null);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Batch delete failed: ${err.message}`, { id: t });
+    } finally {
+      setIsBatchDeletingPeople(false);
+    }
+  };
+
 
   const toggleSelectAllFilteredPeople = () => {
     if (people.length > 0 && people.every(p => selectedPersonIds.includes(p.id))) {
@@ -662,7 +689,7 @@ export default function AdminPeople() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-text-primary mb-2">Photo URL</label>
+                <label className="block text-xs font-bold text-text-primary mb-2">Profile Image Link</label>
                 <input 
                   value={formData.photo_url} 
                   onChange={e => setFormData({...formData, photo_url: e.target.value})} 
@@ -862,6 +889,16 @@ export default function AdminPeople() {
           message={`Are you sure you want to delete "${deletingPerson.name}"? This will permanently remove them from the database.`}
           confirmLabel="Delete Person"
           isProcessing={isDeleting}
+        />
+      )}
+      {personBatchDeleteIds && (
+        <ConfirmModal
+          onCancel={() => !isBatchDeletingPeople && setPersonBatchDeleteIds(null)}
+          onConfirm={handleBatchDelete}
+          title="Delete Multiple Profiles"
+          message={`Are you sure you want to permanently delete ${personBatchDeleteIds.length} profiles? This action cannot be undone.`}
+          confirmLabel="Delete All Selected"
+          isProcessing={isBatchDeletingPeople}
         />
       )}
     </div>
