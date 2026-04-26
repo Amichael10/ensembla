@@ -32,6 +32,7 @@ async function run() {
       const { data: newChannel, error } = await supabase.from('channels').insert([{ 
         name: 'Kava Data', 
         channel_handle: 'kava.tv',
+        adapter: 'kava',
         is_active: true 
       }]).select().single();
       

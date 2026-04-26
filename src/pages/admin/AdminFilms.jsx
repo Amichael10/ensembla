@@ -70,7 +70,8 @@ export default function AdminFilms() {
     tmdb_rating: '',
     tagline: '',
     is_featured: false,
-    release_type: 'cinema',
+    is_trending: false,
+    release_type: '',
     youtube_watch_url: '',
     source_video_id: '',
     streaming_links: {}
@@ -138,7 +139,8 @@ export default function AdminFilms() {
             synopsis: video.description || '',
             poster_url: video.thumbnail_url || '',
             source_video_id: video.video_id,
-            youtube_watch_url: `https://www.youtube.com/watch?v=${video.video_id}`
+            youtube_watch_url: `https://www.youtube.com/watch?v=${video.video_id}`,
+            release_type: 'youtube'
           });
           setIsDrawerOpen(true);
           toast.success(`Mapping video: ${video.title}`);
@@ -588,10 +590,12 @@ export default function AdminFilms() {
     try {
       const filmPayload = {
         ...formData,
-        year: parseInt(formData.year) || null,
-        runtime_minutes: parseInt(formData.runtime_minutes) || null,
-        tmdb_id: parseInt(formData.tmdb_id) || null,
-        tmdb_rating: parseFloat(formData.tmdb_rating) || null,
+        year: formData.year && !isNaN(parseInt(formData.year)) ? parseInt(formData.year) : null,
+        runtime_minutes: formData.runtime_minutes && !isNaN(parseInt(formData.runtime_minutes)) ? parseInt(formData.runtime_minutes) : null,
+        tmdb_id: formData.tmdb_id && !isNaN(parseInt(formData.tmdb_id)) ? parseInt(formData.tmdb_id) : null,
+        tmdb_rating: formData.tmdb_rating && !isNaN(parseFloat(formData.tmdb_rating)) ? parseFloat(formData.tmdb_rating) : null,
+        is_trending: Boolean(formData.is_trending),
+        is_featured: Boolean(formData.is_featured),
       };
 
       const { genres: selectedGenreIds, ...cleanFilmPayload } = filmPayload;
@@ -1343,6 +1347,38 @@ export default function AdminFilms() {
                         </span>
                       </label>
                     ))}
+                  </div>
+
+                  <div className="flex items-center gap-6 pt-4 border-t border-border/50">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input 
+                          type="checkbox" 
+                          name="is_featured" 
+                          checked={formData.is_featured} 
+                          onChange={(e) => setFormData({ ...formData, is_featured: e.target.checked })}
+                          className="sr-only" 
+                        />
+                        <div className={`w-10 h-5 rounded-full transition-all ${formData.is_featured ? 'bg-brand' : 'bg-surface-muted border border-border'}`} />
+                        <div className={`absolute top-1 w-3 h-3 rounded-full transition-all ${formData.is_featured ? 'left-6 bg-white' : 'left-1 bg-text-muted'}`} />
+                      </div>
+                      <span className="text-xs font-bold text-text uppercase tracking-wider group-hover:text-brand transition-colors">Featured</span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative">
+                        <input 
+                          type="checkbox" 
+                          name="is_trending" 
+                          checked={formData.is_trending} 
+                          onChange={(e) => setFormData({ ...formData, is_trending: e.target.checked })}
+                          className="sr-only" 
+                        />
+                        <div className={`w-10 h-5 rounded-full transition-all ${formData.is_trending ? 'bg-orange-500' : 'bg-surface-muted border border-border'}`} />
+                        <div className={`absolute top-1 w-3 h-3 rounded-full transition-all ${formData.is_trending ? 'left-6 bg-white' : 'left-1 bg-text-muted'}`} />
+                      </div>
+                      <span className="text-xs font-bold text-text uppercase tracking-wider group-hover:text-orange-500 transition-colors">Trending</span>
+                    </label>
                   </div>
                 </div>
 

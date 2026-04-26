@@ -500,14 +500,19 @@ export default function AdminYouTubeVideos() {
   }, []);
 
   const createFilmFromVideo = async (video) => {
+    const targetReleaseType = video.channels?.adapter === 'kava' ? 'kava' : 'youtube';
+
     // 1. Create the film
     const { data: newFilm, error: fErr } = await supabase
       .from('films')
       .insert({
         title: video.title,
-        release_type: 'youtube',
+        release_type: targetReleaseType,
         needs_review: true,
-        synopsis: 'Imported from YouTube. Please update description.'
+        synopsis: video.description || 'Imported. Please update description.',
+        youtube_watch_url: video.watch_url || null,
+        poster_url: video.poster_url || video.thumbnail_url || null,
+        year: video.published_at ? new Date(video.published_at).getFullYear() : 2024
       })
       .select()
       .single();
