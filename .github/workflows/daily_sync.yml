@@ -51,6 +51,10 @@ jobs:
           echo "Syncing TMDB..."
           curl -f -X GET "$BASE_URL/api/cron/sync?task=tmdb" \
           -H "x-cron-secret: $CRON_SECRET"
-          echo "Syncing Kava..."
-          curl -f -X GET "$BASE_URL/api/cron/sync?task=kava" \
-          -H "x-cron-secret: $CRON_SECRET"
+          
+          echo "Syncing Kava (Local Script)..."
+          node scripts/sync-kava.mjs
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
