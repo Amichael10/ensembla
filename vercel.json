@@ -7,6 +7,5 @@
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "handle": "filesystem" },
     { "src": "/(?!(?:src|node_modules|@vite|@id|@react-refresh|api|favicon\\.ico|manifest\\.webmanifest|.*\\.(?:js|css|png|jpg|svg|ico|json|map))).*", "dest": "/index.html" }
-  ],
   ]
 }
