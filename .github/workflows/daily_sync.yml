@@ -26,11 +26,22 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     env:
-      # Change this to your actual production domain
       BASE_URL: 'https://lumi-rho-seven.vercel.app/'
       CRON_SECRET: ${{ secrets.VITE_CRON_SECRET }}
     
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install @supabase/supabase-js node-fetch
+
       - name: Sync Cinemas (6 AM Local)
         if: github.event.schedule == '0 5 * * *' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'showtimes'))
         run: |
