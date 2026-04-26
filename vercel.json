@@ -8,22 +8,5 @@
     { "handle": "filesystem" },
     { "src": "/(?!(?:src|node_modules|@vite|@id|@react-refresh|api|favicon\\.ico|manifest\\.webmanifest|.*\\.(?:js|css|png|jpg|svg|ico|json|map))).*", "dest": "/index.html" }
   ],
-  "crons": [
-    {
-      "path": "/api/cron/sync?task=videos",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/sync?task=showtimes",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/sync?task=tmdb",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/sync?task=kava",
-      "schedule": "0 3 * * *"
-    }
   ]
 }
