@@ -1,4 +1,4 @@
--- Fix for signup identity issue: provides fallbacks for the 'name' column
+-- Update handle_new_user to use a valid enum value for role
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
