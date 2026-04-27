@@ -209,16 +209,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               }
             }
 
-            allVideoRows.push({
+            const videoRow: any = {
               channel_id: ch.id,
               video_id: v.id,
               title: v.snippet.title,
               thumbnail_url: v.snippet.thumbnails?.high?.url || v.snippet.thumbnails?.medium?.url,
               published_at: v.snippet.publishedAt,
-              duration_seconds: duration,
-              match_status: matchStatus,
-              film_id: filmId
-            });
+              duration_seconds: duration
+            };
+
+            // Only set these if we found a new match or created a film
+            if (matchStatus === 'matched') {
+              videoRow.match_status = 'matched';
+              videoRow.film_id = filmId;
+            }
+
+            allVideoRows.push(videoRow);
           }
 
           fetchedCount += vData.items.length;
@@ -252,10 +258,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
+    // 3. Optional: Trigger TMDB Discovery as well if no specific channel requested
+    let tmdbResult = null;
+    if (!channelId) {
+      console.log('[refresh-videos] Triggering TMDB discovery');
+      const TMDB_KEY = process.env.TMDB_API_KEY || process.env.VITE_TMDB_API_KEY;
+      if (TMDB_KEY) {
+        const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_origin_country=NG&sort_by=popularity.desc`;
+        const resData = await fetch(url).then(r => r.json());
+        const movies = resData.results || [];
+        
+        if (movies.length > 0) {
+          let { data: tmdbCh } = await supabase.from('channels').select('id').eq('name', 'TMDB Discover').maybeSingle();
+          if (tmdbCh) {
+            const tmdbRows = movies.map((m: any) => ({
+              channel_id: tmdbCh.id,
+              video_id: `TMDB_${m.id}`,
+              title: m.title,
+              description: m.overview,
+              thumbnail_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+              published_at: m.release_date ? new Date(m.release_date).toISOString() : new Date().toISOString()
+            }));
+            await supabase.from('channel_videos').upsert(tmdbRows, { onConflict: 'video_id' });
+            await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', tmdbCh.id);
+            tmdbResult = { imported: movies.length };
+          }
+        }
+      }
+    }
+
     return res.status(200).json({ 
       success: true, 
       videos_upserted: totalVideosUpserted,
       channels_processed: channelsToProcess.length,
+      tmdb_discovery: tmdbResult,
       results: processResults
     });
 

@@ -82,8 +82,7 @@ async function run() {
       title: m.title,
       description: m.synopsis,
       thumbnail_url: m.poster_url || null,
-      published_at: new Date().toISOString(),
-      match_status: 'unmatched'
+      published_at: new Date().toISOString()
     }));
 
     const { error: upsertError } = await supabase.from('channel_videos').upsert(videoRows, { 

@@ -343,15 +343,17 @@ export default function AdminYouTubeVideos() {
   const [pageSize] = useState(100);
   const [totalCount, setTotalCount] = useState(0);
   const [globalStats, setGlobalStats] = useState({ total: 0, pending: 0, verified: 0, unmatched: 0, hidden: 0 });
+  const [lastSync, setLastSync] = useState(null);
 
   const fetchGlobalStats = useCallback(async () => {
     // We can run these in parallel for speed
-    const [totalRes, pendingRes, verifiedRes, unmatchedRes, hiddenRes] = await Promise.all([
-      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).gte('duration_seconds', FILM_MIN),
-      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).not('film_id', 'is', null).filter('films.needs_review', 'eq', true).gte('duration_seconds', FILM_MIN),
-      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).not('film_id', 'is', null).filter('films.needs_review', 'eq', false).gte('duration_seconds', FILM_MIN),
-      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).is('film_id', null).gte('duration_seconds', FILM_MIN),
-      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', true).gte('duration_seconds', FILM_MIN)
+    const [totalRes, pendingRes, verifiedRes, unmatchedRes, hiddenRes, lastSyncRes] = await Promise.all([
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', false).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', false).not('film_id', 'is', null).filter('films.needs_review', 'eq', true).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', false).not('film_id', 'is', null).filter('films.needs_review', 'eq', false).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', false).is('film_id', null).gte('duration_seconds', FILM_MIN),
+      supabase.from('channel_videos').select('id', { count: 'exact', head: true }).eq('is_hidden', true).gte('duration_seconds', FILM_MIN),
+      supabase.from('channels').select('videos_last_fetched_at').order('videos_last_fetched_at', { ascending: false }).limit(1)
     ]);
 
     setGlobalStats({
@@ -362,6 +364,9 @@ export default function AdminYouTubeVideos() {
       hidden: hiddenRes.count || 0
     });
     setTotalCount(totalRes.count || 0);
+    if (lastSyncRes.data?.[0]?.videos_last_fetched_at) {
+      setLastSync(new Date(lastSyncRes.data[0].videos_last_fetched_at));
+    }
   }, []);
 
   const fetchVideos = useCallback(async () => {
@@ -384,10 +389,18 @@ export default function AdminYouTubeVideos() {
     if (searchQuery.trim()) query = query.ilike('title', `%${searchQuery}%`);
     
     // Apply Status Filter at Database Level
-    if (statusFilter === 'needs_review') query = query.not('film_id', 'is', null).filter('films.needs_review', 'eq', true);
-    if (statusFilter === 'matched')      query = query.not('film_id', 'is', null).filter('films.needs_review', 'eq', false);
-    if (statusFilter === 'unmatched')    query = query.is('film_id', null);
-    if (statusFilter === 'hidden')       query = query.eq('is_hidden', true);
+    if (statusFilter === 'needs_review') {
+      query = query.eq('is_hidden', false).not('film_id', 'is', null).filter('films.needs_review', 'eq', true);
+    } else if (statusFilter === 'matched') {
+      query = query.eq('is_hidden', false).not('film_id', 'is', null).filter('films.needs_review', 'eq', false);
+    } else if (statusFilter === 'unmatched') {
+      query = query.eq('is_hidden', false).is('film_id', null);
+    } else if (statusFilter === 'hidden') {
+      query = query.eq('is_hidden', true);
+    } else {
+      // Default 'all' view - exclude hidden/skipped items unless specifically requested
+      query = query.eq('is_hidden', false);
+    }
 
     const { data, error, count } = await query.range(from, to);
     
@@ -603,8 +616,15 @@ export default function AdminYouTubeVideos() {
         const json = await res.json();
         if (!res.ok) toast.error(`Sync Error: ${json.error || 'Server error'}`);
         else {
-          toast.success(`Processed ${json.channels_processed || 0} channels.`);
+          const vidCount = json.videos_upserted || 0;
+          const tmdbCount = json.tmdb_discovery?.imported || 0;
+          let msg = `Processed ${json.channels_processed || 0} channels.`;
+          if (vidCount > 0) msg += ` Found ${vidCount} videos.`;
+          if (tmdbCount > 0) msg += ` Discovered ${tmdbCount} TMDB movies.`;
+          
+          toast.success(msg, { duration: 5000 });
           fetchVideos();
+          fetchGlobalStats();
         }
       } else {
         const text = await res.text();
@@ -674,9 +694,19 @@ export default function AdminYouTubeVideos() {
         <div>
           <p className="text-brand text-xs font-bold mb-1">Queue Management</p>
           <h1 className="text-3xl font-bold text-text-primary tracking-tight">Imported Videos</h1>
-          <p className="text-text-muted text-sm mt-1 max-w-xl font-medium leading-relaxed opacity-80">
-            Review and link videos imported from external sources to database records.
-          </p>
+          <div className="flex items-center gap-3 mt-1.5">
+            <p className="text-text-muted text-sm font-medium opacity-80">
+              Review and link videos imported from external sources.
+            </p>
+            {lastSync && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-border" />
+                <p className="text-[10px] font-black text-brand uppercase tracking-widest">
+                  Last Sync: {lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </>
+            )}
+          </div>
         </div>
         <button 
           onClick={handleManualSync} 

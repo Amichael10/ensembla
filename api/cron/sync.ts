@@ -46,11 +46,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { task } = req.query;
 
   try {
+    if (!task) {
+      console.log('[cron/sync] No task specified, running ALL tasks...');
+      const results: any = {};
+      try { results.videos = await runVideosSync(); } catch (e: any) { results.videos = { error: e.message }; }
+      try { results.tmdb = await runTMDBSync(); } catch (e: any) { results.tmdb = { error: e.message }; }
+      try { results.showtimes = await runShowtimesSync(); } catch (e: any) { results.showtimes = { error: e.message }; }
+      
+      return res.status(200).json({
+        success: true,
+        message: 'All sync tasks completed',
+        results
+      });
+    }
+
     switch (task) {
-      case 'showtimes': return await handleShowtimes(req, res);
-      case 'videos':    return await handleVideos(req, res);
-      case 'tmdb':      return await handleTMDB(req, res);
-      case 'kava':      return await handleKava(req, res);
+      case 'showtimes': return res.status(200).json(await runShowtimesSync());
+      case 'videos':    return res.status(200).json(await runVideosSync());
+      case 'tmdb':      return res.status(200).json(await runTMDBSync());
+      case 'kava':      
+        return res.status(200).json({ 
+          task: 'kava', 
+          status: 'moved_to_github_actions',
+          message: 'Kava sync now runs directly in GitHub Actions to bypass Vercel timeout limits.' 
+        });
       default:
         return res.status(400).json({ error: 'Invalid task' });
     }
@@ -61,9 +80,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 }
 
 // ── TASK: SHOWTIMES ──────────────────────────────────────────────────────────
-async function handleShowtimes(req: VercelRequest, res: VercelResponse) {
+async function runShowtimesSync() {
   const { data: cinemas } = await supabase.from('cinemas').select('*').eq('scrape_enabled', true).limit(15);
-  if (!cinemas) return res.status(200).json({ message: 'No cinemas to scrape' });
+  if (!cinemas) return { message: 'No cinemas to scrape' };
 
   const results = [];
   for (const cinema of cinemas) {
@@ -75,14 +94,14 @@ async function handleShowtimes(req: VercelRequest, res: VercelResponse) {
       results.push({ name: cinema.name, ...stats });
     } catch (e: any) { results.push({ name: cinema.name, error: e.message }); }
   }
-  return res.status(200).json({ task: 'showtimes', results });
+  return { task: 'showtimes', results };
 }
 
 // ── TASK: VIDEOS ─────────────────────────────────────────────────────────────
-async function handleVideos(req: VercelRequest, res: VercelResponse) {
+async function runVideosSync() {
   if (!YT_KEY) throw new Error('YT_KEY missing');
   const { data: channels } = await supabase.from('channels').select('*');
-  if (!channels) return res.status(200).json({ message: 'No channels' });
+  if (!channels) return { message: 'No channels' };
 
   let totalUpserted = 0;
 
@@ -122,26 +141,78 @@ async function handleVideos(req: VercelRequest, res: VercelResponse) {
           title: item.snippet.title,
           thumbnail_url: item.snippet.thumbnails?.medium?.url,
           published_at: item.snippet.publishedAt,
-          duration_seconds: v ? parseDuration(v.contentDetails.duration) : 0,
-          match_status: 'unmatched'
+          duration_seconds: v ? parseDuration(v.contentDetails.duration) : 0
         };
       });
 
       await supabase.from('channel_videos').upsert(videoRows, { onConflict: 'channel_id,video_id' });
+      await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', ch.id);
       totalUpserted += videoRows.length;
     } catch (e: any) {
       console.error(`[cron/sync] Failed channel ${ch.name}:`, e.message);
     }
   }
-  return res.status(200).json({ task: 'videos', status: 'completed', upserted: totalUpserted });
+  return { task: 'videos', status: 'completed', upserted: totalUpserted };
 }
 
 // ── TASK: TMDB ───────────────────────────────────────────────────────────────
-async function handleTMDB(req: VercelRequest, res: VercelResponse) {
+async function runTMDBSync() {
   const TMDB_KEY = process.env.TMDB_API_KEY || process.env.VITE_TMDB_API_KEY;
   const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&with_origin_country=NG&sort_by=popularity.desc`;
+  
   const resData = await fetch(url).then(r => r.json());
-  return res.status(200).json({ task: 'tmdb', imported: resData.results?.length || 0 });
+  const movies = resData.results || [];
+  
+  if (movies.length === 0) {
+    return { task: 'tmdb', imported: 0, message: 'No movies found' };
+  }
+
+  // 1. Get or Create the TMDB Channel
+  let { data: channel } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('name', 'TMDB Discover')
+    .maybeSingle();
+  
+  if (!channel) {
+    const { data: newChannel, error: chErr } = await supabase
+      .from('channels')
+      .insert([{ 
+        name: 'TMDB Discover', 
+        category: 'Discovery',
+        description: 'Auto-fetched from TMDB Discover API (Nigeria Origin)'
+      }])
+      .select()
+      .single();
+    if (chErr) throw chErr;
+    channel = newChannel;
+  }
+
+  // 2. Map to channel_videos schema
+  const videoRows = movies.map((m: any) => ({
+    channel_id: channel!.id,
+    video_id: `TMDB_${m.id}`,
+    title: m.title,
+    description: m.overview,
+    thumbnail_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+    published_at: m.release_date ? new Date(m.release_date).toISOString() : new Date().toISOString()
+  }));
+
+  // 3. Upsert to DB
+  const { error: upsertErr } = await supabase
+    .from('channel_videos')
+    .upsert(videoRows, { onConflict: 'video_id' });
+
+  if (upsertErr) throw upsertErr;
+
+  // 4. Update last fetched timestamp
+  await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', channel.id);
+
+  return { 
+    task: 'tmdb', 
+    imported: movies.length,
+    channel_id: channel.id
+  };
 }
 
 // ── TASK: KAVA ───────────────────────────────────────────────────────────────

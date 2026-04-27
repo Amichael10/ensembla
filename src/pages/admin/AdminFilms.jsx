@@ -21,6 +21,7 @@ export default function AdminFilms() {
   const [isMerging, setIsMerging] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [lastSync, setLastSync] = useState(null);
   const pageSize = 20;
   
   // Normalized Data State
@@ -238,6 +239,17 @@ export default function AdminFilms() {
       if (error) throw error;
       setYoutubeVideos(data || []);
       setTotalCount(count || 0);
+
+      // Fetch last sync from channels
+      const { data: syncData } = await supabase
+        .from('channels')
+        .select('videos_last_fetched_at')
+        .order('videos_last_fetched_at', { ascending: false })
+        .limit(1);
+      
+      if (syncData?.[0]?.videos_last_fetched_at) {
+        setLastSync(new Date(syncData[0].videos_last_fetched_at));
+      }
     } catch (error) {
       console.error(error);
       toast.error('Failed to load YouTube buffer');
