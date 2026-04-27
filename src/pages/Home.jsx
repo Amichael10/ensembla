@@ -91,16 +91,17 @@ export default function Home() {
   };
 
   const fetchNewReleases = async () => {
-    // Fetch latest 2026 releases specifically from recent fetches
+    // Fetch latest 2026 releases specifically from recent fetches (Cinema & YouTube)
     const { data, error } = await supabase
       .from('films')
       .select(`
         id, title, poster_url, backdrop_url, year, language, 
         runtime_minutes, view_count, average_rating, nfvcb_rating, 
-        is_featured, is_trending, release_type, created_at,
+        is_featured, is_trending, release_type, created_at, release_date,
         film_genres(genres(name))
       `)
       .eq('year', 2026)
+      .order('release_date', { ascending: false, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(20);
 
@@ -360,11 +361,11 @@ export default function Home() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 border-t border-l border-border rounded-xl overflow-hidden shadow-sm">
                   {isLoading ? (
                     [...Array(6)].map((_, i) => (
-                      <div key={i} className="bg-surface p-8 animate-pulse border-r border-b border-border flex items-center gap-5">
-                        <div className="w-16 h-16 rounded-lg bg-surface-2 shrink-0"></div>
+                      <div key={i} className="bg-surface p-8 border-r border-b border-border flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-lg bg-surface-2 animate-shimmer shrink-0"></div>
                         <div className="flex-1 space-y-3">
-                          <div className="w-2/3 h-5 bg-surface-2 rounded"></div>
-                          <div className="w-1/2 h-3 bg-surface-2 rounded"></div>
+                          <div className="w-2/3 h-5 bg-surface-2 animate-shimmer rounded"></div>
+                          <div className="w-1/2 h-3 bg-surface-2 animate-shimmer rounded opacity-60"></div>
                         </div>
                       </div>
                     ))
