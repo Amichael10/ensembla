@@ -162,7 +162,7 @@ export default function AdminLayout() {
             {/* Theme Toggle */}
             <button 
               onClick={() => setIsDark(!isDark)}
-              className="w-10 h-10 rounded-lg bg-surface-2 border border-border text-text-muted hover:text-brand hover:border-brand/30 transition-all flex items-center justify-center shadow-sm"
+              className={`w-10 h-10 rounded-lg bg-surface-2 border border-border transition-all flex items-center justify-center shadow-sm ${!isDark ? 'text-brand border-brand/30' : 'text-text-muted hover:text-brand hover:border-brand/30'}`}
               title={`Switch to ${isDark ? 'Light' : 'Dark'} mode`}
             >
               <Icon icon={isDark ? 'solar:sun-2-linear' : 'solar:moon-linear'} width="20" />

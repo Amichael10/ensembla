@@ -16,6 +16,7 @@ export default function Home() {
   const [spotlightPerson, setSpotlightPerson] = useState(null);
   const [otherPeople, setOtherPeople] = useState([]);
   const [creators, setCreators] = useState([]);
+  const [newReleases, setNewReleases] = useState([]);
 
   const [featuredFilms, setFeaturedFilms] = useState([]);
 
@@ -30,6 +31,7 @@ export default function Home() {
       await Promise.all([
         fetchFeaturedFilms(),
         fetchFilms(),
+        fetchNewReleases(),
         fetchInCinemasData(),
         fetchYoutubeFeed(),
         fetchPeople(),
@@ -85,6 +87,28 @@ export default function Home() {
         }
       });
       setFilms(Array.from(filmMap.values()));
+    }
+  };
+
+  const fetchNewReleases = async () => {
+    // Fetch latest 2026 releases specifically from recent fetches
+    const { data, error } = await supabase
+      .from('films')
+      .select(`
+        id, title, poster_url, backdrop_url, year, language, 
+        runtime_minutes, view_count, average_rating, nfvcb_rating, 
+        is_featured, is_trending, release_type, created_at,
+        film_genres(genres(name))
+      `)
+      .eq('year', 2026)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (!error && data) {
+      setNewReleases(data.map(f => ({
+        ...f,
+        genres: f.film_genres?.map(fg => fg.genres?.name).filter(Boolean) || []
+      })));
     }
   };
 
@@ -170,11 +194,10 @@ export default function Home() {
 
   const trendingFilms = films.filter(f => f.is_trending || f.view_count > 500);
   
-  // New Releases: Combination of latest additions (synced today/recently) 
-  // filtered for modern titles (2024-2026)
-  const newReleases = films
-    .filter(f => f.year >= 2024)
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  // Fallback for New Releases if the 2026 fetch is empty
+  const displayNewReleases = newReleases.length > 0 
+    ? newReleases 
+    : films.filter(f => f.year >= 2025).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const formatViews = (count) => {
     if (!count) return '0';
@@ -209,13 +232,13 @@ export default function Home() {
           )}
         </div>
 
-        {/* New Releases (Dynamic Daily Sync) */}
-        {newReleases.length > 0 && (
+        {/* New Releases (Dynamic 2026 Sync) */}
+        {displayNewReleases.length > 0 && (
           <div className="border-b border-border py-12">
             <FilmRow
               title="New Releases"
-              subtitle="Latest additions to the library"
-              films={newReleases}
+              subtitle="2026's latest from cinema and digital fetches"
+              films={displayNewReleases}
               isLoading={isLoading}
             />
           </div>

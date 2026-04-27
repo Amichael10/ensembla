@@ -98,185 +98,99 @@ export default function AdminAI() {
         }).eq('id', item.id);
         dbError = error;
       } else if (action === 'MERGE') {
-        const masterId = item.master_id;
-        const duplicateIds = item.duplicate_ids;
-
-        addLog(`Initiating Conflict-Aware Deep Merge into Master Profile...`, 'info');
-
-        try {
-          // 1. Fetch current state of credits for Master and Clones
-          const { data: allCredits, error: fetchErr } = await supabase
-            .from('credits')
-            .select('id, film_id, role, person_id')
-            .in('person_id', [masterId, ...duplicateIds]);
-
-          if (fetchErr) throw fetchErr;
-
-          const masterCredits = allCredits.filter(c => c.person_id === masterId);
-          const duplicateCredits = allCredits.filter(c => duplicateIds.includes(c.person_id));
-
-          addLog(`Migrating ${duplicateCredits.length} credits from clones...`, 'info');
-
-          // Process credits individually to avoid unique constraint violations
-          for (const credit of duplicateCredits) {
-            const hasConflict = masterCredits.some(mc => mc.film_id === credit.film_id && mc.role === credit.role);
-            
-            if (hasConflict) {
-              // Master already has this credit, remove redundant duplicate
-              await supabase.from('credits').delete().eq('id', credit.id);
-            } else {
-              // Master lacks this credit, re-assign it
-              await supabase.from('credits').update({ person_id: masterId }).eq('id', credit.id);
-            }
-          }
-
-          // 2. Transfer associated accounts (Claims, Channels, Stats)
-          await supabase.from('claims').update({ person_id: masterId }).in('person_id', duplicateIds);
-          await supabase.from('channels').update({ person_id: masterId }).in('person_id', duplicateIds);
-          
-          // 3. Migrate any metadata (bio, handle) if Master is missing it
-          // We can do this as a secondary enhancement if needed
-
-          // 4. Final step: Purge the now-empty duplicates
-          const { error: deleteErr } = await supabase.from('people').delete().in('id', duplicateIds);
-          if (deleteErr) throw deleteErr;
-
-          addLog(`Deep Merge successfully finalized. 0 Records Lost.`, 'success');
-          dbError = null; 
-        } catch (err) {
-          addLog(`CRITICAL: Merge interrupted. Aborting deletion to protect data. Error: ${err.message}`, 'error');
-          throw err;
-        }
-      } else if (action === 'DELETE' && (activeTask === 'cleanup_films' || activeTask === 'cleanup_people')) {
-        const table = activeTask === 'cleanup_films' ? 'films' : 'people';
-        const { error } = await supabase.from(table).delete().eq('id', item.id);
+        // Handle merge logic from results
+        const { error } = await supabase.rpc('merge_people', {
+          p_master_id: item.master_id,
+          p_duplicate_ids: item.duplicate_ids
+        });
+        dbError = error;
+      } else if (action === 'DELETE') {
+        const { error } = await supabase.from('films').delete().eq('id', item.id);
         dbError = error;
       }
 
       if (dbError) throw dbError;
 
-      addLog(`Database updated successfully.`, 'success');
-      toast.success('Record Saved!');
-      
-      // Remove the item from the list immediately after successful DB action
-      setResults(prev => prev.filter(r => {
-        // 1. Direct object reference check
-        if (r === item) return false;
-        
-        // 2. ID check (for Discover/Cleanup)
-        if (item.id && r.id === item.id) return false;
-        
-        // 3. Merge Check (for Deduplication)
-        if (item.master_id && r.master_id === item.master_id) return false;
-        
-        // 4. Name check (fallback)
-        if (item.name && r.name === item.name) return false;
-        
-        return true;
-      }));
-
+      addLog(`Successfully applied action to ${item.name || item.title || item.id}`, 'success');
+      setResults(prev => prev.filter(i => i.id !== item.id && i !== item));
+      toast.success('Action applied');
     } catch (err) {
-      addLog(`DB Update Error: ${err.message || 'Unknown error'}`, 'error');
-      toast.error(`Save Failed: ${err.message || 'Check logs'}`);
+      addLog(`Failed to apply action: ${err.message}`, 'error');
+      toast.error('Database Error');
     }
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Premium Header */}
-      <div className="bg-surface p-10 rounded-3xl border border-border flex flex-col md:flex-row items-center gap-10 shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand/10 rounded-full -mr-48 -mt-48 blur-[100px] group-hover:bg-brand/20 transition-all duration-1000" />
-        <div className="text-6xl animate-bounce-slow">🤖</div>
-        <div className="space-y-3 relative z-10">
-          <h1 className="text-4xl font-black text-text-primary tracking-tight">AI Data Command Center</h1>
-          <p className="text-text-muted max-w-2xl text-lg leading-relaxed">
-            Automate your database growth using Gemini AI. Clean international leaks, discover regional talent, 
-            and enrich metadata with authentic synopses and posters.
-          </p>
+    <div className="p-8 max-w-7xl mx-auto space-y-12">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h1 className="text-3xl font-black text-text-primary tracking-tighter flex items-center gap-3">
+            <span className="w-10 h-10 bg-brand rounded-2xl flex items-center justify-center text-on-brand text-xl shadow-lg shadow-brand/20">A</span>
+            AI AGENT TERMINAL
+          </h1>
+          <p className="text-text-muted mt-2 font-medium">Automate database hygiene, enrichment and discovery.</p>
+        </div>
+        
+        <div className="flex gap-3">
+          <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3 shadow-sm">
+            <div className={`w-2 h-2 rounded-full ${apiStatus.youtube === 'ok' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">YouTube API</span>
+          </div>
+          <div className="px-4 py-2 bg-surface border border-border rounded-xl flex items-center gap-3 shadow-sm">
+            <div className={`w-2 h-2 rounded-full ${apiStatus.tmdb === 'ok' ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500 animate-pulse'}`} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">TMDB API</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Task Selection */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-surface p-6 rounded-2xl border border-border shadow-lg">
-            <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-              Available Operations
-            </h2>
+      <div className="grid lg:grid-cols-3 gap-10">
+        {/* Controls Panel */}
+        <div className="space-y-6">
+          <div className="bg-surface border border-border rounded-3xl p-6 shadow-xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+              <span className="text-6xl">🤖</span>
+            </div>
             
+            <h2 className="text-xs font-black text-brand uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+               Available Operations
+            </h2>
+
             <div className="space-y-3">
               <OperationButton 
-                icon="🧹" 
-                title="Cleanup Hollywood Films" 
-                desc="Remove international leaks"
+                icon="🧹"
+                title="Hygiene Check"
+                desc="Find & Fix broken metadata"
                 onClick={() => runTask('cleanup_films')}
                 disabled={isProcessing}
-                variant="danger"
               />
               <OperationButton 
-                icon="🚫" 
-                title="Cleanup Hollywood People" 
-                desc="Remove non-Nollywood talent"
-                onClick={() => runTask('cleanup_people')}
-                disabled={isProcessing}
-                variant="danger"
-              />
-              <OperationButton 
-                icon="🪄" 
-                title="Enrich Metadata" 
-                desc="Find posters & factual synopses"
+                icon="💎"
+                title="Enrich Records"
+                desc="Discover missing posters/bios"
                 onClick={() => runTask('enrich_metadata')}
                 disabled={isProcessing}
               />
               <OperationButton 
-                icon="👥" 
-                title="Deduplicate Records" 
-                desc="Merge duplicate actors/films"
-                onClick={() => runTask('deduplicate')}
+                icon="🌟"
+                title="Discover Cast"
+                desc="Identify new people profiles"
+                onClick={() => runTask('discover_actors')}
                 disabled={isProcessing}
               />
-              <div className="pt-4 border-t border-border mt-4">
-                <p className="text-[10px] font-black uppercase text-text-muted mb-3 tracking-widest px-1">Discover Rising Stars</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {['Yoruba', 'Igbo', 'Hausa'].map(cat => (
-                    <button 
-                      key={cat}
-                      onClick={() => runTask('discover_actors', { region: cat })}
-                      disabled={isProcessing}
-                      className="py-2.5 bg-surface-2 hover:bg-brand hover:text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* API Health & AI Status */}
-          <div className="bg-surface p-6 rounded-2xl border border-border shadow-lg space-y-5">
-            <h2 className="text-[10px] font-black uppercase text-text-muted tracking-widest px-1">System Status</h2>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-surface-2 rounded-xl border border-border/50">
-                <span className="text-xs font-bold text-text-muted">YouTube Connection</span>
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                  apiStatus.youtube === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
-                }`}>{apiStatus.youtube}</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-surface-2 rounded-xl border border-border/50">
-                <span className="text-xs font-bold text-text-muted">Movie Database API</span>
-                <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                  apiStatus.tmdb === 'active' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
-                }`}>{apiStatus.tmdb}</span>
-              </div>
+               <OperationButton 
+                icon="🧬"
+                title="Merge Duplicates"
+                desc="Consolidate duplicate people"
+                onClick={() => runTask('find_duplicate_people')}
+                disabled={isProcessing}
+                variant="danger"
+              />
             </div>
 
-            <div className="pt-4 border-t border-border">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-text-primary italic">AI Engine Health</span>
-                <span className="text-[10px] font-black text-brand uppercase">Online</span>
+            <div className="mt-8 pt-6 border-t border-border">
+              <div className="flex items-center justify-between text-[10px] font-bold text-text-muted mb-2 uppercase tracking-widest">
+                <span>Core Capacity</span>
+                <span>{isProcessing ? 'Processing...' : 'Idle'}</span>
               </div>
               <div className="w-full h-1.5 bg-surface-2 rounded-full overflow-hidden">
                 <div 
@@ -291,21 +205,21 @@ export default function AdminAI() {
           </div>
 
           {/* Real-time Logs */}
-          <div className="bg-darker p-4 rounded-xl border border-border h-64 flex flex-col font-mono text-[11px] shadow-2xl">
-            <div className="flex items-center justify-between mb-3 border-b border-white/5 pb-2">
-              <span className="text-white/40 uppercase font-black tracking-tighter">System Output</span>
+          <div className="bg-surface-2 border border-border rounded-3xl h-64 flex flex-col overflow-hidden shadow-2xl font-mono text-[11px]">
+            <div className="p-4 border-b border-border flex items-center justify-between bg-surface-2/50">
+              <span className="text-text-muted uppercase font-black tracking-tighter">System Output</span>
               <div className="flex gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-red-500/30" />
                 <div className="w-2 h-2 rounded-full bg-yellow-500/30" />
                 <div className="w-2 h-2 rounded-full bg-green-500/30" />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-hide">
-              {logs.length === 0 && <p className="text-white/20 italic">Waiting for command...</p>}
+            <div className="flex-1 overflow-y-auto p-4 space-y-1.5 scrollbar-hide">
+              {logs.length === 0 && <p className="text-text-muted/20 italic">Waiting for command...</p>}
               {logs.map((log, i) => (
                 <div key={i} className={`flex gap-3 py-0.5 ${
                   log.type === 'error' ? 'text-red-400' : 
-                  log.type === 'success' ? 'text-green-400 font-bold' : 'text-slate-300'
+                  log.type === 'success' ? 'text-brand font-bold' : 'text-text-secondary'
                 }`}>
                   <span className="opacity-40 shrink-0 font-normal">[{log.time}]</span>
                   <span className="break-all">{log.msg}</span>
@@ -472,7 +386,7 @@ function ResultItem({ item, task, onAction }) {
           <div className="flex gap-2 pt-1 border-t border-border/50">
             <button 
               onClick={() => onAction(item, 'APPLY')}
-              className="px-3 py-1.5 bg-brand text-white rounded-lg text-[10px] font-black hover:scale-105 transition-transform"
+              className="px-3 py-1.5 bg-brand text-on-brand rounded-lg text-[10px] font-black hover:scale-105 transition-transform"
             >
               Update Data
             </button>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Syne:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -21,9 +21,9 @@
 
 /* Theme Variables (Cal + Orange Inspired) */
 :root {
-  --color-brand: #FF5C00;
-  --color-brand-hover: #E65200;
-  --color-gold: #FF5C00;
+  --color-brand: #FF5A1F; /* Premium Orange */
+  --color-brand-hover: #E64A19;
+  --color-gold: #FF5A1F;
   
   /* Shared Defaults */
   --radius-sm: 2px;
@@ -45,7 +45,7 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #B0B0B0;
   --color-text-muted: #707070;
-  --color-brand-muted: rgba(255, 92, 0, 0.15);
+  --color-brand-muted: rgba(255, 90, 31, 0.15);
   --color-overlay: rgba(0, 0, 0, 0.85);
   
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.5);
@@ -54,8 +54,9 @@
   --color-sidebar: #1A1A1A;
   --color-sidebar-text: #B0B0B0;
   --color-sidebar-hover: rgba(255, 255, 255, 0.05);
-  --color-sidebar-active: rgba(255, 92, 0, 0.1);
+  --color-sidebar-active: rgba(255, 90, 31, 0.1);
   --color-sidebar-border: rgba(255, 255, 255, 0.08);
+  --color-on-brand: #000000;
 }
 
 /* Light Theme */
@@ -69,7 +70,9 @@
   --color-text-primary: #111827;
   --color-text-secondary: #4B5563;
   --color-text-muted: #9CA3AF;
-  --color-brand-muted: rgba(255, 92, 0, 0.1);
+  --color-brand: #FF5A1F; 
+  --color-brand-hover: #E64A19;
+  --color-brand-muted: rgba(255, 90, 31, 0.1);
   --color-overlay: rgba(255, 255, 255, 0.85);
 
   --shadow-md: rgba(19, 19, 22, 0.05) 0px 1px 5px -4px, rgba(34, 42, 53, 0.08) 0px 0px 0px 1px, rgba(34, 42, 53, 0.04) 0px 4px 8px 0px;
@@ -77,8 +80,9 @@
   --color-sidebar: #FFFFFF;
   --color-sidebar-text: #4B5563;
   --color-sidebar-hover: #F3F4F6;
-  --color-sidebar-active: rgba(255, 92, 0, 0.1);
+  --color-sidebar-active: rgba(255, 90, 31, 0.1);
   --color-sidebar-border: rgba(0, 0, 0, 0.05);
+  --color-on-brand: #FFFFFF;
 }
 
 @theme {
@@ -108,6 +112,7 @@
   --color-sidebar-hover: var(--color-sidebar-hover);
   --color-sidebar-active: var(--color-sidebar-active);
   --color-sidebar-border: var(--color-sidebar-border);
+  --color-on-brand: var(--color-on-brand);
   
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);

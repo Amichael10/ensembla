@@ -103,7 +103,6 @@ for (const ch of channels ?? []) {
         thumbnail_url: item.snippet.thumbnails?.medium?.url ?? item.snippet.thumbnails?.default?.url ?? null,
         published_at:  item.snippet.publishedAt,
         duration_seconds: meta[vid]?.seconds ?? null,
-        match_status: 'unmatched',
       };
     });
 
