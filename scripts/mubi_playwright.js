@@ -175,7 +175,7 @@ async function syncFilm(filmData, credits) {
   }
 }
 
-async function scrapeFilmDetails(browser, slug) {
+async function scrapeFilmDetails(browser, slug, currentCountry) {
   const page = await browser.newPage();
   try {
     const url = `https://mubi.com/en/films/${slug}`;
@@ -235,8 +235,8 @@ async function scrapeFilmDetails(browser, slug) {
         poster_url: film.still_url || film.stills?.retina,
         backdrop_url: film.stills?.retina,
         genres: film.genres || [],
-        countries: countries,
-        is_nollywood: countries.includes('Nigeria')
+        countries: countries.length > 0 ? countries : [currentCountry],
+        is_nollywood: countries.includes('Nigeria') || currentCountry === 'Nigeria'
       },
       credits
     };
@@ -291,7 +291,7 @@ async function main() {
         }
         
         try {
-          const { metadata, credits } = await scrapeFilmDetails(context, f.slug);
+          const { metadata, credits } = await scrapeFilmDetails(context, f.slug, country);
           await syncFilm(metadata, credits);
           state.processed_slugs.push(f.slug);
           saveState(state);
