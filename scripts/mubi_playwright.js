@@ -111,6 +111,7 @@ async function syncFilm(filmData, credits) {
     poster_url: filmData.poster_url,
     backdrop_url: filmData.backdrop_url,
     is_nollywood: filmData.is_nollywood,
+    countries: filmData.countries?.join(', '),
     source: 'mubi',
     status: 'released',
     needs_review: true
@@ -293,6 +294,20 @@ async function main() {
             .maybeSingle();
 
           if (dbExisting) {
+            // Ensure country link exists for this country
+            const { data: countryRow } = await supabase
+              .from('countries')
+              .select('id')
+              .ilike('name', country)
+              .maybeSingle();
+            
+            if (countryRow) {
+              await supabase.from('film_countries').upsert({
+                film_id: dbExisting.id,
+                country_id: countryRow.id
+              }, { onConflict: 'film_id,country_id' });
+            }
+            
             state.processed_slugs.push(f.slug);
             continue;
           }
@@ -309,7 +324,7 @@ async function main() {
               state.processed_slugs.push(f.slug);
               saveState(state);
             }
-            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+            await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
           } catch (err) {
             console.error(`  ❌ Failed ${f.slug}: ${err.message}`);
           }
