@@ -38,15 +38,7 @@ const ROLE_MAP = {
   'Costume Design': 'crew'
 };
 
-const AFRICAN_COUNTRIES = [
-  'Algeria', 'Angola', 'Benin', 'Botswana', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cameroon',
-  'Central African Republic', 'Chad', 'Comoros', 'Congo', 'Congo (DRC)', 'Djibouti', 'Egypt',
-  'Equatorial Guinea', 'Eritrea', 'Eswatini', 'Ethiopia', 'Gabon', 'Gambia', 'Ghana', 'Guinea',
-  'Guinea-Bissau', 'Ivory Coast', 'Kenya', 'Lesotho', 'Liberia', 'Libya', 'Madagascar', 'Malawi',
-  'Mali', 'Mauritania', 'Mauritius', 'Morocco', 'Mozambique', 'Namibia', 'Niger', 'Nigeria',
-  'Rwanda', 'Sao Tome and Principe', 'Senegal', 'Seychelles', 'Sierra Leone', 'Somalia',
-  'South Africa', 'South Sudan', 'Sudan', 'Tanzania', 'Togo', 'Tunisia', 'Uganda', 'Zambia', 'Zimbabwe'
-];
+const AFRICAN_COUNTRIES = ['Nigeria'];
 
 function loadState() {
   if (fs.existsSync(STATE_FILE)) {
@@ -391,23 +383,8 @@ async function main() {
       // ROTATION LOGIC
       if (!pagesRemaining || state.current_page > MAX_PAGES) {
         console.log(`🎉 Finished ${country}!`);
-        if (!state.countries_done.includes(country)) {
-          state.countries_done.push(country);
-        }
-        
-        const nextCountry = AFRICAN_COUNTRIES.find(c => !state.countries_done.includes(c));
-        if (nextCountry) {
-          console.log(`🌍 Moving to: ${nextCountry}`);
-          country = nextCountry;
-          state.current_country = nextCountry;
-          state.current_page = 1;
-          state.processed_slugs = [];
-          saveState(state);
-        } else {
-          console.log('🏁 ALL AFRICAN COUNTRIES DONE!');
-          finishedAll = true;
-          break;
-        }
+        finishedAll = true;
+        break;
       } else {
         // If we finished the MAX_PAGES loop but pages were still remaining, stop for now
         break;
