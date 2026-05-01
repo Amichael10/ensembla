@@ -347,22 +347,22 @@ async function main() {
           }
 
           if (dbExisting) {
-            console.log(`  🔗 Linking existing: ${f.title} (${f.year})`);
-            // Ensure country link exists for this country
-            const { data: countryRow } = await supabase
-              .from('countries')
-              .select('id')
-              .ilike('name', country)
-              .maybeSingle();
-            
-            if (countryRow) {
-              await supabase.from('film_countries').upsert({
-                film_id: dbExisting.id,
-                country_id: countryRow.id
-              }, { onConflict: 'film_id,country_id' });
+            console.log(`  🔗 Linking existing (upgrading metadata): ${f.title} (${f.year})`);
+            try {
+              const result = await Promise.race([
+                scrapeFilmDetails(context, f.slug, country),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 120000))
+              ]);
+              
+              if (result) {
+                // This will now update the existing film with Mubi metadata and source: 'mubi'
+                await syncFilm(result.metadata, result.credits);
+                state.processed_slugs.push(f.slug);
+                saveState(state);
+              }
+            } catch (err) {
+              console.error(`  ❌ Failed to upgrade ${f.slug}: ${err.message}`);
             }
-            
-            state.processed_slugs.push(f.slug);
             continue;
           }
           
