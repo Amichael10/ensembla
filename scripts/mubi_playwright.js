@@ -38,7 +38,22 @@ const ROLE_MAP = {
   'Costume Design': 'crew'
 };
 
-const AFRICAN_COUNTRIES = ['Nigeria'];
+const COUNTRY_CODES = {
+  'Nigeria': 'NG', 'Algeria': 'DZ', 'Angola': 'AO', 'Benin': 'BJ', 'Botswana': 'BW',
+  'Burkina Faso': 'BF', 'Burundi': 'BI', 'Cabo Verde': 'CV', 'Cameroon': 'CM',
+  'Central African Republic': 'CF', 'Chad': 'TD', 'Comoros': 'KM', 'Congo': 'CG',
+  'Congo (DRC)': 'CD', 'Djibouti': 'DJ', 'Egypt': 'EG', 'Equatorial Guinea': 'GQ',
+  'Eritrea': 'ER', 'Eswatini': 'SZ', 'Ethiopia': 'ET', 'Gabon': 'GA', 'Gambia': 'GM',
+  'Ghana': 'GH', 'Guinea': 'GN', 'Guinea-Bissau': 'GW', 'Ivory Coast': 'CI',
+  'Kenya': 'KE', 'Lesotho': 'LS', 'Liberia': 'LR', 'Libya': 'LY', 'Madagascar': 'MG',
+  'Malawi': 'MW', 'Mali': 'ML', 'Mauritania': 'MR', 'Mauritius': 'MU', 'Morocco': 'MA',
+  'Mozambique': 'MZ', 'Namibia': 'NA', 'Niger': 'NE', 'Rwanda': 'RW',
+  'Sao Tome and Principe': 'ST', 'Senegal': 'SN', 'Seychelles': 'SC', 'Sierra Leone': 'SL',
+  'Somalia': 'SO', 'South Africa': 'ZA', 'South Sudan': 'SS', 'Sudan': 'SD',
+  'Tanzania': 'TZ', 'Togo': 'TG', 'Tunisia': 'TN', 'Uganda': 'UG', 'Zambia': 'ZM', 'Zimbabwe': 'ZW'
+};
+
+const AFRICAN_COUNTRIES = Object.keys(COUNTRY_CODES);
 
 function loadState() {
   if (fs.existsSync(STATE_FILE)) {
@@ -288,11 +303,11 @@ async function main() {
 
       for (let p = state.current_page; p <= MAX_PAGES; p++) {
         console.log(`\n📄 Page ${p}/${MAX_PAGES} for ${country}`);
-        const browseUrl = `https://api.mubi.com/v4/browse/films?historic_countries[]=${getCountryCode(country)}&page=${p}&per_page=24`;
+        const browseUrl = `https://api.mubi.com/v4/browse/films?country=${encodeURIComponent(country)}&all_films=true&sort=popularity_quality_score&page=${p}&per_page=24`;
         
         const response = await context.request.get(browseUrl, {
           headers: {
-            'Client-Country': 'NG',
+            'Client-Country': getCountryCode(country),
             'client': 'web',
             'Accept': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -383,8 +398,23 @@ async function main() {
       // ROTATION LOGIC
       if (!pagesRemaining || state.current_page > MAX_PAGES) {
         console.log(`🎉 Finished ${country}!`);
-        finishedAll = true;
-        break;
+        if (!state.countries_done) state.countries_done = [];
+        if (!state.countries_done.includes(country)) state.countries_done.push(country);
+        
+        // Find next country
+        const nextCountry = AFRICAN_COUNTRIES.find(c => !state.countries_done.includes(c));
+        if (nextCountry) {
+           console.log(`🔄 Rotating to next country: ${nextCountry}`);
+           state.current_country = nextCountry;
+           state.current_page = 1;
+           country = nextCountry;
+           saveState(state);
+           // Continue while loop
+        } else {
+           console.log(`🎊 All African countries have been processed!`);
+           finishedAll = true;
+           break;
+        }
       } else {
         // If we finished the MAX_PAGES loop but pages were still remaining, stop for now
         break;
@@ -397,21 +427,7 @@ async function main() {
 }
 
 function getCountryCode(name) {
-  const codes = {
-    'Nigeria': 'NG', 'Algeria': 'DZ', 'Angola': 'AO', 'Benin': 'BJ', 'Botswana': 'BW',
-    'Burkina Faso': 'BF', 'Burundi': 'BI', 'Cabo Verde': 'CV', 'Cameroon': 'CM',
-    'Central African Republic': 'CF', 'Chad': 'TD', 'Comoros': 'KM', 'Congo': 'CG',
-    'Congo (DRC)': 'CD', 'Djibouti': 'DJ', 'Egypt': 'EG', 'Equatorial Guinea': 'GQ',
-    'Eritrea': 'ER', 'Eswatini': 'SZ', 'Ethiopia': 'ET', 'Gabon': 'GA', 'Gambia': 'GM',
-    'Ghana': 'GH', 'Guinea': 'GN', 'Guinea-Bissau': 'GW', 'Ivory Coast': 'CI',
-    'Kenya': 'KE', 'Lesotho': 'LS', 'Liberia': 'LR', 'Libya': 'LY', 'Madagascar': 'MG',
-    'Malawi': 'MW', 'Mali': 'ML', 'Mauritania': 'MR', 'Mauritius': 'MU', 'Morocco': 'MA',
-    'Mozambique': 'MZ', 'Namibia': 'NA', 'Niger': 'NE', 'Rwanda': 'RW',
-    'Sao Tome and Principe': 'ST', 'Senegal': 'SN', 'Seychelles': 'SC', 'Sierra Leone': 'SL',
-    'Somalia': 'SO', 'South Africa': 'ZA', 'South Sudan': 'SS', 'Sudan': 'SD',
-    'Tanzania': 'TZ', 'Togo': 'TG', 'Tunisia': 'TN', 'Uganda': 'UG', 'Zambia': 'ZM', 'Zimbabwe': 'ZW'
-  };
-  return codes[name] || 'NG';
+  return COUNTRY_CODES[name] || 'NG';
 }
 
 main().catch(console.error);
