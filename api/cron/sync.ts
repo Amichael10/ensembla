@@ -180,6 +180,14 @@ async function runVideosSync() {
 
   for (const ch of channels) {
     try {
+      const { data: hiddenVids } = await supabase
+        .from('channel_videos')
+        .select('video_id')
+        .eq('channel_id', ch.id)
+        .eq('is_hidden', true);
+      
+      const hiddenSet = new Set(hiddenVids?.map(v => v.video_id) || []);
+
       const handle = ch.channel_handle?.replace(/^@/, '');
       let uploadsId = '';
       let discoveredChannelId = ch.channel_id;
@@ -216,11 +224,14 @@ async function runVideosSync() {
           published_at: item.snippet.publishedAt,
           duration_seconds: v ? parseDuration(v.contentDetails.duration) : 0
         };
-      });
+      }).filter(row => !hiddenSet.has(row.video_id));
 
-      await supabase.from('channel_videos').upsert(videoRows, { onConflict: 'channel_id,video_id' });
+      if (videoRows.length > 0) {
+        await supabase.from('channel_videos').upsert(videoRows, { onConflict: 'channel_id,video_id' });
+        totalUpserted += videoRows.length;
+      }
+      
       await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', ch.id);
-      totalUpserted += videoRows.length;
     } catch (e: any) {
       console.error(`[cron/sync] Failed channel ${ch.name}:`, e.message);
     }
@@ -262,6 +273,13 @@ async function runTMDBSync() {
   }
 
   // 2. Map to channel_videos schema
+  const { data: hiddenVids } = await supabase
+    .from('channel_videos')
+    .select('video_id')
+    .eq('channel_id', channel.id)
+    .eq('is_hidden', true);
+  const hiddenSet = new Set(hiddenVids?.map(v => v.video_id) || []);
+
   const videoRows = movies.map((m: any) => ({
     channel_id: channel!.id,
     video_id: `TMDB_${m.id}`,
@@ -269,14 +287,16 @@ async function runTMDBSync() {
     description: m.overview,
     thumbnail_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
     published_at: m.release_date ? new Date(m.release_date).toISOString() : new Date().toISOString()
-  }));
+  })).filter(row => !hiddenSet.has(row.video_id));
 
   // 3. Upsert to DB
-  const { error: upsertErr } = await supabase
-    .from('channel_videos')
-    .upsert(videoRows, { onConflict: 'video_id' });
+  if (videoRows.length > 0) {
+    const { error: upsertErr } = await supabase
+      .from('channel_videos')
+      .upsert(videoRows, { onConflict: 'channel_id,video_id' });
 
-  if (upsertErr) throw upsertErr;
+    if (upsertErr) throw upsertErr;
+  }
 
   // 4. Update last fetched timestamp
   await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', channel.id);

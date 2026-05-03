@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import { formatViewCount } from '../../utils/youtube';
 import { toast } from 'react-hot-toast';
+import { Icon } from '@iconify/react';
 
 const FILM_MIN = 60; // 1 min in seconds (includes skits)
 
@@ -578,6 +579,17 @@ export default function AdminYouTubeVideos() {
           ids.forEach(id => { results[id] = { is_hidden: true }; });
           toast.success(`Hidden ${ids.length} videos`, { id: 'bulk' });
         }
+      } else if (action === 'delete') {
+        if (!window.confirm(`Permanently delete ${ids.length} videos?`)) return;
+        const { error } = await supabase.from('channel_videos').delete().in('id', ids);
+        if (error) {
+          toast.error(`Delete failed: ${error.message}`, { id: 'bulk' });
+        } else {
+          setVideos(prev => prev.filter(v => !selectedIds.has(v.id)));
+          setSelectedIds(new Set());
+          toast.success(`Deleted ${ids.length} videos`, { id: 'bulk' });
+          return; // Skip the state update below since we filtered
+        }
       }
 
       // Apply changes to local state immediately
@@ -683,6 +695,21 @@ export default function AdminYouTubeVideos() {
     setTogglingId(null);
   };
 
+  const deleteVideo = async (video) => {
+    if (!window.confirm(`Are you sure you want to permanently delete '${video.title}' from the database? It may reappear during next sync unless you Hide it instead.`)) return;
+    
+    setTogglingId(video.id);
+    const { error } = await supabase.from('channel_videos').delete().eq('id', video.id);
+    
+    if (error) {
+      toast.error(`Delete failed: ${error.message}`);
+    } else {
+      setVideos(vs => vs.filter(v => v.id !== video.id));
+      toast.success('Video deleted from database');
+    }
+    setTogglingId(null);
+  };
+
   const handleManualSync = async () => {
     setSyncing(true);
     try {
@@ -769,6 +796,13 @@ export default function AdminYouTubeVideos() {
                className="h-10 px-6 rounded-lg bg-surface border border-border text-text-muted text-xs font-bold hover:bg-red-500/10 hover:text-red-500 transition-all disabled:opacity-50 disabled:cursor-wait"
              >
                Bulk Hide
+             </button>
+             <button 
+               disabled={isBulkAction} 
+               onClick={() => handleBulkAction('delete')} 
+               className="h-10 px-6 rounded-lg bg-surface border border-border text-text-muted text-xs font-bold hover:bg-red-500 hover:text-white transition-all disabled:opacity-50 disabled:cursor-wait"
+             >
+               Bulk Delete
              </button>
           </div>
 
@@ -957,12 +991,15 @@ export default function AdminYouTubeVideos() {
                              <div className="text-[10px] font-bold text-text-muted/30 mr-4 tracking-wider font-mono">ID: {v.video_id}</div>
                           </div>
                         )}
-                        <button onClick={() => toggleHidden(v)} disabled={togglingId === v.id} className={`h-10 w-10 flex items-center justify-center rounded-md border border-border transition-all ${v.is_hidden ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-surface-2 hover:border-text-muted text-text-muted'}`}>
+                         <button onClick={() => toggleHidden(v)} disabled={togglingId === v.id} className={`h-10 w-10 flex items-center justify-center rounded-md border border-border transition-all ${v.is_hidden ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-surface-2 hover:border-text-muted text-text-muted'}`} title={v.is_hidden ? 'Unhide' : 'Hide'}>
                           {togglingId === v.id ? (
                              <div className="w-3.5 h-3.5 border-2 border-text-muted/30 border-t-text-muted rounded-full animate-spin" />
                           ) : (
                             <Icon icon={v.is_hidden ? 'solar:eye-linear' : 'solar:eye-closed-linear'} className="text-lg" />
                           )}
+                        </button>
+                        <button onClick={() => deleteVideo(v)} disabled={togglingId === v.id} className="h-10 w-10 flex items-center justify-center rounded-md border border-border bg-surface-2 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-text-muted transition-all" title="Delete Record">
+                          <Icon icon="solar:trash-bin-trash-linear" className="text-lg" />
                         </button>
                       </div>
                     </td>

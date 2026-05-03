@@ -272,7 +272,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               videoRow.film_id = filmId;
             }
 
-            allVideoRows.push(videoRow);
+            if (!hiddenSet.has(v.id)) {
+              allVideoRows.push(videoRow);
+            }
           }
 
           fetchedCount += vData.items.length;
@@ -322,6 +324,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (movies.length > 0) {
           let { data: tmdbCh } = await supabase.from('channels').select('id').eq('name', 'TMDB Discover').maybeSingle();
           if (tmdbCh) {
+            const { data: hiddenVids } = await supabase
+              .from('channel_videos')
+              .select('video_id')
+              .eq('channel_id', tmdbCh.id)
+              .eq('is_hidden', true);
+            const hiddenSet = new Set(hiddenVids?.map(v => v.video_id) || []);
+
             const tmdbRows = movies.map((m: any) => ({
               channel_id: tmdbCh.id,
               video_id: `TMDB_${m.id}`,
@@ -329,11 +338,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               description: m.overview,
               thumbnail_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
               published_at: m.release_date ? new Date(m.release_date).toISOString() : new Date().toISOString()
-            }));
-            await supabase.from('channel_videos').upsert(tmdbRows, { onConflict: 'video_id' });
+            })).filter(row => !hiddenSet.has(row.video_id));
+
+            if (tmdbRows.length > 0) {
+              await supabase.from('channel_videos').upsert(tmdbRows, { onConflict: 'video_id' });
+              tmdbResult = { imported: movies.length };
+              totalUpdated += movies.length;
+            }
             await supabase.from('channels').update({ videos_last_fetched_at: new Date().toISOString() }).eq('id', tmdbCh.id);
-            tmdbResult = { imported: movies.length };
-            totalUpdated += movies.length;
           }
         }
       }

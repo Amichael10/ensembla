@@ -94,6 +94,15 @@ for (const ch of channels ?? []) {
       meta[v.id] = { seconds: parseDuration(v.contentDetails?.duration ?? ''), views: parseInt(v.statistics?.viewCount ?? '0') };
     }
 
+    // Fetch hidden videos for this channel to avoid re-promoting them
+    const { data: hiddenVids } = await supabase
+      .from('channel_videos')
+      .select('video_id')
+      .eq('channel_id', ch.id)
+      .eq('is_hidden', true);
+    
+    const hiddenSet = new Set(hiddenVids?.map(v => v.video_id) || []);
+
     const videoRows = items.map(item => {
       const vid = item.snippet.resourceId.videoId;
       return {
@@ -104,7 +113,7 @@ for (const ch of channels ?? []) {
         published_at:  item.snippet.publishedAt,
         duration_seconds: meta[vid]?.seconds ?? null,
       };
-    });
+    }).filter(row => !hiddenSet.has(row.video_id));
 
     const { error: upsertErr } = await supabase
       .from('channel_videos')

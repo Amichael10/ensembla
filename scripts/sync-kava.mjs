@@ -80,6 +80,14 @@ async function run() {
 
     if (movies.length === 0) return;
 
+    // Fetch hidden videos for this channel
+    const { data: hiddenVids } = await supabase
+      .from('channel_videos')
+      .select('video_id')
+      .eq('channel_id', channel.id)
+      .eq('is_hidden', true);
+    const hiddenSet = new Set(hiddenVids?.map(v => v.video_id) || []);
+
     // 3. Upsert into channel_videos (the admin buffer)
     const videoRows = movies.map(m => ({
       channel_id: channel.id,
@@ -88,7 +96,7 @@ async function run() {
       description: m.synopsis,
       thumbnail_url: m.poster_url || null,
       published_at: new Date().toISOString()
-    }));
+    })).filter(row => !hiddenSet.has(row.video_id));
 
     const { error: upsertError } = await supabase.from('channel_videos').upsert(videoRows, { 
       onConflict: 'channel_id,video_id' 

@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { formatViewCount } from '../../utils/youtube';
 import { toast } from 'react-hot-toast';
+import { Icon } from '@iconify/react';
 import SyncStatusOverlay from '../../components/admin/SyncStatusOverlay';
 
 export default function AdminChannelDetail() {
@@ -16,6 +17,7 @@ export default function AdminChannelDetail() {
   const [syncReport, setSyncReport] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [togglingId, setTogglingId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -89,28 +91,34 @@ export default function AdminChannelDetail() {
   }, [videos]);
 
   const handleHide = async (videoId, currentStatus) => {
+    setTogglingId(videoId);
     try {
       const { error } = await supabase
         .from('channel_videos')
         .update({ is_hidden: !currentStatus })
         .eq('id', videoId);
       if (error) throw error;
-      setVideos(videos.map(v => v.id === videoId ? { ...v, is_hidden: !currentStatus } : v));
-      toast.success(!currentStatus ? 'Video hidden' : 'Video unhidden');
+      setVideos(prev => prev.map(v => v.id === videoId ? { ...v, is_hidden: !currentStatus } : v));
+      toast.success(!currentStatus ? 'Video hidden (will persist across syncs)' : 'Video unhidden');
     } catch (err) {
-      toast.error('Failed to update visibility');
+      toast.error(`Visibility update failed: ${err.message}`);
+    } finally {
+      setTogglingId(null);
     }
   };
 
   const handleDeleteVideo = async (videoId) => {
-    if (!window.confirm('Are you sure you want to delete this video record? This will remove the mapping as well.')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this video record? It may reappear during next sync unless you Hide it instead.')) return;
+    setTogglingId(videoId);
     try {
       const { error } = await supabase.from('channel_videos').delete().eq('id', videoId);
       if (error) throw error;
-      setVideos(videos.filter(v => v.id !== videoId));
-      toast.success('Record deleted');
+      setVideos(prev => prev.filter(v => v.id !== videoId));
+      toast.success('Record deleted from database');
     } catch (err) {
-      toast.error('Deletion failed');
+      toast.error(`Deletion failed: ${err.message}`);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -299,32 +307,44 @@ export default function AdminChannelDetail() {
                         )}
                       </td>
                       <td className="px-10 py-8 text-right">
-                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Link 
-                               to={vid.film_id ? `/admin/films?edit=${vid.film_id}` : `/admin/films?map_video=${vid.id}`} 
-                               className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-brand hover:border-brand/30 transition-all shadow-md"
-                               title={vid.film_id ? "Edit Film" : "Map to Film"}
-                            >✏️</Link>
-                            <button 
-                               onClick={() => handleHide(vid.id, vid.is_hidden)} 
-                               className={`w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center transition-all shadow-md ${vid.is_hidden ? 'text-brand border-brand/30' : 'text-text-muted hover:text-brand hover:border-brand/30'}`}
-                               title={vid.is_hidden ? "Unhide Video" : "Hide Video"}
-                            >
-                              {vid.is_hidden ? '👁️' : '🕶️'}
-                            </button>
-                            <button 
-                               onClick={() => handleDeleteVideo(vid.id)} 
-                               className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-red-500 hover:border-red-500/30 transition-all shadow-md"
-                               title="Delete Record"
-                            >🗑️</button>
-                            <a 
-                               href={`https://youtube.com/watch?v=${vid.video_id}`} 
-                               target="_blank" 
-                               rel="noopener noreferrer" 
-                               className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-red-500 hover:border-red-500/30 transition-all shadow-md"
-                               title="External Source"
-                            >↗</a>
-                         </div>
+                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <Link 
+                                to={vid.film_id ? `/admin/films?edit=${vid.film_id}` : `/admin/films?map_video=${vid.id}`} 
+                                className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-brand hover:border-brand/30 transition-all shadow-md"
+                                title={vid.film_id ? "Edit Film" : "Map to Film"}
+                             >
+                                <Icon icon="solar:pen-linear" className="text-lg" />
+                             </Link>
+                             <button 
+                                onClick={() => handleHide(vid.id, vid.is_hidden)} 
+                                disabled={togglingId === vid.id}
+                                className={`w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center transition-all shadow-md ${vid.is_hidden ? 'text-brand border-brand/30 bg-brand/5' : 'text-text-muted hover:text-brand hover:border-brand/30'}`}
+                                title={vid.is_hidden ? "Unhide Video" : "Hide Video"}
+                             >
+                               {togglingId === vid.id ? (
+                                 <div className="w-4 h-4 border-2 border-brand/20 border-t-brand rounded-full animate-spin" />
+                               ) : (
+                                 <Icon icon={vid.is_hidden ? 'solar:eye-linear' : 'solar:eye-closed-linear'} className="text-lg" />
+                               )}
+                             </button>
+                             <button 
+                                onClick={() => handleDeleteVideo(vid.id)} 
+                                disabled={togglingId === vid.id}
+                                className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-red-500 hover:border-red-500/30 transition-all shadow-md"
+                                title="Delete Record"
+                             >
+                                <Icon icon="solar:trash-bin-trash-linear" className="text-lg" />
+                             </button>
+                             <a 
+                                href={`https://youtube.com/watch?v=${vid.video_id}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="w-10 h-10 rounded-md bg-surface border border-border flex items-center justify-center text-text-muted hover:text-red-500 hover:border-red-500/30 transition-all shadow-md"
+                                title="External Source"
+                             >
+                                <Icon icon="solar:arrow-right-up-linear" className="text-lg" />
+                             </a>
+                          </div>
                       </td>
                     </tr>
                  ))}
