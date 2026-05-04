@@ -14,8 +14,8 @@
  *   • "Blacklist" → sets admin_decision='blacklisted', future scrapes skip
  */
 
-import { supabase } from '../supabase';
-import type { ScrapedShowtime } from './types';
+import { supabase } from '../supabase.js';
+import type { ScrapedShowtime } from './types.js';
 
 type MatchCache = Map<string, string | null>; // normalized title → films.id | null (= pending)
 

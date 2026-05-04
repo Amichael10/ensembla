@@ -1,5 +1,5 @@
 import type { VercelRequest } from '@vercel/node';
-import { supabase } from './supabase';
+import { supabase } from './supabase.js';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 

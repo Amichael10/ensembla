@@ -55,8 +55,8 @@
  * and scrape_config.url = 'https://filmhousecinemas.com/cinemas/<slug>').
  */
 
-import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types';
-import { inferFormat, toLagosDateTime, todayLagos } from './types';
+import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types.js';
+import { inferFormat, toLagosDateTime, todayLagos } from './types.js';
 
 // ── DTO shapes (update once real API is confirmed) ────────────────────────────
 

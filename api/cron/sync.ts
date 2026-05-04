@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from '../_lib/supabase';
-import { isValidAuth } from '../_lib/auth';
-import { ADAPTERS, upsertShowtimes, type CinemaRow } from '../_lib/cinema-adapters';
-import { generateAIContent, parseJSON } from '../_lib/ai_service';
+import { supabase } from '../_lib/supabase.js';
+import { isValidAuth } from '../_lib/auth.js';
+import { ADAPTERS, upsertShowtimes, type CinemaRow } from '../_lib/cinema-adapters/index.js';
+import { generateAIContent, parseJSON } from '../_lib/ai_service.js';
 
 export const config = { maxDuration: 300 }; // Increased for 225 channels
 

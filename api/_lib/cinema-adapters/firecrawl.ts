@@ -17,8 +17,8 @@
  *   FIRECRAWL_API_KEY=fc-...
  */
 
-import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types';
-import { inferFormat, todayLagos } from './types';
+import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types.js';
+import { inferFormat, todayLagos } from './types.js';
 
 /** The shape we ask Firecrawl to extract from each page. */
 interface ExtractedSchedule {

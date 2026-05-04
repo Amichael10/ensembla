@@ -22,8 +22,8 @@
  *   { "ticketUrl": "https://bluepicturesng.com/value/blockbuster-ticket/" }
  */
 
-import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types';
-import { todayLagos } from './types';
+import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types.js';
+import { todayLagos } from './types.js';
 
 const DEFAULT_NOW_SHOWING = 'https://bluepicturesng.com/now-showing/';
 const DEFAULT_TICKET_URL  = 'https://bluepicturesng.com/value/blockbuster-ticket/';

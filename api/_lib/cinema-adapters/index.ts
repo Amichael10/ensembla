@@ -3,12 +3,12 @@
  * showtimes for that platform. New adapters just register here.
  */
 
-import type { CinemaAdapter } from './types';
-import { reachCinemaAdapter } from './reach-cinema';
-import { veeziAdapter } from './veezi';
-import { cinesyncAdapter } from './cinesync';
-import { bluepicturesAdapter } from './bluepictures';
-import { firecrawlAdapter } from './firecrawl';
+import type { CinemaAdapter } from './types.js';
+import { reachCinemaAdapter } from './reach-cinema.js';
+import { veeziAdapter } from './veezi.js';
+import { cinesyncAdapter } from './cinesync.js';
+import { bluepicturesAdapter } from './bluepictures.js';
+import { firecrawlAdapter } from './firecrawl.js';
 
 export const ADAPTERS: Record<string, CinemaAdapter> = {
   reach_cinema: reachCinemaAdapter,   // Viva / Ozone / KADA (Reach Cinema / Fusion Intel)
@@ -18,5 +18,5 @@ export const ADAPTERS: Record<string, CinemaAdapter> = {
   firecrawl:    firecrawlAdapter,     // Genesis + any geo-blocked sites
 };
 
-export * from './types';
-export { upsertShowtimes } from './upsert';
+export * from './types.js';
+export { upsertShowtimes } from './upsert.js';

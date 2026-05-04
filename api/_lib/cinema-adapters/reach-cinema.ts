@@ -12,8 +12,8 @@
  *   { "apiBase": "...", "jwt": "..." }
  */
 
-import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types';
-import { inferFormat, toLagosDateTime, todayLagos } from './types';
+import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types.js';
+import { inferFormat, toLagosDateTime, todayLagos } from './types.js';
 
 // Public bearer JWT bundled in web.vivacinemas.com (exp: 2027-06-05).
 // If Reach Cinema ever rotates it, set REACH_CINEMA_JWT env var to override.

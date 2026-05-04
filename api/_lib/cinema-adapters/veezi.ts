@@ -36,8 +36,8 @@
  * if we're in late December looking at January dates.
  */
 
-import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types';
-import { inferFormat } from './types';
+import type { AdapterResult, CinemaAdapter, CinemaRow, ScrapedShowtime } from './types.js';
+import { inferFormat } from './types.js';
 
 const VEEZI_BASE = 'https://ticketing.eu.veezi.com';
 const VEEZI_PURCHASE_BASE = 'https://ticketing.eu.veezi.com/purchase';
