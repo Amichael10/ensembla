@@ -8,7 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "scrape:ironflix": "tsx scripts/ironflix_sync.ts",
+    "scrape:netflix": "tsx scripts/netflix_sync.ts",
+    "scrape:prime": "tsx scripts/prime_sync.ts",
+    "sync:kava": "tsx scripts/sync-kava.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

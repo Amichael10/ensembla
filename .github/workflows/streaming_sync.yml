@@ -1,0 +1,40 @@
+name: Streaming Platforms Sync
+
+on:
+  schedule:
+    - cron: '0 2 * * 0' # 2:00 AM every Sunday
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+        
+      - name: Run Netflix Sync
+        run: npm run scrape:netflix
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          NETFLIX_EMAIL: ${{ secrets.NETFLIX_EMAIL }}
+          NETFLIX_PASSWORD: ${{ secrets.NETFLIX_PASSWORD }}
+          
+      - name: Run Prime Sync
+        run: npm run scrape:prime
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PRIME_EMAIL: ${{ secrets.PRIME_EMAIL }}
+          PRIME_PASSWORD: ${{ secrets.PRIME_PASSWORD }}

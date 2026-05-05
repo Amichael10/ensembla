@@ -47,24 +47,40 @@ export function cleanTitle(raw: string): string {
   
   let title = raw.trim();
 
-  // 1. Specific Nollywood/YouTube noise patterns
+  // 0. Pre-capture and temporarily remove EP info to prevent it from "protecting" noise
+  const epMatch = title.match(/\bEP\s*\d+/i);
+  const epInfo = epMatch ? epMatch[0] : null;
+  if (epInfo) {
+    // Replace with a placeholder or just remove for now
+    title = title.replace(epMatch[0], '').replace(/\s{2,}/g, ' ').trim();
+  }
+
+  // 1. Prefix noise removal (e.g., "LATEST NIGERIAN MOVIE 2024 - ")
+  title = title.replace(/^(LATEST|NEW|HOT|TRENDING)\s+(NIGERIAN|NOLLYWOOD|AFRICAN|YORUBA|IGBO)?\s*(EPIC\s*)?(DRAMA\s*)?(MOVIE|FILM|MOVIES|FILMS)\s*(\d{4})?\s*[-–—]\s*/i, '');
+
+  // 2. Specific Nollywood/YouTube noise patterns
   title = title.replace(/\s*\/\s*[A-Z]{2,5}\.?\s*\/?\s*$/i, '');
   title = title.replace(/\s+[-–—]\s*Watch\s+.*/i, '');
   title = title.replace(/\s+[-–—]\s*LATEST\s*.*/i, '');
-  title = title.replace(/\s+[-–—]s\s*NEW\s*$/i, '');
+  title = title.replace(/\s+[-–—]\s*NEW\s*.*/i, '');
   title = title.replace(/\s*#\w+/g, '');
   title = title.replace(/\s+[-–—]\s+(Nigerian|Nollywood|African).*/i, '');
   title = title.replace(/\s+[-–—](Nigerian|Nollywood|African).*/i, '');
-  title = title.replace(/\s*Latest\s*(Nigerian|Nollywood|Yoruba|Igbo)?\s*(Epic\s*)?(New\s*)?(Drama\s*)?(Movie|Film|Movies|Films)s?\s*$/i, '');
+  title = title.replace(/\s*Latest\s*(Nigerian|Nollywood|Yoruba|Igbo)?\s*(Epic\s*)?(New\s*)?(Drama\s*)?(Movie|Film|Movies|Films)s?\s*(\d{4})?\s*$/i, '');
   title = title.replace(/\s+[-–—]\s+[A-Z][a-z]+\s+[A-Z][a-z]+\s*[\/,]\s*[A-Z].*$/i, '');
   title = title.replace(/\s*(Full|Complete)\s*(Movie|Film|Season)\s*$/i, '');
-  title = title.replace(/\s*\|\s*(Moments with Mo|MWM)\s*$/i, '');
-  title = title.replace(/\s*\(Latest\s*(Comedy\s*)?(Drama\s*)?(Action\s*)?(Movie|Film|Movies|Films)\s*\)\s*$/i, '');
+  
+  // Aggressive pipe/separator stripping for common noise words
+  title = title.replace(/\s*[|/]\s*(Moments with Mo|MWM|Full|Complete|Latest|New|Nollywood|Nigerian|African|Epic|Drama|Action|Comedy|Season)\s*(Movie|Film|Movies|Films)?\s*.*$/i, '');
+  
+  title = title.replace(/\s*\(Latest\s*(Comedy\s*)?(Drama\s*)?(Action\s*)?(Movie|Film|Movies|Films|Full Movie)\s*\)\s*.*$/i, '');
 
-  // 2. Remove pipe-delimited segments and large bracketed text
+
+  // 3. Remove pipe-delimited segments and large bracketed text
   title = title.replace(/\|\|[^|]+\|\|/g, '').replace(/\([A-Z][A-Z\s,]{6,}\)/g, '').trim();
 
-  // 3. Heuristic: if title is very long and has a dash, take the first part
+
+  // 4. Heuristic: if title is very long and has a dash, take the first part
   if (title.length > 80) {
     const dashParts = title.split(/\s+[-–—]\s+/);
     if (dashParts[0].length >= 3 && dashParts[0].length <= 70) {
@@ -72,14 +88,30 @@ export function cleanTitle(raw: string): string {
     }
   }
 
-  // 4. Final polish
+  // 5. Final polish before re-injecting EP
   title = title.replace(/\s{2,}/g, ' ').trim();
-  title = title.replace(/\s*[,|]\s*$/, '').trim();
-  title = title.replace(/\s+[-–—]\s*$/, '').trim();
+  title = title.replace(/\s*[,|/\\–—-]+\s*$/, '').trim();
+  title = title.replace(/^\s*[,|/\\–—-]+\s*/, '').trim();
 
-  // 5. Title Case conversion (except for short acronyms)
-  return title.split(/\s+/).map(w => {
-    if (w.length <= 3 && w === w.toUpperCase() && /^[A-Z]+$/.test(w)) return w;
+  // 6. Re-inject EP info
+  if (epInfo) {
+    title = `${title} ${epInfo}`;
+  }
+
+  // 7. Title Case conversion (except for short acronyms)
+  const minorWords = ['A', 'AN', 'THE', 'AND', 'BUT', 'OR', 'FOR', 'NOR', 'ON', 'AT', 'TO', 'BY', 'OF'];
+  return title.split(/\s+/).map((w, i) => {
+    const upper = w.toUpperCase();
+    if (upper === 'EP') return 'EP';
+    
+    if (w.length <= 3 && w === w.toUpperCase() && /^[A-Z]+$/.test(w) && !minorWords.includes(upper)) {
+      return w;
+    }
+    
+    if (minorWords.includes(upper) && i !== 0) {
+      return w.toLowerCase();
+    }
+    
     return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
   }).join(' ');
 }
