@@ -82,8 +82,8 @@ jobs:
           curl -v -X GET "$BASE_URL/api/cron/sync?task=tmdb" \
           -H "x-cron-secret: $CRON_SECRET"
           
-          echo "Syncing Kava (Local Free Playwright Script)..."
-          node scripts/sync-kava-free.mjs
+          echo "Syncing Kava (Local Playwright Script)..."
+          npx tsx scripts/sync-kava.ts
         continue-on-error: true
         env:
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}

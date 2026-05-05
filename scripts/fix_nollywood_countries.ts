@@ -1,5 +1,6 @@
-const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config();
+import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 async function fixCountryAssociations() {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -27,7 +28,7 @@ async function fixCountryAssociations() {
   const nigeriaId = countryRow.id;
   console.log(`✅ Nigeria ID: ${nigeriaId}`);
 
-  console.log('🔍 Fetching Nollywood films without country associations...');
+  console.log('🔍 Fetching Nollywood films...');
   const { data: films, error } = await supabase
     .from('films')
     .select('id, title')
@@ -37,6 +38,8 @@ async function fixCountryAssociations() {
     console.error('❌ Error fetching films:', error.message);
     return;
   }
+
+  if (!films) return;
 
   console.log(`🎬 Found ${films.length} Nollywood films.`);
 
