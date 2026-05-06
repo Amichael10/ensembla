@@ -23,6 +23,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 const NETFLIX_URL = 'https://www.netflix.com/browse/genre/1138254?bc=34399';
 const LOGIN_URL = 'https://www.netflix.com/login';
+const STATE_FILE = 'netflix_playwright_state.json';
 
 async function login(page) {
   const email = process.env.NETFLIX_EMAIL;
@@ -37,91 +38,294 @@ async function login(page) {
   await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
   try {
-    await page.waitForSelector('input[name="userLoginId"]', { timeout: 10000 });
-    await page.fill('input[name="userLoginId"]', email);
-    await page.fill('input[name="password"]', password);
-    await page.click('button[type="submit"]');
-    await page.waitForNavigation({ waitUntil: 'networkidle', timeout: 60000 });
-    console.log('✅ Login successful (presumably)');
+    // 0. Handle initial "Sign In" button if on landing page
+    const signInBtn = await page.$('a[href*="/login"], .authLinks, .login-button');
+    if (signInBtn && page.url().includes('netflix.com/') && !page.url().includes('/login')) {
+       console.log('➡️ Clicking initial "Sign In" button...');
+       await signInBtn.click();
+       await page.waitForURL(url => url.includes('/login'), { timeout: 15000 });
+    }
+
+    // 1. Enter Email
+    console.log('📧 Checking for email field...');
+    const emailInput = await page.waitForSelector('input[name="userLoginId"], input[name="email"], input[type="email"]', { timeout: 15000 }).catch(() => null);
+    
+    if (emailInput) {
+      console.log('📧 Entering email...');
+      await emailInput.fill(email);
+      await page.waitForTimeout(1000);
+      
+      const continueBtn = await page.$('button[type="submit"], button[data-uia="nmhp-card-cta-continue"], .btn-red, button[data-uia="login-submit-button"]');
+      if (continueBtn) {
+        const text = await continueBtn.textContent();
+        if (text?.toLowerCase().includes('next') || text?.toLowerCase().includes('continue')) {
+          console.log('➡️ Clicking "Next/Continue"...');
+          await continueBtn.click();
+          await page.waitForTimeout(2000);
+        }
+      }
+    }
+
+    // 2. Handle "Sign-in Code" or "Email me a code" flow (Multi-step)
+    // Sometimes Netflix pushes the "Email me a code" flow. We need to click "Get Help" -> "Use password instead"
+    const signinWithCode = await page.$('button[data-uia="login-with-code-button"], .login-with-code-button');
+    if (signinWithCode || page.url().includes('login/otp')) {
+      console.log('🛡️ Netflix is asking for a code. Attempting to switch to password flow...');
+      const helpLink = await page.$('button[data-uia="login-help-link"], a[href*="/LoginHelp"], .login-help-link');
+      if (helpLink) {
+        await helpLink.click();
+        await page.waitForTimeout(2000);
+        const usePasswordBtn = await page.$('button[data-uia="login-password-button"], .login-password-button, button:has-text("Use password instead")');
+        if (usePasswordBtn) {
+          console.log('🔑 Switching to password flow...');
+          await usePasswordBtn.click();
+          await page.waitForTimeout(2000);
+        }
+      }
+    }
+
+    // 3. Enter Password
+    console.log('⏳ Waiting for password field...');
+    const pwInput = await page.waitForSelector('input[name="password"]', { timeout: 15000 }).catch(() => null);
+    
+    if (pwInput) {
+      console.log('🔑 Entering password...');
+      await pwInput.fill(password);
+      await page.waitForTimeout(1000);
+      
+      const submitBtn = await page.waitForSelector('button[type="submit"], button[data-uia="login-submit-button"], .login-button', { timeout: 10000 });
+      await submitBtn.click();
+    } else {
+      console.log('ℹ️ Password field did not appear, checking if already submitted or redirected.');
+    }
+    
+    // 4. Finalize Login
+    console.log('⌛ Waiting for login to finalize...');
+    await page.waitForURL(url => url.includes('/browse') || url.includes('/ProfilesGate') || url.includes('/browse/genre/'), { timeout: 30000 }).catch(() => {
+      console.log('⚠️ Navigation timeout after login. Checking for errors...');
+    });
+    
+    // Handle CAPTCHA or error messages
+    const errorMsg = await page.$('.ui-message-error, [data-uia="login-error"], .recaptcha-error');
+    if (errorMsg) {
+      const text = await errorMsg.textContent();
+      console.log(`❌ Login Issue detected: ${text}`);
+      await page.screenshot({ path: 'netflix-login-error.png' });
+    }
+
+    // 5. Handle Profile Selection
+    if (page.url().includes('/ProfilesGate') || page.url().includes('/profiles')) {
+      console.log('👤 Profile selection detected in login flow...');
+      await handleProfileSelection(page);
+    }
+    
+    const isStillOnLogin = page.url().includes('/login');
+    if (isStillOnLogin) {
+      console.log('❌ Still on login page. CAPTCHA or security challenge likely.');
+      await page.screenshot({ path: 'netflix-login-blocked.png' });
+    } else {
+      console.log('✅ Login successful or past login screen.');
+      await page.screenshot({ path: 'netflix-post-login.png' });
+    }
   } catch (e) {
-    console.log('ℹ️ Login input not found or navigation failed, might already be logged in.');
+    console.log('ℹ️ Login flow encountered an issue:', e.message);
+    await page.screenshot({ path: 'netflix-login-exception.png' });
   }
+}
+
+async function handleProfileSelection(page) {
+  try {
+    const profileSelectors = [
+      'a[data-uia="profile-link"]',
+      'ul.choose-profile a.profile-link',
+      '.profile-link',
+      '.profile-icon',
+      'li.profile a',
+      '.choose-profile a',
+      '.profile-name'
+    ];
+    
+    console.log('👀 Checking for profile selection screen...');
+    
+    // Wait for the page to be stable
+    await page.waitForTimeout(2000);
+    
+    let profileEl = null;
+    for (const selector of profileSelectors) {
+      profileEl = await page.$(selector).catch(() => null);
+      if (profileEl) {
+        console.log(`✅ Found profile with selector: ${selector}`);
+        break;
+      }
+    }
+    
+    if (profileEl) {
+      console.log(`🖱️ Clicking profile...`);
+      await profileEl.click({ force: true });
+      
+      // Wait for navigation or the browse page to load
+      await page.waitForURL(url => url.includes('/browse'), { timeout: 30000 }).catch(() => {
+        console.log('⚠️ Navigation to /browse timed out after profile selection.');
+      });
+      await page.waitForTimeout(3000); 
+      await page.screenshot({ path: 'netflix-post-profile.png' });
+      return true;
+    } else {
+      console.log('ℹ️ No profile selection detected.');
+      if (page.url().includes('/ProfilesGate') || page.url().includes('/profiles')) {
+        console.log('⚠️ On profile gate but no clickable elements found.');
+        await page.screenshot({ path: 'netflix-profile-gate-stuck.png' });
+      }
+    }
+  } catch (e) {
+    console.log('ℹ️ Error during profile selection:', e.message);
+    await page.screenshot({ path: 'netflix-profile-error.png' });
+  }
+  return false;
 }
 
 async function scrapeNetflix() {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-  });
+  
+  // Use persistent context or storage state if available
+  let context;
+  if (fs.existsSync(STATE_FILE)) {
+    console.log('📄 Loading existing session state...');
+    context = await browser.newContext({
+      storageState: STATE_FILE,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
+  } else {
+    context = await browser.newContext({
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    });
+  }
+
   const page = await context.newPage();
 
-  await login(page);
-
   console.log(`🚀 Navigating to: ${NETFLIX_URL}`);
-  await page.goto(NETFLIX_URL, { waitUntil: 'networkidle' });
+  await page.goto(NETFLIX_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+  // Check if we were redirected to login
+  if (page.url().includes('/login')) {
+    console.log('ℹ️ Redirected to login. Starting authentication flow...');
+    await login(page);
+    
+    // Save state after login
+    await context.storageState({ path: STATE_FILE });
+    console.log(`💾 Session state saved to ${STATE_FILE}`);
+    
+    // After login, go back to the target URL
+    console.log(`🚀 Returning to: ${NETFLIX_URL}`);
+    await page.goto(NETFLIX_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  } else {
+    console.log('✅ Already logged in or no redirect.');
+  }
 
   // Handle profile selection if it appears
-  try {
-    const profileSelector = 'a[data-uia="profile-link"], .profile-link, .profile-icon';
-    console.log('👀 Checking for profile selection screen...');
-    await page.waitForSelector(profileSelector, { timeout: 5000 }).catch(() => null);
-    
-    if (await page.isVisible(profileSelector)) {
-      console.log('👤 Selecting a profile...');
-      await page.click(profileSelector);
-      await page.waitForNavigation({ waitUntil: 'networkidle' }).catch(() => null);
-    }
-  } catch (e) {
-    console.log('ℹ️ No profile selection detected or timed out.');
+  const profileSelected = await handleProfileSelection(page);
+  
+  // If we selected a profile, save the state again to capture the profile selection cookies
+  if (profileSelected) {
+    await context.storageState({ path: STATE_FILE });
+    console.log(`💾 Session state updated after profile selection.`);
   }
 
   console.log('⌛ Waiting for titles to appear...');
   try {
-    await page.waitForSelector('.title-card, [data-testid="title-card"]', { timeout: 15000 });
+    // Discovery Improvement: Wait for common title card selectors or the main content container
+    await page.waitForSelector('.slider-item, .title-card, [data-testid="title-card"], a.slider-refocus, a[href*="/watch/"], a[data-uia="video-canvas"], .rowContainer, .lolomo', { timeout: 60000 });
   } catch (e) {
-    console.warn('⚠️ Timeout waiting for titles. The page might be empty or selectors changed.');
+    console.warn('⚠️ Timeout waiting for titles. Page might be lazy loading or empty.');
+    // Check if we are still on profile gate
+    if (page.url().includes('/ProfilesGate') || page.url().includes('/profiles')) {
+      console.log('🔄 Still on profile gate after timeout. Retrying selection...');
+      await handleProfileSelection(page);
+    }
+    await page.screenshot({ path: 'netflix-titles-timeout.png' });
   }
 
   console.log('📜 Scrolling to load all Nollywood titles...');
-  // Infinite scroll
+  // Infinite scroll to trigger lazy loading of all rows
   let lastHeight = await page.evaluate('document.body.scrollHeight');
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 25; i++) {
     await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(2500);
     let newHeight = await page.evaluate('document.body.scrollHeight');
-    if (newHeight === lastHeight) break;
+    if (newHeight === lastHeight) {
+      // Try one more time with a longer wait and a small scroll up to shake it
+      await page.evaluate('window.scrollBy(0, -200)');
+      await page.waitForTimeout(1000);
+      await page.evaluate('window.scrollTo(0, document.body.scrollHeight)');
+      await page.waitForTimeout(3000);
+      newHeight = await page.evaluate('document.body.scrollHeight');
+      if (newHeight === lastHeight) break;
+    }
     lastHeight = newHeight;
+    console.log(`   - Scrolled to ${newHeight}px...`);
   }
 
-  console.log('🕵️ Extracting titles and metadata...');
   const movies = await page.evaluate(() => {
-    const items = Array.from(document.querySelectorAll('.slider-item, .title-card, [data-testid="title-card"]'));
-    return items.map(item => {
-      const linkEl = item.querySelector('a');
-      const imgEl = item.querySelector('img');
-      const titleEl = item.querySelector('.fallback-text');
+    const rows = Array.from(document.querySelectorAll('.lolomoRow, .rowContainer, .slider-item'));
+    const movieMap = new Map();
+
+    rows.forEach(row => {
+      const rowTitle = row.querySelector('.rowTitle, .row-header-title, h2')?.textContent || '';
       
-      // Try to get title from multiple places
-      const title = titleEl?.textContent?.trim() || 
-                    linkEl?.getAttribute('aria-label') || 
-                    imgEl?.getAttribute('alt') || 
-                    'Unknown';
+      // Expanded African/Nollywood keywords for row discovery.
+      // We also include thematic terms like 'Lagos', 'Yoruba', etc.
+      const isAfricanRow = /African|Nigerian|Nollywood|South African|Ghanaian|Kenya|Senegal|Egypt|Ethiopia|Cameroon|Morocco|Lagos|Yoruba|Hausa|Igbo|Accra|Nairobi|Dakar|Johannesburg|Soil|Culture|Heritage/i.test(rowTitle);
       
-      // Netflix watch link looks like /watch/81234567 or /title/81234567
-      const href = linkEl?.getAttribute('href') || '';
-      const watchIdMatch = href.match(/\/(watch|title)\/(\d+)/);
-      const watchId = watchIdMatch ? watchIdMatch[2] : null;
+      // Personalized/Algorithmic rows that might contain non-African content
+      const isAlgorithmicRow = /Top Picks|Next Watch|New on Netflix|My List|Trending|Popular|Favorites/i.test(rowTitle) && !isAfricanRow;
+
+      // On the Nollywood genre page, we allow all rows for discovery.
+      // We will filter out non-African content later in the sync phase using detail-page metadata.
+      const isOnGenrePage = window.location.href.includes('1138254');
+      if (isAlgorithmicRow && !isOnGenrePage) return;
+      if (!isAfricanRow && !isOnGenrePage) return;
+
+      const links = Array.from(row.querySelectorAll('a[href*="/title/"], a[href*="/watch/"], a.slider-refocus, a[data-uia="video-canvas"]'));
       
-      return {
-        title,
-        netflix_id: watchId,
-        url: watchId ? `https://www.netflix.com/title/${watchId}` : null,
-        poster_url: imgEl?.src || null
-      };
-    }).filter(m => m.netflix_id);
+      links.forEach(linkEl => {
+        const href = linkEl.getAttribute('href') || '';
+        const idMatch = href.match(/\/(watch|title)\/(\d+)/);
+        if (!idMatch) return;
+        
+        const watchId = idMatch[2];
+        if (movieMap.has(watchId)) return;
+
+        let titleText = linkEl.getAttribute('aria-label') || 
+                        linkEl.querySelector('img')?.getAttribute('alt') || 
+                        linkEl.querySelector('.fallback-text')?.textContent?.trim() ||
+                        linkEl.textContent?.trim();
+
+        if (titleText) {
+          titleText = titleText.replace(/^(Watch|Go to|Play|View)\s+/i, '').trim();
+        }
+
+        if (titleText && titleText !== 'Unknown' && titleText.length > 1) {
+          movieMap.set(watchId, {
+            title: titleText,
+            netflix_id: watchId,
+            url: `https://www.netflix.com/title/${watchId}`,
+            poster_url: linkEl.querySelector('img')?.src || null,
+            isAfricanDiscovery: isAfricanRow
+          });
+        }
+      });
+    });
+
+    return Array.from(movieMap.values());
   });
 
-  console.log(`🎬 Found ${movies.length} Nollywood titles on Netflix.`);
+  if (movies.length === 0) {
+    console.log('📸 Saving debug screenshot...');
+    await page.screenshot({ path: 'netflix-debug.png', fullPage: true });
+    console.log('⚠️ No titles found. Check netflix-debug.png to see what the scraper saw.');
+  } else {
+    console.log(`🎬 Found ${movies.length} Nollywood titles on Netflix.`);
+  }
   
   const detailedMovies: any[] = [];
   for (const movie of movies) {
@@ -130,21 +334,81 @@ async function scrapeNetflix() {
     try {
       await page.goto(movie.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
       
-      const rawData = await page.evaluate(() => {
-        const synopsisEl = document.querySelector('[data-uia="video-description"], .title-info-synopsis, .description-text');
-        const yearEl = document.querySelector('[data-uia="year"], [data-uia="video-year"], .year');
+      // 0. Handle intermittent Profile Gate or Login issues
+      if (page.url().includes('/ProfilesGate') || page.url().includes('/profiles') || page.url().includes('/login')) {
+        console.log('  👤 Re-authenticating or selecting profile...');
+        if (page.url().includes('/login')) await login(page);
+        await handleProfileSelection(page);
+        await page.goto(movie.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      }
+
+      // 1. Wait for core content or the "About" section
+      await page.waitForSelector('.about-container, [data-uia="about-container"], .title-info-metadata-wrapper', { timeout: 10000 }).catch(() => {
+        console.log('  ⚠️ Metadata container not found, proceeding with fallback...');
+      });
+      
+      // Extra wait for async content
+      await page.waitForTimeout(2000);
+      
+      const rawData: any = await page.evaluate(() => {
+        const videoId = window.location.href.match(/\/title\/(\d+)/)?.[1];
+        const cache = (window as any).netflix?.falcorCache || {};
+        const videoData = videoId ? (cache.videos?.[videoId] || {}) : {};
+        
+        const getFromLabels = (labelName: string) => {
+          const labels = Array.from(document.querySelectorAll('.label, .item-label, .about-item-label, [data-uia$="-label"]'));
+          for (const l of labels) {
+            const text = l.textContent?.toLowerCase() || '';
+            if (text.includes(labelName.toLowerCase())) {
+              const container = l.closest('.about-item, .more-details-item, .item-container, .previewModal--about');
+              const contentEl = container?.querySelector('.content, .about-item-content, .item-text, [data-uia$="-content"]');
+              if (contentEl) return contentEl.textContent?.split(',').map(s => s.trim()).filter(Boolean);
+              if (l.nextElementSibling) return l.nextElementSibling.textContent?.split(',').map(s => s.trim()).filter(Boolean);
+            }
+          }
+          return null;
+        };
+
+        // 1. Direct DOM Selectors
+        let synopsis = document.querySelector('[data-uia="video-metadata--synopsis"], [data-uia="video-description"], .description-text')?.textContent?.trim() || '';
+        let cast = Array.from(document.querySelectorAll('.about-item[data-uia="about-item-cast"] .about-item-content, .item-cast'))
+                        .map(el => el.textContent?.trim().split(',')).flat().map(s => s?.trim()).filter(Boolean);
+        let genres = Array.from(document.querySelectorAll('.about-item[data-uia="about-item-genre"] .about-item-content, .item-genres'))
+                          .map(el => el.textContent?.trim().split(',')).flat().map(s => s?.trim()).filter(Boolean);
+        
+        // 2. Label-based fallbacks
+        if (cast.length === 0) cast = getFromLabels('Cast') || [];
+        if (genres.length === 0) genres = getFromLabels('Genres') || getFromLabels('Genre') || [];
+
+        // 3. Falcor Cache Fallback (Targeted to THIS video)
+        if (videoData) {
+          if (!synopsis) synopsis = videoData.synopsis?.value || videoData.synopsis || '';
+          
+          if (genres.length === 0) {
+            const videoCacheStr = JSON.stringify(videoData);
+            const genreKeywords = ['Nollywood', 'Nigerian', 'African', 'South African', 'Ghanaian', 'Kenyan', 'Senegalese', 'Egyptian', 'Cameroonian'];
+            genres = genreKeywords.filter(k => videoCacheStr.includes(k));
+          }
+        }
+
+        // Strict African check: Must have African keywords in genres, synopsis, or cache
+        const africanPattern = /Nollywood|Nigerian|African|South African|Ghanaian|Kenyan|Senegalese|Egyptian|Cameroonian|Yoruba|Hausa|Igbo/i;
+        const isAfrican = genres.some(g => africanPattern.test(g)) || 
+                         africanPattern.test(synopsis) || 
+                         africanPattern.test(JSON.stringify(videoData));
+
+        const yearEl = document.querySelector('[data-uia="year"], [data-uia="video-year"], .year, .release-year');
         const runtimeEl = document.querySelector('[data-uia="duration"], [data-uia="video-runtime"], .duration');
-        const castEls = Array.from(document.querySelectorAll('[data-uia="cast-item"], [data-uia="video-cast"] a, .item-cast'));
-        const genreEls = Array.from(document.querySelectorAll('[data-uia="genre-item"], [data-uia="video-genres"] a, .item-genres'));
-        const detailTitleEl = document.querySelector('[data-uia="video-title"], .title-title');
+        const detailTitleEl = document.querySelector('[data-uia="video-title"], .title-title, h1');
         
         return {
           title: detailTitleEl?.textContent?.trim() || null,
-          synopsis: synopsisEl?.textContent?.trim() || '',
-          year: yearEl?.textContent?.trim() || null,
-          runtimeStr: runtimeEl?.textContent?.trim() || null,
-          cast: castEls.map(el => el.textContent?.trim().replace(/,$/, '')).filter(Boolean),
-          genres: genreEls.map(el => el.textContent?.trim().replace(/,$/, '')).filter(Boolean)
+          synopsis: synopsis || '',
+          year: yearEl?.textContent?.trim() || videoData.releaseYear?.value || videoData.releaseYear || null,
+          runtimeStr: runtimeEl?.textContent?.trim() || (videoData.runtime?.value ? (Math.floor(videoData.runtime.value / 60) + 'm') : null),
+          cast: Array.from(new Set(cast)).slice(0, 15),
+          genres: Array.from(new Set(genres)),
+          isAfrican
         };
       });
 
@@ -162,11 +426,17 @@ async function scrapeNetflix() {
         ...movie, 
         ...rawData,
         title: movie.title === 'Unknown' ? (rawData.title || movie.title) : movie.title,
-        runtime_minutes: parseRuntime(rawData.runtimeStr)
+        runtime_minutes: parseRuntime(rawData.runtimeStr),
+        // Don't trust discovery rows alone if we have detail-page data
+        isAfrican: rawData.isAfrican 
       });
     } catch (e) {
       console.warn(`  ❌ Failed to get details for ${movie.title}: ${e.message}`);
-      detailedMovies.push(movie);
+      // Fallback to discovery only if detail page totally failed
+      detailedMovies.push({
+        ...movie,
+        isAfrican: movie.isAfricanDiscovery
+      });
     }
     await page.waitForTimeout(1000 + Math.random() * 1000);
   }
@@ -187,17 +457,19 @@ async function upsertPerson(name: string) {
     
   if (existing) return existing.id;
 
-  // Tier 2: Fuzzy partial match (Stage names or partial matches)
-  const { data: partial } = await supabase
-    .from('people')
-    .select('id, name')
-    .ilike('name', `%${name}%`)
-    .limit(1)
-    .maybeSingle();
+  // Tier 2: Fuzzy matching (only if name is long enough to be unique)
+  if (name.length > 5) {
+    const { data: partial } = await supabase
+      .from('people')
+      .select('id, name')
+      .ilike('name', `%${name}%`)
+      .limit(1)
+      .maybeSingle();
 
-  if (partial) {
-    console.log(`  🔍 Fuzzy matched "${name}" to existing person "${partial.name}"`);
-    return partial.id;
+    if (partial) {
+      console.log(`  🔍 Fuzzy matched "${name}" to existing person "${partial.name}"`);
+      return partial.id;
+    }
   }
   
   // Tier 3: Create new record
@@ -221,27 +493,68 @@ async function syncToDatabase(scrapedMovies) {
 
   for (const movie of scrapedMovies) {
     const cleanedTitle = cleanTitle(movie.title);
-    const movieYear = movie.year ? parseInt(movie.year.match(/\d{4}/)?.[0] || '0') : null;
+    const movieYear = movie.year ? parseInt(movie.year.toString().match(/\d{4}/)?.[0] || '0') : null;
     
-    console.log(`🔄 Processing: ${cleanedTitle} (${movieYear || 'N/A'})`);
+    // Check for African identity
+    const isAfricanScraped = movie.isAfrican || movie.genres?.some(g => /Nollywood|Nigerian|African/i.test(g));
+    
+    // Determine countries based on genres
+    const countries: string[] = [];
+    if (movie.genres?.some(g => /Nollywood|Nigerian|Yoruba|Hausa|Igbo/i.test(g))) countries.push('Nigeria');
+    if (movie.genres?.some(g => /South African/i.test(g))) countries.push('South Africa');
+    if (movie.genres?.some(g => /Ghanaian/i.test(g))) countries.push('Ghana');
+    if (movie.genres?.some(g => /Kenyan/i.test(g))) countries.push('Kenya');
+    if (movie.genres?.some(g => /Egyptian/i.test(g))) countries.push('Egypt');
+    if (countries.length === 0 && isAfricanScraped) countries.push('Nigeria'); 
+
+    console.log(`🔄 Processing: ${movie.title} (Cleaned: ${cleanedTitle}, Year: ${movieYear || 'N/A'})`);
 
     try {
-      // 1. Try to find existing film
-      let query = supabase.from('films').select('id, title, year, streaming_links, release_type, youtube_watch_url, synopsis, poster_url, runtime_minutes');
+      // 1. Try to find existing film with multi-tier matching
+      let existing = null;
       
-      if (movieYear) {
-        query = query.ilike('title', cleanedTitle).eq('year', movieYear);
-      } else {
-        query = query.ilike('title', cleanedTitle);
+      // Tier 1: Exact cleaned title match
+      const { data: exactResults } = await supabase
+        .from('films')
+        .select('id, title, year, streaming_links, release_type, youtube_watch_url, synopsis, poster_url, runtime_minutes, countries')
+        .ilike('title', cleanedTitle);
+      
+      if (exactResults && exactResults.length > 0) {
+        if (movieYear) {
+          existing = exactResults.find(r => r.year === movieYear) || 
+                     exactResults.find(r => Math.abs((r.year || 0) - movieYear) <= 1) || 
+                     exactResults[0];
+        } else {
+          existing = exactResults[0];
+        }
       }
 
-      const { data: results } = await query;
-      const existing = results && results.length > 0 ? results[0] : null;
+      // Tier 2: Partial title match if no exact match found
+      if (!existing && cleanedTitle.length > 3) {
+        const { data: fuzzyResults } = await supabase
+          .from('films')
+          .select('id, title, year, streaming_links, release_type, youtube_watch_url, synopsis, poster_url, runtime_minutes, countries')
+          .ilike('title', `%${cleanedTitle}%`)
+          .limit(5);
+        
+        if (fuzzyResults && fuzzyResults.length > 0) {
+          // If we have a year, be more strict about the fuzzy match
+          if (movieYear) {
+            existing = fuzzyResults.find(r => r.year === movieYear) || 
+                       fuzzyResults.find(r => Math.abs((r.year || 0) - movieYear) <= 1);
+          } else {
+            // If no year, only take it if it's a very close match (e.g. title is subset)
+            existing = fuzzyResults.find(r => r.title.toLowerCase() === cleanedTitle.toLowerCase());
+          }
+        }
+      }
 
       let filmId;
 
       if (existing) {
         filmId = existing.id;
+        console.log(`  ✅ Match found in DB (ID: ${filmId}, Title: ${existing.title})`);
+        
         const newStreamingLinks = { 
           ...(existing.streaming_links || {}), 
           netflix: movie.url 
@@ -255,9 +568,11 @@ async function syncToDatabase(scrapedMovies) {
           poster_url: existing.poster_url || movie.poster_url
         };
 
-        // Update release_type only if no primary link is already available
-        // Primary links are YouTube, Kava, or Ironflix.
-        // If it's already set to Prime, we can leave it as primary.
+        if (countries.length > 0) {
+          const mergedCountries = Array.from(new Set([...(existing.countries || []), ...countries]));
+          updatePayload.countries = mergedCountries;
+        }
+
         const isSuperPrimary = existing.youtube_watch_url || ['kava', 'ironflix'].includes(existing.release_type);
         const isTier2Primary = ['netflix', 'prime_video'].includes(existing.release_type);
         
@@ -272,8 +587,14 @@ async function syncToDatabase(scrapedMovies) {
 
         if (error) throw error;
         updatedCount++;
-        console.log(`  ✅ Updated existing record.`);
+        console.log(`  ✅ Updated existing record with Netflix link.`);
       } else {
+        // If NO existing record, we MUST be sure it's African before creating new
+        if (!isAfricanScraped) {
+          console.log(`  ⏭️ Skipping new non-African title: ${movie.title} (Genres: ${movie.genres?.join(', ') || 'None'})`);
+          continue;
+        }
+
         const { data: inserted, error } = await supabase.from('films').insert({
           title: cleanedTitle,
           year: movieYear,
@@ -285,43 +606,44 @@ async function syncToDatabase(scrapedMovies) {
           streaming_links: { netflix: movie.url },
           source: 'netflix',
           status: 'released',
-          countries: ['Nigeria'],
+          countries: countries.length > 0 ? countries : ['Nigeria'],
           needs_review: true
         }).select('id').single();
 
         if (error) throw error;
         filmId = inserted.id;
         newCount++;
-        console.log(`  ✨ Created new record.`);
+        console.log(`  ✨ Created new African film record.`);
       }
 
-      // 2. Sync Genres
-      if (movie.genres && movie.genres.length > 0) {
-        for (const gName of movie.genres) {
-          const { data: genreRow } = await supabase
-            .from('genres')
-            .select('id')
-            .ilike('name', gName)
-            .maybeSingle();
-          if (genreRow) {
-            await supabase.from('film_genres').upsert({
-              film_id: filmId,
-              genre_id: genreRow.id
-            }, { onConflict: 'film_id,genre_id' });
+      // 2. Sync Genres & Cast (Only if we have them and it's a valid record)
+      if (filmId) {
+        if (movie.genres && movie.genres.length > 0) {
+          for (const gName of movie.genres) {
+            const { data: genreRow } = await supabase
+              .from('genres')
+              .select('id')
+              .ilike('name', gName)
+              .maybeSingle();
+            if (genreRow) {
+              await supabase.from('film_genres').upsert({
+                film_id: filmId,
+                genre_id: genreRow.id
+              }, { onConflict: 'film_id,genre_id' });
+            }
           }
         }
-      }
 
-      // 3. Sync Cast
-      if (movie.cast && movie.cast.length > 0) {
-        for (const actorName of movie.cast) {
-          const personId = await upsertPerson(actorName);
-          if (personId) {
-            await supabase.from('credits').upsert({
-              film_id: filmId,
-              person_id: personId,
-              role: 'actor'
-            }, { onConflict: 'film_id,person_id,role' });
+        if (movie.cast && movie.cast.length > 0) {
+          for (const actorName of movie.cast) {
+            const personId = await upsertPerson(actorName);
+            if (personId) {
+              await supabase.from('credits').upsert({
+                film_id: filmId,
+                person_id: personId,
+                role: 'actor'
+              }, { onConflict: 'film_id,person_id,role' });
+            }
           }
         }
       }

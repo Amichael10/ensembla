@@ -45,12 +45,16 @@ export function parseDuration(iso: string): number {
 export function cleanTitle(raw: string): string {
   if (!raw) return raw;
   
-  let title = raw.trim();
+  let title = raw.trim()
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/…/g, '...')
+    .replace(/\s+/g, ' ');
 
   // 0. Pre-capture and temporarily remove EP info to prevent it from "protecting" noise
   // Handles EP 1, EPISODE 1, EP. 1, E1, E01, SEASON 1, etc.
   // We use a more permissive regex for episode numbers to catch "EP 205" etc.
-  const epMatch = title.match(/\b(EP|EPISODE|EP\.|E|SEASON|PART)\s*(\d+)/i);
+  const epMatch = title.match(/\b(EP|EPISODE|EP\.|E|SEASON|PART|VOL|VOLUME|V)\s*(\d+)/i);
   const epInfo = epMatch ? epMatch[0] : null;
   
   if (epInfo) {
@@ -108,7 +112,7 @@ export function cleanTitle(raw: string): string {
 
   // 7. Title Case conversion (except for short acronyms)
   const minorWords = ['A', 'AN', 'THE', 'AND', 'BUT', 'OR', 'FOR', 'NOR', 'ON', 'AT', 'TO', 'BY', 'OF', 'IN', 'WITH', 'FROM', 'AS'];
-  const preservedAcronyms = ['EP', 'EPISODE', 'SEASON', 'PART'];
+  const preservedAcronyms = ['EP', 'EPISODE', 'EP.', 'E', 'SEASON', 'PART', 'VOL', 'VOLUME'];
   
   return title.split(/\s+/).map((w, i) => {
     const upper = w.toUpperCase();
