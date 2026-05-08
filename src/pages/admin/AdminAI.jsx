@@ -98,7 +98,8 @@ export default function AdminAI() {
       if (isNewPerson) {
         const { error } = await supabase.from('people').insert({
           name: item.name,
-          bio: item.bio || item.biography,
+          biography: item.biography || item.bio,
+          date_of_birth: item.date_of_birth || null,
           photo_url: item.image_url,
           nationality: item.nationality || 'Nigerian',
           created_at: new Date().toISOString()
@@ -107,7 +108,8 @@ export default function AdminAI() {
         count = error ? 0 : 1;
       } else if (item.type === 'person') {
         const { data, error } = await supabase.from('people').update({
-          biography: item.bio || item.biography,
+          biography: item.biography || item.bio,
+          date_of_birth: item.date_of_birth || null,
           photo_url: item.image_url
         }).eq('id', item.id).select();
         dbError = error;
@@ -581,8 +583,13 @@ function ResultItem({ item, task, onAction }) {
           </div>
           
           <p className="text-xs text-text-muted leading-relaxed line-clamp-2">
-            {item.bio || item.synopsis || "Missing detail identified for enrichment..."}
+            {item.biography || item.bio || item.synopsis || "Missing detail identified for enrichment..."}
           </p>
+          {item.date_of_birth && (
+            <p className="text-[10px] font-black text-brand/60 uppercase">
+              🎂 Born: {item.date_of_birth}
+            </p>
+          )}
           
           <div className="flex gap-2 pt-1 border-t border-border/50">
             <button 

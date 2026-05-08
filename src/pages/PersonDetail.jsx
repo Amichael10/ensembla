@@ -463,10 +463,10 @@ const PersonDetail = () => {
                 </div>
               </div>
 
-              {person.biography && (
+              {(person.biography || person.bio) && (
                 <div className="space-y-4">
                   <p className="text-text-muted text-sm leading-relaxed max-w-2xl">
-                    {person.biography}
+                    {person.biography || person.bio}
                   </p>
                 </div>
               )}

@@ -215,9 +215,14 @@ async function scrapePrime() {
 
 async function upsertPerson(name: string) {
   if (!name) return null;
-  const { data: existing } = await supabase.from('people').select('id').ilike('name', name).maybeSingle();
-  if (existing) return existing.id;
-  const { data: newPerson, error } = await supabase.from('people').insert({ name, source: 'prime_video' }).select('id').single();
+  const { data: existing } = await supabase.from('people').select('id, source').ilike('name', name).maybeSingle();
+  if (existing) {
+    if (!existing.source) {
+       await supabase.from('people').update({ source: 'prime_video' }).eq('id', existing.id);
+    }
+    return existing.id;
+  }
+  const { data: newPerson, error } = await supabase.from('people').insert({ name, source: 'prime_video', nationality: 'Nigerian' }).select('id').single();
   if (error) return null;
   return newPerson.id;
 }

@@ -2,7 +2,7 @@ name: Streaming Platforms Sync
 
 on:
   schedule:
-    - cron: '0 2 * * 0' # 2:00 AM every Sunday
+    - cron: '0 2 * * 0,3' # 2:00 AM every Sunday and Wednesday
   workflow_dispatch:
 
 jobs:

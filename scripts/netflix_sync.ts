@@ -448,15 +448,13 @@ async function scrapeNetflix() {
 
 async function upsertPerson(name: string) {
   if (!name) return null;
-  
-  // Tier 1: Exact match
-  const { data: existing } = await supabase
-    .from('people')
-    .select('id, name')
-    .ilike('name', name)
-    .maybeSingle();
-    
-  if (existing) return existing.id;
+  const { data: existing } = await supabase.from('people').select('id, source').ilike('name', name).maybeSingle();
+  if (existing) {
+    if (!existing.source) {
+       await supabase.from('people').update({ source: 'netflix' }).eq('id', existing.id);
+    }
+    return existing.id;
+  }
 
   // Tier 2: Fuzzy matching (only if name is long enough to be unique)
   if (name.length > 5) {

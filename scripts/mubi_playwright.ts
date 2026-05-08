@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { generateAIContent } from '../api/_lib/ai_service.js';
 
 // Load stealth plugin
 const stealthPlugin = stealth();
@@ -80,15 +81,24 @@ async function upsertPerson(name, mubiSlug) {
   
   const { data: existing } = await supabase
     .from('people')
-    .select('id')
+    .select('id, mubi_slug, source')
     .ilike('name', name)
     .maybeSingle();
-    
-  if (existing) return existing.id;
+
+  if (existing) {
+    // If they exist but don't have a Mubi slug or source is 'netflix/prime', update them
+    if (!existing.mubi_slug || existing.source !== 'mubi') {
+      await supabase
+        .from('people')
+        .update({ mubi_slug: mubiSlug, source: 'mubi' })
+        .eq('id', existing.id);
+    }
+    return existing.id;
+  }
   
   const { data: newPerson, error } = await supabase
     .from('people')
-    .insert({ name, mubi_slug: mubiSlug, source: 'mubi' })
+    .insert({ name, mubi_slug: mubiSlug, source: 'mubi', nationality: 'Nigerian' })
     .select('id')
     .single();
     
@@ -97,6 +107,28 @@ async function upsertPerson(name, mubiSlug) {
     return null;
   }
   return newPerson.id;
+}
+
+/**
+ * AI Verification to confirm Nollywood/African origin
+ */
+async function verifyNollywoodAI(movie: any) {
+  const prompt = `Identify if the following film is a Nollywood (Nigerian) or African production. 
+Title: ${movie.title}
+Synopsis: ${movie.synopsis}
+Cast: ${movie.cast?.join(', ')}
+
+Return ONLY a JSON object: {"isAfrican": true, "confidence": 0.9, "reason": "brief reason"}`;
+
+  try {
+    const { text } = await generateAIContent(prompt);
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const result = JSON.parse(cleanedText);
+    return result.isAfrican && result.confidence > 0.6;
+  } catch (e) {
+    console.warn(`  ⚠️ AI Verification failed for ${movie.title}, defaulting to country metadata.`);
+    return null; 
+  }
 }
 
 async function syncFilm(filmData, credits) {
@@ -266,8 +298,30 @@ async function scrapeFilmDetails(context, slug, currentCountry) {
     const historicCountries = Array.isArray(film.historic_countries) ? film.historic_countries : [];
     const countries = historicCountries.filter(c => AFRICAN_COUNTRIES.includes(c));
     
+    // 1. Strict Title Blocklist
+    const isExcluded = /007|James Bond|Mission Impossible|Marvel|Avengers|Hollywood|Fast & Furious/i.test(film.title);
+    if (isExcluded) {
+      console.log(`  ⏩ Skipping non-Nollywood blockbuster: ${film.title}`);
+      return null;
+    }
+
     if (countries.length === 0) {
       console.warn(`  ⚠️ Skipping non-African or unverified film: ${film.title} (${historicCountries.join(', ')})`);
+      return null;
+    }
+
+    // 2. AI Verification Layer
+    const movieData = {
+      title: film.title,
+      synopsis: film.short_synopsis || film.default_editorial || '',
+      cast: credits.filter(c => c.role === 'Cast').map(c => c.name)
+    };
+
+    const isConfirmedAfrican = await verifyNollywoodAI(movieData);
+    
+    // If AI explicitly says it's NOT African, skip it
+    if (isConfirmedAfrican === false) {
+      console.log(`  🚫 AI confirmed ${film.title} is NOT African. Skipping.`);
       return null;
     }
     

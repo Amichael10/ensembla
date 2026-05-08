@@ -103,11 +103,11 @@ async function enrichMetadata(res: VercelResponse) {
   const prompt = `
     Enrich this Nollywood metadata. 
     - Films: factual, detailed synopsis (min 200 chars). Use sources like TMDB, IMDb, and kava.tv.
-    - People: Detailed biography and a REAL high-quality photo URL.
+    - People: Detailed biography, a REAL high-quality photo URL, and date of birth (YYYY-MM-DD format if available).
     - Companies: Logo URL and full description.
     - If no photo/logo found, use: https://ui-avatars.com/api/?name=NAME&background=random
     
-    Return ONLY JSON: [{"type": "film/person/company", "id": "...", "name": "...", "synopsis": "...", "bio": "...", "image_url": "..."}]
+    Return ONLY JSON: [{"type": "film/person/company", "id": "...", "name": "...", "synopsis": "...", "biography": "...", "date_of_birth": "...", "image_url": "..."}]
     Data: ${JSON.stringify(missingData)}
   `;
 
@@ -131,7 +131,7 @@ async function discoverActors(data: any, res: VercelResponse) {
     CRITICAL: Do NOT suggest these actors as they are already in the database:
     ${existingSample?.map(p => p.name).join(', ')}
     
-    Return ONLY JSON: [{"name": "...", "bio": "...", "image_url": "...", "notable_movies": [], "type": "person"}]
+    Return ONLY JSON: [{"name": "...", "biography": "...", "date_of_birth": "...", "image_url": "...", "notable_movies": [], "type": "person"}]
   `;
 
   const { text, telemetry } = await generateAIContent(prompt);

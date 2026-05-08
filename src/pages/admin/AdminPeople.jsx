@@ -37,7 +37,7 @@ export default function AdminPeople() {
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    bio: '',
+    biography: '',
     photo_url: '',
     date_of_birth: '',
     gender: 'Prefer not to say',
@@ -199,7 +199,7 @@ export default function AdminPeople() {
     setYoutubeChannelInput('');
     setFormData({
       name: '',
-      bio: '',
+      biography: '',
       photo_url: '',
       date_of_birth: '',
       gender: 'Prefer not to say',
@@ -219,7 +219,7 @@ export default function AdminPeople() {
     setEditingPerson(person);
     setFormData({
       name: person.name || '',
-      bio: person.bio || '',
+      biography: person.biography || person.bio || '',
       photo_url: person.photo_url || '',
       date_of_birth: person.date_of_birth || '',
       gender: person.gender || 'Prefer not to say',
@@ -316,6 +316,7 @@ export default function AdminPeople() {
 
       const dataToSave = {
         ...formData,
+        biography: formData.biography || null,
         date_of_birth: formData.date_of_birth || null,
         photo_url: formData.photo_url || null,
         popularity_score: parseInt(formData.popularity_score) || 0,
@@ -691,8 +692,8 @@ export default function AdminPeople() {
               <div>
                 <label className="block text-xs font-bold text-text-primary mb-2">Biography</label>
                 <textarea 
-                  value={formData.bio} 
-                  onChange={e => setFormData({...formData, bio: e.target.value})} 
+                  value={formData.biography} 
+                  onChange={e => setFormData({...formData, biography: e.target.value})} 
                   className="w-full bg-surface-2 border border-border p-3 rounded-lg text-sm focus:border-brand outline-none h-32 resize-none leading-relaxed custom-scrollbar" 
                   placeholder="Professional biography..." 
                 />

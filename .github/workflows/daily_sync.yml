@@ -4,12 +4,12 @@ on:
   schedule:
     # 6:00 AM WAT (UTC+1) = 5:00 AM UTC (Cinemas)
     - cron: '0 5 * * *'
-    # YouTube Sync: Every 4 hours starting at 8:00 AM WAT / 7:00 AM UTC
-    - cron: '0 3,7,11,15,19,23 * * *'
+    # YouTube Sync: Hourly
+    - cron: '0 * * * *'
     # 10:00 AM WAT (UTC+1) = 9:00 AM UTC (TMDB/Kava)
     - cron: '0 9 * * *'
-    # AI Maintenance: 2:00 AM & 2:00 PM WAT = 1:00 AM & 1:00 PM UTC
-    - cron: '0 1,13 * * *'
+    # AI Maintenance: Every 4 hours
+    - cron: '0 1,5,9,13,17,21 * * *'
   workflow_dispatch:
     inputs:
       task:
@@ -67,8 +67,8 @@ jobs:
           -H "x-cron-secret: $CRON_SECRET"
         continue-on-error: true
 
-      - name: Sync YouTube Videos (Every 4 Hours)
-        if: github.event.schedule == '0 3,7,11,15,19,23 * * *' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'videos'))
+      - name: Sync YouTube Videos (Hourly)
+        if: github.event.schedule == '0 * * * *' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'videos'))
         run: |
           echo "Syncing YouTube Videos (Vercel API)..."
           curl -v -X GET "$BASE_URL/api/cron/sync?task=videos" \
@@ -91,7 +91,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
       - name: AI Maintenance (Extract Cast + Title Cleanup)
-        if: github.event.schedule == '0 1,13 * * *' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'ai_maintenance'))
+        if: github.event.schedule == '0 1,5,9,13,17,21 * * *' || (github.event_name == 'workflow_dispatch' && (github.event.inputs.task == 'all' || github.event.inputs.task == 'ai_maintenance'))
         run: |
           echo "Running AI Maintenance (Extract Cast → Title Cleanup)..."
           curl -v -X GET "$BASE_URL/api/cron/sync?task=ai_maintenance" \
