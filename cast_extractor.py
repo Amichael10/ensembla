@@ -13,12 +13,30 @@ import subprocess
 import shutil
 import re
 import requests
+import io
 from pathlib import Path
+from google import genai
+
+# Force UTF-8 for stdout/stderr to avoid cp1252 errors on Windows
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)
+if sys.stderr.encoding.lower() != 'utf-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True)
 
 # ── Environment Prep ──────────────────────────────────────────────────────────
 # Add common user script locations to PATH (especially for Windows)
 USER_SCRIPTS = str(Path.home() / "AppData" / "Roaming" / "Python" / "Python313" / "Scripts")
-if USER_SCRIPTS not in os.environ["PATH"]:
+if sys.platform == "win32":
+    paths_to_add = [
+        USER_SCRIPTS,
+        r"C:\ffmpeg\ffmpeg-8.1.1-essentials_build\bin",
+        r"C:\Program Files\nodejs",
+        r"C:\Users\User\AppData\Roaming\npm"
+    ]
+    for p in paths_to_add:
+        if p not in os.environ["PATH"]:
+            os.environ["PATH"] = p + os.pathsep + os.environ["PATH"]
+elif USER_SCRIPTS not in os.environ["PATH"]:
     os.environ["PATH"] = USER_SCRIPTS + os.pathsep + os.environ["PATH"]
 
 # Load .env if possible
@@ -41,7 +59,16 @@ FRAMES_DIR      = BASE_TEMP_DIR / "frames"
 GROK_API_KEY    = os.getenv("GROK_API_KEY")
 GEMINI_API_KEY  = os.getenv("GEMINI_API_KEY")
 
-YT_BASE_FLAGS   = ["--no-check-certificates", "--no-playlist", "--quiet"]
+YT_BASE_FLAGS   = [
+    "--no-check-certificates", 
+    "--no-playlist", 
+    "--quiet", 
+    "--no-warnings",
+    "--retries", "5", 
+    "--socket-timeout", "60",
+    "--extractor-args", "youtube:player_client=android,web",
+    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+]
 
 
 # ── Dependency Checks ─────────────────────────────────────────────────────────
@@ -98,9 +125,7 @@ class AIOrchestrator:
 
         if GEMINI_API_KEY:
             try:
-                import google.generativeai as genai
-                genai.configure(api_key=GEMINI_API_KEY)
-                self.gemini_client = genai.GenerativeModel("gemini-1.5-flash")
+                self.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
                 self.available_providers.append("gemini")
             except Exception as e:
                 print(f"  ⚠️ Failed to init Gemini: {e}")
@@ -115,7 +140,7 @@ class AIOrchestrator:
         if "grok" in self.available_providers:
             try:
                 tried_grok = True
-                print(f"  → Attempting '{task_name}' via Grok...")
+                print(f"  [Attempting] '{task_name}' via Grok...")
                 return fn_grok(self.grok_client, *args, **kwargs), "grok"
             except Exception as e:
                 print(f"  ❌ Grok Error during '{task_name}': {e}")
@@ -126,9 +151,9 @@ class AIOrchestrator:
         if "gemini" in self.available_providers:
             try:
                 if tried_grok:
-                    print(f"  🔄 Falling back to Gemini for '{task_name}'...")
+                    print(f"  [Fallback] Falling back to Gemini for '{task_name}'...")
                 else:
-                    print(f"  → Attempting '{task_name}' via Gemini...")
+                    print(f"  [Attempting] Attempting '{task_name}' via Gemini...")
                 return fn_gemini(self.gemini_client, *args, **kwargs), "gemini"
             except Exception as e:
                 print(f"  ❌ Gemini Error during '{task_name}': {e}")
@@ -141,51 +166,99 @@ class AIOrchestrator:
 
 def get_video_info(url: str) -> tuple[str, float]:
     """Return (title, duration_seconds)."""
-    print("  → Fetching video metadata...")
-    # Use python -m yt_dlp for better reliability
-    result = subprocess.run(
-        [sys.executable, "-m", "yt_dlp", *YT_BASE_FLAGS, "--print", "title,duration", url],
-        capture_output=True, text=True
-    )
-    lines = result.stdout.strip().splitlines()
-    title    = lines[0] if lines else "unknown_movie"
-    try:
-        duration = float(lines[1]) if len(lines) > 1 else 0.0
-    except (ValueError, IndexError):
-        duration = 0.0
-        
-    print(f"     Title:    {title}")
-    print(f"     Duration: {int(duration//60)}m {int(duration%60)}s")
-    return title, duration
+    info_file = BASE_TEMP_DIR / "yt_info.txt"
+    # Retry loop for info fetching
+    for attempt in range(1, 4):
+        try:
+            if attempt > 1:
+                print(f"     🔄 Retry info attempt {attempt}...", flush=True)
+            BASE_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+            # Avoid capture_output=True to save memory
+            with open(info_file, "w", encoding="utf-8") as f:
+                result = subprocess.run(
+                    [sys.executable, "-m", "yt_dlp", *YT_BASE_FLAGS, "--print", "title,duration", url],
+                    stdout=f, stderr=subprocess.PIPE, text=True, timeout=120
+                )
+            
+            if result.returncode != 0:
+                print(f"     ⚠️ yt-dlp error: {result.stderr}", flush=True)
+                if attempt < 3:
+                    import time
+                    time.sleep(5)
+                    continue
+                return "unknown_movie", 0.0
+                
+            lines = info_file.read_text(encoding="utf-8").strip().splitlines()
+            title    = lines[0] if lines else "unknown_movie"
+            try:
+                duration = float(lines[1]) if len(lines) > 1 else 0.0
+            except (ValueError, IndexError):
+                duration = 0.0
+                
+            print(f"     Title:    {title}", flush=True)
+            print(f"     Duration: {int(duration//60)}m {int(duration%60)}s", flush=True)
+            return title, duration
+        except subprocess.TimeoutExpired:
+            print(f"     ❌ yt-dlp timed out while fetching info (attempt {attempt})", flush=True)
+            if attempt < 3:
+                import time
+                time.sleep(5)
+                continue
+            return "unknown_movie", 0.0
+        except Exception as e:
+            print(f"     ❌ Error fetching info: {e}", flush=True)
+            return "unknown_movie", 0.0
+        finally:
+            if info_file.exists():
+                info_file.unlink()
+    return "unknown_movie", 0.0
 
 
 def download_segment(url: str, start: float, duration: float, out_path: Path):
     """Download a specific time segment."""
-    print(f"  → Segment {int(start//60)}m{int(start%60)}s "
+    print(f"  [Segment] {int(start//60)}m{int(start%60)}s "
           f"(+{int(duration//60)}m{int(duration%60)}s)...")
     
-    # Ensure parent dir exists
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    # Retry loop for download flakiness
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            if attempt > 1:
+                print(f"     🔄 Retry download attempt {attempt}...")
+            subprocess.run([
+                sys.executable, "-m", "yt_dlp", *YT_BASE_FLAGS,
+                "--download-sections", f"*{int(start)}-{int(start+duration)}",
+                "--force-keyframes-at-cuts",
+                "-f", "bestvideo+bestaudio/best", # Relaxed format
+                "-o", str(out_path),
+                url
+            ], check=True, timeout=400) # Increased timeout
+            return # Success
+        except subprocess.TimeoutExpired:
+            last_err = "Timeout"
+        except subprocess.CalledProcessError as e:
+            last_err = f"Error {e.returncode}"
+        
+        import time
+        time.sleep(5)
     
-    subprocess.run([
-        sys.executable, "-m", "yt_dlp", *YT_BASE_FLAGS,
-        "--download-sections", f"*{int(start)}-{int(start+duration)}",
-        "--force-keyframes-at-cuts",
-        "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        "-o", str(out_path),
-        url
-    ], check=True)
+    print(f"     ❌ yt-dlp failed after 3 attempts: {last_err}")
+    raise RuntimeError(f"Failed to download segment: {last_err}")
 
 
 def extract_frames(video_path: Path, out_dir: Path, label: str) -> list[Path]:
     """Extract one frame every FRAME_INTERVAL seconds."""
     out_dir.mkdir(parents=True, exist_ok=True)
-    subprocess.run([
-        "ffmpeg", "-i", str(video_path),
-        "-vf", f"fps=1/{FRAME_INTERVAL}",
-        str(out_dir / f"{label}_%03d.jpg"),
-        "-loglevel", "error"
-    ], check=True)
+    try:
+        subprocess.run([
+            "ffmpeg", "-y", "-i", str(video_path),
+            "-vf", f"fps=1/{FRAME_INTERVAL}",
+            str(out_dir / f"{label}_%03d.jpg"),
+            "-loglevel", "error"
+        ], check=True, timeout=120) # 2 min timeout for frame extraction
+    except subprocess.TimeoutExpired:
+        print(f"     ❌ ffmpeg timed out while extracting frames for {label}")
+        raise
     frames = sorted(out_dir.glob(f"{label}_*.jpg"))
     print(f"     {len(frames)} frames captured")
     return frames[:MAX_FRAMES]
@@ -272,16 +345,20 @@ def extract_credits_gemini(client, frames: list[Path], section: str) -> str:
     if not frames:
         return ""
     from PIL import Image
-    images  = [Image.open(f) for f in frames]
-    prompt  = CREDITS_PROMPT.format(section=section)
-    response = client.generate_content([prompt, *images])
+    images = [Image.open(f) for f in frames]
+    prompt = CREDITS_PROMPT.format(section=section)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=[prompt, *images]
+    )
     return response.text
 
 
 def structure_credits_gemini(client, intro_raw: str, outro_raw: str, title: str) -> str:
     combined = f"INTRO CREDITS:\n{intro_raw}\n\nOUTRO CREDITS:\n{outro_raw}"
-    response = client.generate_content(
-        STRUCTURE_PROMPT.format(title=title, raw=combined)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=STRUCTURE_PROMPT.format(title=title, raw=combined)
     )
     return response.text
 
@@ -363,7 +440,7 @@ class SupabaseSync:
             return
 
         film_id = film['id']
-        print(f"  → Found Film: {film['title']} (ID: {film_id[:8]}...)")
+        print(f"  -> Found Film: {film['title']} (ID: {film_id[:8]}...)")
 
         # Basic Markdown Parsing
         sections = re.split(r"^#\s+", markdown, flags=re.MULTILINE)
@@ -408,7 +485,7 @@ class SupabaseSync:
                     self.link_credit(film_id, person_id, role, char, idx)
                     linked_count += 1
 
-        print(f"  ✅ Successfully linked {linked_count} credits to the database.")
+        print(f"  OK: Successfully linked {linked_count} credits to the database.")
 
 
 # ── Main Pipeline ─────────────────────────────────────────────────────────────
@@ -449,13 +526,13 @@ def extract(youtube_url: str, output_dir: str = "./output") -> str:
         outro_frames = extract_frames(outro_path, outro_dir, "outro")
 
         print("\n[5/6] Reading credits via Vision AI...")
-        print(f"  → Processing {len(intro_frames)} intro frames...")
+        print(f"  -> Processing {len(intro_frames)} intro frames...")
         intro_credits, p1 = orchestrator.run_task(
             "extract_intro", extract_credits_grok, extract_credits_gemini, intro_frames, "opening"
         )
         providers_used.add(p1)
 
-        print(f"  → Processing {len(outro_frames)} outro frames...")
+        print(f"  -> Processing {len(outro_frames)} outro frames...")
         outro_credits, p2 = orchestrator.run_task(
             "extract_outro", extract_credits_grok, extract_credits_gemini, outro_frames, "closing"
         )
@@ -480,7 +557,7 @@ def extract(youtube_url: str, output_dir: str = "./output") -> str:
 
         out_file = output_dir / f"{safe[:60]}.md"
         out_file.write_text(header + markdown, encoding="utf-8")
-        print(f"\n✅  File Saved! → {out_file}")
+        print(f"\nDONE: File Saved! -> {out_file}")
 
         # Sync to Database
         sync = SupabaseSync()
@@ -489,7 +566,7 @@ def extract(youtube_url: str, output_dir: str = "./output") -> str:
         return str(out_file)
 
     finally:
-        print("\n  → Cleaning up temp files...")
+        print("\n  -> Cleaning up temp files...")
         for p in temp_files:
             p = Path(p)
             if p.exists():
