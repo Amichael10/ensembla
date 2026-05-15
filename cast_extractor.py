@@ -24,9 +24,8 @@ if sys.stderr.encoding.lower() != 'utf-8':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True)
 
 # ── Environment Prep ──────────────────────────────────────────────────────────
-# Add common user script locations to PATH (especially for Windows)
-USER_SCRIPTS = str(Path.home() / "AppData" / "Roaming" / "Python" / "Python313" / "Scripts")
 if sys.platform == "win32":
+    USER_SCRIPTS = str(Path.home() / "AppData" / "Roaming" / "Python" / "Python313" / "Scripts")
     paths_to_add = [
         USER_SCRIPTS,
         r"C:\ffmpeg\ffmpeg-8.1.1-essentials_build\bin",
@@ -36,8 +35,12 @@ if sys.platform == "win32":
     for p in paths_to_add:
         if p not in os.environ["PATH"]:
             os.environ["PATH"] = p + os.pathsep + os.environ["PATH"]
-elif USER_SCRIPTS not in os.environ["PATH"]:
-    os.environ["PATH"] = USER_SCRIPTS + os.pathsep + os.environ["PATH"]
+else:
+    # Linux/macOS pathing
+    linux_paths = [str(Path.home() / ".local/bin"), "/usr/local/bin"]
+    for p in linux_paths:
+        if p not in os.environ["PATH"]:
+            os.environ["PATH"] = p + os.pathsep + os.environ["PATH"]
 
 # Load .env if possible
 try:

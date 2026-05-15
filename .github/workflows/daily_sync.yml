@@ -29,11 +29,10 @@ on:
 
 jobs:
   sync:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       BASE_URL: 'https://lumi-rho-seven.vercel.app'
       CRON_SECRET: ${{ secrets.VITE_CRON_SECRET }}
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     
     steps:
       - name: Fix Git Permissions
