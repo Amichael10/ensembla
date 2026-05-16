@@ -1,0 +1,6 @@
+yt-dlp
+google-genai
+requests
+pillow
+openai
+python-dotenv
