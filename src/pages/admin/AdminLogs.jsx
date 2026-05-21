@@ -15,23 +15,37 @@ export default function AdminLogs() {
   // Filters
   const [filterAction, setFilterAction] = useState('all');
   const [filterEntity, setFilterEntity] = useState('all');
+  const [filterName, setFilterName] = useState('');
+  const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
     fetchLogs();
-  }, [page, filterAction, filterEntity]);
+  }, [page, filterAction, filterEntity, filterName, filterDate]);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
+      const selectQuery = filterName ? '*, users!inner(name, email, role)' : '*, users(name, email, role)';
+      
       let query = supabase
         .from('admin_actions')
-        .select('*, users(name, email, role)', { count: 'exact' });
+        .select(selectQuery, { count: 'exact' });
 
+      if (filterName) {
+        query = query.ilike('users.name', `%${filterName}%`);
+      }
       if (filterAction !== 'all') {
         query = query.eq('action_type', filterAction);
       }
       if (filterEntity !== 'all') {
         query = query.eq('entity_type', filterEntity);
+      }
+      if (filterDate) {
+        const [year, month, day] = filterDate.split('-');
+        const startOfDay = new Date(year, month - 1, day, 0, 0, 0);
+        const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+        query = query.gte('created_at', startOfDay.toISOString());
+        query = query.lte('created_at', endOfDay.toISOString());
       }
 
       const from = (page - 1) * pageSize;
@@ -83,7 +97,22 @@ export default function AdminLogs() {
           <p className="text-sm text-text-muted mt-1">Monitor all administrative actions across the platform.</p>
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={filterName}
+            onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+            className="w-full md:w-40 px-4 py-2.5 bg-surface-2 border border-border rounded-xl text-sm text-text-primary focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all placeholder:text-text-muted"
+          />
+
+          <input
+            type="date"
+            value={filterDate}
+            onChange={(e) => { setFilterDate(e.target.value); setPage(1); }}
+            className="w-full md:w-auto px-4 py-2.5 bg-surface-2 border border-border rounded-xl text-sm text-text-primary focus:ring-2 focus:ring-brand focus:border-brand outline-none transition-all [color-scheme:dark]"
+          />
+
           <select
             value={filterAction}
             onChange={(e) => { setFilterAction(e.target.value); setPage(1); }}
@@ -106,6 +135,22 @@ export default function AdminLogs() {
             <option value="credit">Credits</option>
             <option value="company">Companies</option>
           </select>
+          
+          {(filterName || filterDate || filterAction !== 'all' || filterEntity !== 'all') && (
+            <button
+              onClick={() => {
+                setFilterName('');
+                setFilterDate('');
+                setFilterAction('all');
+                setFilterEntity('all');
+                setPage(1);
+              }}
+              className="p-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 border border-border text-text-muted hover:text-text-primary transition-all"
+              title="Clear Filters"
+            >
+              <Icon icon="solar:trash-bin-trash-linear" width="20" />
+            </button>
+          )}
         </div>
       </div>
 
