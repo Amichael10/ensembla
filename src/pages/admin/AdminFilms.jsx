@@ -9,6 +9,7 @@ import { extractYoutubeId } from '../../lib/youtube';
 import { useAuth } from '../../context/AuthContext';
 import { logAdminAction } from '../../lib/adminLogger';
 import { toTitleCase } from '../../utils/format';
+import { useLocalStorageDraft } from '../../hooks/useLocalStorageDraft';
 
 export default function AdminFilms() {
   const { user } = useAuth();
@@ -140,6 +141,12 @@ export default function AdminFilms() {
   };
 
   const [formData, setFormData] = useState(initialFormState);
+
+  const draftKey = isDrawerOpen ? (editingFilm ? `lumi_draft_film_${editingFilm.id}` : 'lumi_draft_film_new') : null;
+  const draftData = useMemo(() => ({ formData, credits, showtimes, selectedCompany }), [formData, credits, showtimes, selectedCompany]);
+  const { clearDraft } = useLocalStorageDraft(draftKey, draftData, isDrawerOpen);
+  const [draftRestoredMessage, setDraftRestoredMessage] = useState('');
+
 
   const uniqueYears = useMemo(() => {
     const years = new Set();
@@ -500,10 +507,20 @@ export default function AdminFilms() {
     }
   };
 
-  const handleOpenDrawer = async (film = null) => {
+  const handleOpenDrawer = async (film = null, ignoreDraft = false) => {
+    let draft = null;
+    const key = film ? `lumi_draft_film_${film.id}` : 'lumi_draft_film_new';
+    if (!ignoreDraft) {
+      try {
+        const stored = localStorage.getItem(key);
+        if (stored) draft = JSON.parse(stored);
+      } catch (e) {}
+    }
+    setDraftRestoredMessage(draft ? 'Unsaved changes restored from draft.' : '');
+
     if (film) {
       setEditingFilm(film);
-      setFormData({
+      setFormData(draft?.formData || {
         ...initialFormState,
         ...film,
         runtime_minutes: film.runtime_minutes || '',
@@ -512,12 +529,22 @@ export default function AdminFilms() {
         youtube_watch_url: film.youtube_watch_url || '',
         streaming_links: film.streaming_links || {},
       });
-      await fetchFilmDetails(film.id);
+      
+      if (draft) {
+        setCredits(draft.credits || []);
+        setShowtimes(draft.showtimes || []);
+        setSelectedCompany(draft.selectedCompany || null);
+        setCompanySearch(draft.selectedCompany?.name || '');
+      } else {
+        await fetchFilmDetails(film.id);
+      }
     } else {
       setEditingFilm(null);
-      setFormData(initialFormState);
-      setCredits([]);
-      setShowtimes([]);
+      setFormData(draft?.formData || initialFormState);
+      setCredits(draft?.credits || []);
+      setShowtimes(draft?.showtimes || []);
+      setSelectedCompany(draft?.selectedCompany || null);
+      setCompanySearch(draft?.selectedCompany?.name || '');
     }
     setIsDrawerOpen(true);
   };
@@ -811,6 +838,7 @@ export default function AdminFilms() {
       await logAdminAction(user, actionType, 'film', filmId, cleanFilmPayload.title, { year: cleanFilmPayload.year });
 
       toast.success('Film saved successfully');
+      clearDraft();
       handleCloseDrawer();
       fetchFilms();
       fetchYoutubeBuffer();
@@ -1341,117 +1369,159 @@ export default function AdminFilms() {
         </div>
         
         {/* Pagination Footer */}
-        {(() => {
-          const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-          const getPageNumbers = () => {
-            const pages = [];
-            if (totalPages <= 7) {
-              for (let i = 1; i <= totalPages; i++) pages.push(i);
-            } else {
-              if (page <= 4) {
-                for (let i = 1; i <= 5; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
-              } else if (page >= totalPages - 3) {
-                pages.push(1);
-                pages.push('...');
-                for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+          {(() => {
+            const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+            const getPageNumbers = () => {
+              const pages = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
               } else {
-                pages.push(1);
-                pages.push('...');
-                for (let i = page - 1; i <= page + 1; i++) pages.push(i);
-                pages.push('...');
-                pages.push(totalPages);
+                if (page <= 4) {
+                  for (let i = 1; i <= 5; i++) pages.push(i);
+                  pages.push('...');
+                  pages.push(totalPages);
+                } else if (page >= totalPages - 3) {
+                  pages.push(1);
+                  pages.push('...');
+                  for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  pages.push('...');
+                  pages.push(page - 1);
+                  pages.push(page);
+                  pages.push(page + 1);
+                  pages.push('...');
+                  pages.push(totalPages);
+                }
               }
-            }
-            return pages;
-          };
-
-          return (
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-4 px-6 py-6 border-t border-border bg-surface-2/30">
-              <div className="text-xs font-bold text-text-muted uppercase tracking-widest text-center lg:text-left">
-                Showing <span className="text-text-primary">{totalCount === 0 ? 0 : (page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Films
-              </div>
-              
-              <div className="flex flex-wrap items-center justify-center gap-1">
-                <button
-                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
-                  disabled={page === 1 || loading}
-                  className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                >
-                  <Icon icon="solar:alt-arrow-left-linear" width="16" />
-                  Previous
-                </button>
-
-                {getPageNumbers().map((p, i) => (
-                  p === '...' ? (
-                    <span key={`dots-${i}`} className="px-2 text-text-muted">...</span>
-                  ) : (
-                    <button
-                      key={p}
-                      onClick={() => setPage(p)}
-                      className={`min-w-[32px] h-8 flex items-center justify-center rounded-md text-xs font-bold transition-all ${
-                        page === p 
-                          ? 'bg-brand text-white shadow-md' 
-                          : 'text-text-primary hover:bg-surface-2'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  )
-                ))}
-
-                <button
-                  onClick={() => setPage(prev => (prev < totalPages ? prev + 1 : prev))}
-                  disabled={page === totalPages || loading}
-                  className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
-                >
-                  Next
-                  <Icon icon="solar:alt-arrow-right-linear" width="16" />
-                </button>
-
-                <div className="flex items-center gap-2 ml-2 pl-2 lg:ml-4 lg:pl-4 border-l border-border">
-                  <span className="text-xs font-bold text-text-muted">Go to</span>
-                  <input 
-                    key={page}
-                    type="number" 
-                    defaultValue={page}
-                    min={1}
-                    max={totalPages}
-                    onBlur={(e) => {
-                      const val = parseInt(e.target.value);
-                      if (!isNaN(val) && val >= 1 && val <= totalPages) {
-                        setPage(val);
-                      } else {
-                        e.target.value = page;
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.target.blur();
-                    }}
-                    className="w-12 px-1 py-1 text-center bg-surface border border-border rounded text-xs text-text-primary focus:outline-none focus:border-brand"
-                  />
+              return pages;
+            };
+  
+            return (
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4 px-6 py-6 border-t border-border bg-surface-2/30">
+                <div className="text-xs font-bold text-text-muted uppercase tracking-widest text-center lg:text-left">
+                  Showing <span className="text-text-primary">{totalCount === 0 ? 0 : (page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Items
+                </div>
+                
+                <div className="flex flex-wrap items-center justify-center gap-1">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1 || loading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    <Icon icon="solar:double-alt-arrow-left-linear" width="16" />
+                    First
+                  </button>
+                  <button
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    disabled={page === 1 || loading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    <Icon icon="solar:alt-arrow-left-linear" width="16" />
+                    Prev
+                  </button>
+  
+                  {getPageNumbers().map((p, i) => (
+                    p === '...' ? (
+                      <span key={`dots-${i}`} className="px-2 text-text-muted">...</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`min-w-[32px] h-8 flex items-center justify-center rounded-md text-xs font-bold transition-all ${
+                          page === p 
+                            ? 'bg-brand text-white shadow-md' 
+                            : 'text-text-primary hover:bg-surface-2'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  ))}
+  
+                  <button
+                    onClick={() => setPage(prev => (prev < totalPages ? prev + 1 : prev))}
+                    disabled={page === totalPages || loading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    Next
+                    <Icon icon="solar:alt-arrow-right-linear" width="16" />
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages || loading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    Last
+                    <Icon icon="solar:double-alt-arrow-right-linear" width="16" />
+                  </button>
+  
+                  <div className="flex items-center gap-2 ml-2 pl-2 lg:ml-4 lg:pl-4 border-l border-border">
+                    <span className="text-xs font-bold text-text-muted">Go to</span>
+                    <input 
+                      key={page}
+                      type="number" 
+                      defaultValue={page}
+                      min={1}
+                      max={totalPages}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                          setPage(val);
+                        } else {
+                          e.target.value = page;
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const val = parseInt(e.currentTarget.value);
+                          if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                            setPage(val);
+                          } else {
+                            e.currentTarget.value = page;
+                          }
+                        }
+                      }}
+                      className="w-16 px-2 py-1 text-xs font-bold bg-surface border border-border rounded-md text-center focus:outline-none focus:border-brand text-text-primary"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })()}
-      </div>
+            );
+          })()}
+        </div>
 
-      <MergeModal
+        <MergeModal
         isOpen={isMergeModalOpen}
         onClose={() => setIsMergeModalOpen(false)}
         items={films.filter(f => selectedFilmIds.includes(f.id))}
         onConfirm={handleMergeFilms}
         type="film"
-      />
-
-      <Drawer
+      />      <Drawer
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
         title={editingFilm ? 'Edit Movie Profile' : 'Add New Movie'}
         width="800px"
       >
+        {draftRestoredMessage && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-3 flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 text-amber-500">
+              <Icon icon="lucide:history" className="w-4 h-4" />
+              <span className="text-sm font-medium">{draftRestoredMessage}</span>
+            </div>
+            <button
+              onClick={() => {
+                clearDraft();
+                setDraftRestoredMessage('');
+                setIsDrawerOpen(false);
+                setTimeout(() => handleOpenDrawer(editingFilm, true), 100);
+              }}
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 hover:border-slate-600"
+            >
+              Discard Draft
+            </button>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-12">
           {/* Main Attributes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -2244,3 +2314,4 @@ export default function AdminFilms() {
     </div>
   );
 }
+

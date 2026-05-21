@@ -11,6 +11,8 @@ import { Icon } from '@iconify/react';
 import { useAuth } from '../../context/AuthContext';
 import { logAdminAction } from '../../lib/adminLogger';
 import { toTitleCase } from '../../utils/format';
+import { useLocalStorageDraft } from '../../hooks/useLocalStorageDraft';
+import { useMemo } from 'react';
 
 export default function AdminPeople() {
   const { user } = useAuth();
@@ -54,6 +56,12 @@ export default function AdminPeople() {
     youtube_handle: '',
     youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null }
   });
+
+  const draftKey = isDrawerOpen ? (editingPerson ? `lumi_draft_person_${editingPerson.id}` : 'lumi_draft_person_new') : null;
+  const draftData = useMemo(() => ({ ...formData, youtube_channel_id: youtubeChannelInput || formData.youtube_channel_id || formData.youtube_handle }), [formData, youtubeChannelInput]);
+  const { clearDraft } = useLocalStorageDraft(draftKey, draftData, isDrawerOpen);
+  const [draftRestoredMessage, setDraftRestoredMessage] = useState('');
+
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -204,10 +212,19 @@ export default function AdminPeople() {
     }
   };
 
-  const openAddDrawer = () => {
+  const openAddDrawer = (ignoreDraft = false) => {
+    let draft = null;
+    if (!ignoreDraft) {
+      try {
+        const stored = localStorage.getItem('lumi_draft_person_new');
+        if (stored) draft = JSON.parse(stored);
+      } catch (e) {}
+    }
+    setDraftRestoredMessage(draft ? 'Unsaved changes restored from draft.' : '');
+
     setEditingPerson(null);
     setYoutubeChannelInput('');
-    setFormData({
+    setFormData(draft || {
       name: '',
       biography: '',
       photo_url: '',
@@ -225,9 +242,18 @@ export default function AdminPeople() {
     setIsDrawerOpen(true);
   };
 
-  const openEditDrawer = async (person) => {
+  const openEditDrawer = async (person, ignoreDraft = false) => {
+    let draft = null;
+    if (!ignoreDraft) {
+      try {
+        const stored = localStorage.getItem(`lumi_draft_person_${person.id}`);
+        if (stored) draft = JSON.parse(stored);
+      } catch (e) {}
+    }
+    setDraftRestoredMessage(draft ? 'Unsaved changes restored from draft.' : '');
+
     setEditingPerson(person);
-    setFormData({
+    setFormData(draft || {
       name: person.name || '',
       biography: person.biography || person.bio || '',
       photo_url: person.photo_url || '',
@@ -242,7 +268,7 @@ export default function AdminPeople() {
       youtube_handle: person.youtube_handle || '',
       youtube_stats: person.youtube_stats || { subscribers: '0', videos: '0', thumbnail: null, banner: null }
     });
-    setYoutubeChannelInput(getPersonYoutubeChannelUrl(person) || '');
+    setYoutubeChannelInput(draft?.youtube_channel_id || draft?.youtube_handle || getPersonYoutubeChannelUrl(person) || '');
     
     // Fetch credits for this person
     const { data: credits } = await supabase
@@ -355,6 +381,7 @@ export default function AdminPeople() {
         await logAdminAction(user, 'create', 'person', newPersonId, dataToSave.name);
         toast.success('Person added');
       }
+      clearDraft();
       setIsDrawerOpen(false);
       fetchPeople();
     } catch (error) {
@@ -364,6 +391,16 @@ export default function AdminPeople() {
       setIsSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (isDrawerOpen) {
+      const handler = setTimeout(() => {
+        const key = editingPerson ? `lumi_draft_person_${editingPerson.id}` : 'lumi_draft_person_new';
+        localStorage.setItem(key, JSON.stringify({ ...formData, youtube_channel_id: youtubeChannelInput }));
+      }, 1000);
+      return () => clearTimeout(handler);
+    }
+  }, [formData, youtubeChannelInput, isDrawerOpen, editingPerson]);
 
   const formatNumber = (num) => {
     if (!num) return '0';
@@ -600,33 +637,129 @@ export default function AdminPeople() {
         </table>
 
         {/* Pagination Footer */}
-        <div className="flex items-center justify-between px-6 py-6 border-t border-border bg-surface-2/30">
-          <div className="text-xs font-bold text-text-muted uppercase tracking-widest">
-            Showing <span className="text-text-primary">{(page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Profiles
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(prev => Math.max(1, prev - 1))}
-              disabled={page === 1 || isLoading}
-              className="px-4 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              Previous
-            </button>
-            <div className="flex items-center px-4 text-xs font-bold text-brand bg-brand/10 border border-brand/20 rounded-md">
-              Page {page}
-            </div>
-            <button
-              onClick={() => setPage(prev => (prev * pageSize < totalCount ? prev + 1 : prev))}
-              disabled={page * pageSize >= totalCount || isLoading}
-              className="px-4 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              Next
-            </button>
-          </div>
+          {(() => {
+            const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+            const getPageNumbers = () => {
+              const pages = [];
+              if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                if (page <= 4) {
+                  for (let i = 1; i <= 5; i++) pages.push(i);
+                  pages.push('...');
+                  pages.push(totalPages);
+                } else if (page >= totalPages - 3) {
+                  pages.push(1);
+                  pages.push('...');
+                  for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  pages.push('...');
+                  pages.push(page - 1);
+                  pages.push(page);
+                  pages.push(page + 1);
+                  pages.push('...');
+                  pages.push(totalPages);
+                }
+              }
+              return pages;
+            };
+  
+            return (
+              <div className="flex flex-col lg:flex-row items-center justify-between gap-4 px-6 py-6 border-t border-border bg-surface-2/30">
+                <div className="text-xs font-bold text-text-muted uppercase tracking-widest text-center lg:text-left">
+                  Showing <span className="text-text-primary">{totalCount === 0 ? 0 : (page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Items
+                </div>
+                
+                <div className="flex flex-wrap items-center justify-center gap-1">
+                  <button
+                    onClick={() => setPage(1)}
+                    disabled={page === 1 || isLoading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    <Icon icon="solar:double-alt-arrow-left-linear" width="16" />
+                    First
+                  </button>
+                  <button
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    disabled={page === 1 || isLoading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    <Icon icon="solar:alt-arrow-left-linear" width="16" />
+                    Prev
+                  </button>
+  
+                  {getPageNumbers().map((p, i) => (
+                    p === '...' ? (
+                      <span key={`dots-${i}`} className="px-2 text-text-muted">...</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`min-w-[32px] h-8 flex items-center justify-center rounded-md text-xs font-bold transition-all ${
+                          page === p 
+                            ? 'bg-brand text-white shadow-md' 
+                            : 'text-text-primary hover:bg-surface-2'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  ))}
+  
+                  <button
+                    onClick={() => setPage(prev => (prev < totalPages ? prev + 1 : prev))}
+                    disabled={page === totalPages || isLoading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    Next
+                    <Icon icon="solar:alt-arrow-right-linear" width="16" />
+                  </button>
+                  <button
+                    onClick={() => setPage(totalPages)}
+                    disabled={page === totalPages || isLoading}
+                    className="px-3 py-2 text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center gap-1"
+                  >
+                    Last
+                    <Icon icon="solar:double-alt-arrow-right-linear" width="16" />
+                  </button>
+  
+                  <div className="flex items-center gap-2 ml-2 pl-2 lg:ml-4 lg:pl-4 border-l border-border">
+                    <span className="text-xs font-bold text-text-muted">Go to</span>
+                    <input 
+                      key={page}
+                      type="number" 
+                      defaultValue={page}
+                      min={1}
+                      max={totalPages}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                          setPage(val);
+                        } else {
+                          e.target.value = page;
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const val = parseInt(e.currentTarget.value);
+                          if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                            setPage(val);
+                          } else {
+                            e.currentTarget.value = page;
+                          }
+                        }
+                      }}
+                      className="w-16 px-2 py-1 text-xs font-bold bg-surface border border-border rounded-md text-center focus:outline-none focus:border-brand text-text-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
-      </div>
 
-      <MergeModal
+        <MergeModal
         isOpen={isMergeModalOpen}
         onClose={() => setIsMergeModalOpen(false)}
         items={people.filter(p => selectedPersonIds.includes(p.id))}
@@ -635,7 +768,31 @@ export default function AdminPeople() {
       />
 
       <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} title={editingPerson ? 'Edit Record' : 'Add New Record'}>
-        <form onSubmit={handleSave} className="p-8 space-y-10">
+        <div className="h-full flex flex-col">
+          {draftRestoredMessage && (
+            <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-amber-500">
+                <Icon icon="lucide:history" className="w-4 h-4" />
+                <span className="text-sm font-medium">{draftRestoredMessage}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearDraft();
+                  setDraftRestoredMessage('');
+                  setIsDrawerOpen(false);
+                  setTimeout(() => {
+                    if (editingPerson) openEditDrawer(editingPerson, true);
+                    else openAddDrawer(true);
+                  }, 100);
+                }}
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg transition-colors border border-slate-700 hover:border-slate-600"
+              >
+                Discard Draft
+              </button>
+            </div>
+          )}
+        <form onSubmit={handleSave} className="p-8 space-y-10 flex-1 overflow-y-auto">
           <section className="space-y-6">
             <div className="flex items-center gap-2 pb-2 border-b border-border">
               <span className="text-xl">👤</span>
@@ -893,6 +1050,7 @@ export default function AdminPeople() {
             </button>
           </div>
         </form>
+        </div>
       </Drawer>
       {deletingPerson && (
         <ConfirmModal
@@ -917,3 +1075,4 @@ export default function AdminPeople() {
     </div>
   );
 }
+

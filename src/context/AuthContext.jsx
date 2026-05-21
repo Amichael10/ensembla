@@ -24,21 +24,35 @@ export function AuthProvider({ children }) {
         .eq('id', authUser.id)
         .single();
       
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching user profile:', error);
+        // On intermittent failure, preserve existing role if possible
+        setAuthState(prev => ({
+          ...prev,
+          user: authUser,
+          role: prev.role || authUser.user_metadata?.role || null,
+          loading: false,
+        }));
+        return;
+      }
+
       // Prioritize DB role, fallback to metadata
       let finalRole = (profile?.role) || authUser.user_metadata?.role || null;
 
-      setAuthState({
+      setAuthState(prev => ({
+        ...prev,
         user: authUser,
         role: finalRole,
         loading: false,
-      });
+      }));
     } catch (err) {
-      console.error('Error fetching user profile:', err);
-      setAuthState({
+      console.error('Error in fetchUserProfile:', err);
+      setAuthState(prev => ({
+        ...prev,
         user: authUser,
-        role: authUser.user_metadata?.role || null,
+        role: prev.role || authUser.user_metadata?.role || null,
         loading: false,
-      });
+      }));
     }
   };
 
