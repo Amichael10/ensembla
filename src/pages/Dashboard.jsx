@@ -26,14 +26,14 @@ export default function Dashboard() {
   useEffect(() => {
     document.title = "Lumi | Dashboard";
     
-    // Redirect admin_limited to Admin Workspace
-    if (user?.role === 'admin_limited') {
+    // Redirect admin and admin_limited to Admin Workspace
+    if (user?.role === 'admin' || user?.role === 'admin_limited') {
       navigate('/admin');
       return;
     }
 
-    // Redirect professionals/admins to the Pro Hub
-    if (user?.role === 'professional' || user?.role === 'admin') {
+    // Redirect professionals to the Pro Hub
+    if (user?.role === 'professional') {
       navigate('/pro-dashboard');
       return;
     }

@@ -1,15 +1,24 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Icon } from '@iconify/react';
+import { useAuth } from '../../context/AuthContext';
 
 const MobileNav = () => {
   const location = useLocation();
+  const { user } = useAuth();
+
+  const getProfilePath = () => {
+    if (!user) return '/login';
+    if (user.role === 'admin' || user.role === 'admin_limited') return '/admin';
+    if (user.role === 'professional') return '/pro-dashboard';
+    return '/dashboard';
+  };
 
   const navItems = [
     { name: 'Home', path: '/', icon: 'solar:home-2-linear', activeIcon: 'solar:home-2-bold' },
     { name: 'Browse', path: '/browse', icon: 'solar:clapperboard-play-linear', activeIcon: 'solar:clapperboard-play-bold' },
     { name: 'Search', path: '/search', icon: 'solar:magnifer-linear', activeIcon: 'solar:magnifer-bold' },
-    { name: 'Profile', path: '/dashboard', icon: 'solar:user-linear', activeIcon: 'solar:user-bold' },
+    { name: 'Profile', path: getProfilePath(), icon: 'solar:user-linear', activeIcon: 'solar:user-bold' },
   ];
 
   return (

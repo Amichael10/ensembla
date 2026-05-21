@@ -168,7 +168,7 @@ export default function Navbar() {
                     </div>
                     <div className="p-2">
                       <Link 
-                        to={user.role === 'admin_limited' ? "/admin" : ((user.role === 'professional' || user.role === 'admin') ? "/pro-dashboard" : "/dashboard")} 
+                        to={(user.role === 'admin' || user.role === 'admin_limited') ? "/admin" : (user.role === 'professional' ? "/pro-dashboard" : "/dashboard")} 
                         className="flex items-center gap-3 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-lg transition-colors"
                       >
                         <Icon icon="solar:user-linear" width="18" height="18" />

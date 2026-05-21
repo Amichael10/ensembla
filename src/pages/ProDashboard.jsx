@@ -36,6 +36,11 @@ export default function ProDashboard() {
 
   useEffect(() => {
     document.title = "Lumi Pro | Dashboard";
+    if (user?.role === 'admin' || user?.role === 'admin_limited') {
+      navigate('/admin');
+      return;
+    }
+
     if (user?.id) {
       checkClaimStatus();
     }
