@@ -10,6 +10,7 @@ import FilmCard from '../components/film/FilmCard';
 import WatchOptions from '../components/film/WatchOptions';
 import { Skeleton } from '../components/ui/Skeleton';
 import ShareAction from '../components/ui/ShareAction';
+import { slugOrId } from '../utils/slug';
 
 const FilmDetailSkeleton = () => (
     <div className="w-full bg-bg min-h-screen">
@@ -89,10 +90,11 @@ const FilmDetailSkeleton = () => (
 )
 
 export default function FilmDetail() {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [film, setFilm] = useState(null);
+  const [filmId, setFilmId] = useState(null); // actual UUID for sub-queries
   const [relatedFilms, setRelatedFilms] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,25 +102,24 @@ export default function FilmDetail() {
     inWatchlist,
     loading: watchlistLoading,
     toggleWatchlist
-  } = useWatchlist(id, user);
+  } = useWatchlist(filmId, user);
 
   const [cast, setCast] = useState([]);
   const [crew, setCrew] = useState([]);
 
   useEffect(() => {
     fetchFilm();
-    fetchCredits();
-  }, [id]);
+  }, [slug]);
 
-  const fetchCredits = async () => {
+  const fetchCredits = async (uuid) => {
     try {
       const { data, error } = await supabase
         .from('credits')
         .select(`
           id, role, character_name, billing_order,
-          people(id, name, photo_url, popularity_score)
+          people(id, name, photo_url, popularity_score, slug)
         `)
-        .eq('film_id', id)
+        .eq('film_id', uuid)
         .order('billing_order', { ascending: true });
 
       if (error) throw error;
@@ -153,6 +154,7 @@ export default function FilmDetail() {
   const fetchFilm = async () => {
     setLoading(true);
     try {
+      const { col, val } = slugOrId(slug);
       const { data, error } = await supabase
         .from('films')
         .select(`
@@ -162,7 +164,7 @@ export default function FilmDetail() {
             companies(id, name, logo_url)
           )
         `)
-        .eq('id', id)
+        .eq(col, val)
         .single();
 
       if (error) throw error;
@@ -173,16 +175,18 @@ export default function FilmDetail() {
       };
       
       setFilm(mappedFilm);
+      setFilmId(data.id);
+      fetchCredits(data.id);
 
       if (data) {
         document.title = `Lumi | ${data.title}`;
         const { data: related } = await supabase
           .from('films')
           .select(`
-            *,
+            id, title, year, poster_url, backdrop_url, slug,
             film_genres(genres(name))
           `)
-          .neq('id', id)
+          .neq('id', data.id)
           .limit(3);
           
         setRelatedFilms((related || []).map(f => ({
@@ -200,7 +204,7 @@ export default function FilmDetail() {
   const handleWatchlist = async () => {
     if (!user) {
       navigate('/login', {
-        state: { from: `/films/${id}`, message: 'Sign in to add films to your watchlist' }
+        state: { from: `/films/${film?.slug || slug}`, message: 'Sign in to add films to your watchlist' }
       });
       return;
     }
@@ -455,7 +459,7 @@ export default function FilmDetail() {
                 {relatedFilms.map(relatedFilm => (
                   <Link
                     key={relatedFilm.id}
-                    to={`/films/${relatedFilm.id}`}
+                    to={`/films/${relatedFilm.slug || relatedFilm.id}`}
                     className="flex gap-4 bg-surface hover:bg-surface-2 p-4 border-b border-border last:border-b-0 group transition-all"
                   >
                     <img

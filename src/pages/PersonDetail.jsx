@@ -12,6 +12,8 @@ import {
 import { getPersonYoutubeChannelUrl } from '../lib/youtube'
 import { Skeleton } from '../components/ui/Skeleton'
 import ShareAction from '../components/ui/ShareAction'
+import ImageWithFallback from '../components/ui/ImageWithFallback'
+import { slugOrId } from '../utils/slug'
 
 const PLATFORM_STYLES = {
   cinema:   { label: 'Cinema',   bg: 'bg-yellow-500/20',  text: 'text-yellow-400',  dot: 'bg-yellow-400' },
@@ -119,10 +121,11 @@ const Biography = ({ text }) => {
 
 const PersonDetail = () => {
 
-  const { id } = useParams()
+  const { slug } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [person, setPerson] = useState(null)
+  const [personId, setPersonId] = useState(null) // actual UUID
   const [channel, setChannel] = useState(null)
   const [channelVideos, setChannelVideos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -136,17 +139,18 @@ const PersonDetail = () => {
     followerCount,
     loading: followLoading,
     toggleFollow
-  } = useFollow(id, user)
+  } = useFollow(personId, user)
 
   useEffect(() => {
     fetchPerson()
-  }, [id])
+  }, [slug])
 
   const fetchPerson = async () => {
     setLoading(true)
     setError(null)
     setYoutubeVideoIds([])
 
+    const { col, val } = slugOrId(slug);
     const { data, error } = await supabase
       .from('people')
       .select(`
@@ -155,13 +159,13 @@ const PersonDetail = () => {
           id, role, character_name, billing_order,
           films(
             id, title, year, poster_url, trailer_youtube_id,
-            view_count, average_rating,
+            view_count, average_rating, slug,
             release_type, trailer_youtube_id,
             film_genres(genres(name))
           )
         )
       `)
-      .eq('id', id)
+      .eq(col, val)
       .single()
 
     if (error) {
@@ -171,12 +175,13 @@ const PersonDetail = () => {
     }
 
     setPerson(data)
+    setPersonId(data.id)
 
     // Fetch linked YouTube channel
     const { data: ch } = await supabase
       .from('channels')
-      .select('id, name, channel_handle, channel_url, thumbnail_url, banner_url, subscriber_count, description, category')
-      .eq('owner_person_id', id)
+      .select('id, name, channel_handle, channel_url, thumbnail_url, banner_url, subscriber_count, description, category, slug')
+      .eq('owner_person_id', data.id)
       .maybeSingle()
     setChannel(ch ?? null)
 
@@ -332,7 +337,7 @@ const PersonDetail = () => {
     if (!user) {
       navigate('/login', {
         state: {
-          from: `/people/${id}`,
+          from: `/people/${person?.slug || slug}`,
           message: 'Sign in to follow filmmakers'
         }
       })
@@ -554,7 +559,7 @@ const PersonDetail = () => {
                 const poster = film?.poster_url || video?.thumbnail_url
                 const link = video 
                   ? `https://www.youtube.com/watch?v=${video.video_id}` 
-                  : `/films/${film?.id}`
+                  : `/films/${film?.slug || film?.id}`
                 const isExternal = !!video
 
                 return (
@@ -619,22 +624,18 @@ const PersonDetail = () => {
             </h2>
 
             <Link
-              to={`/channels/${channel.id}`}
+              to={`/channels/${channel.slug || channel.id}`}
               className="relative z-10 group flex flex-col sm:flex-row items-center gap-8 bg-surface rounded-xl border border-border hover:border-brand transition-all duration-500 overflow-hidden shadow-sm p-8 max-w-3xl"
             >
               <div className="relative shrink-0">
                 <div className="absolute inset-0 bg-brand blur-lg opacity-10 group-hover:opacity-30 transition-opacity"></div>
-                {channel.thumbnail_url ? (
-                  <img
-                    src={channel.thumbnail_url}
-                    alt={channel.name}
-                    className="relative w-24 h-24 rounded-lg border border-border object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="relative w-24 h-24 rounded-lg bg-surface-2 flex items-center justify-center border border-border">
-                    <span className="text-brand font-bold text-3xl font-heading">{channel.name?.charAt(0)}</span>
-                  </div>
-                )}
+                <ImageWithFallback
+                  src={channel.thumbnail_url}
+                  alt={channel.name}
+                  fallbackType="avatar"
+                  name={channel.name}
+                  className="relative w-24 h-24 rounded-lg border border-border object-cover group-hover:scale-105 transition-transform duration-500"
+                />
               </div>
 
               <div className="flex-1 min-w-0 text-center sm:text-left">

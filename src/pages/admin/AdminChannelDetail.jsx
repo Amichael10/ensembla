@@ -5,6 +5,7 @@ import { formatViewCount } from '../../utils/youtube';
 import { toast } from 'react-hot-toast';
 import { Icon } from '@iconify/react';
 import SyncStatusOverlay from '../../components/admin/SyncStatusOverlay';
+import ImageWithFallback from '../../components/ui/ImageWithFallback';
 
 export default function AdminChannelDetail() {
   const { id } = useParams();
@@ -193,9 +194,13 @@ export default function AdminChannelDetail() {
               <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Network Capacity</p>
               <p className="text-text-primary font-black text-xs italic">{formatViewCount(channel.subscriber_count || 0)} Signals</p>
            </div>
-           {channel.thumbnail_url && (
-             <img src={channel.thumbnail_url} alt="" className="w-10 h-10 rounded-md border border-border shadow-md" />
-           )}
+           <ImageWithFallback
+              src={channel.thumbnail_url}
+              alt=""
+              fallbackType="avatar"
+              name={channel.name}
+              className="w-10 h-10 rounded-md border border-border shadow-md object-cover"
+            />
         </div>
       </div>
 
@@ -273,7 +278,7 @@ export default function AdminChannelDetail() {
                     <tr key={vid.id} className="group hover:bg-surface-2/50 transition-all duration-300">
                       <td className="px-10 py-8">
                         <div className="flex items-center gap-6">
-                           <img src={vid.thumbnail_url} alt="" className="w-24 h-14 rounded-md object-cover border border-border shadow-md transition-transform group-hover:scale-105" />
+                           <ImageWithFallback src={vid.thumbnail_url} alt="" fallbackType="video" name={vid.title} className="w-24 h-14 rounded-md object-cover border border-border shadow-md transition-transform group-hover:scale-105" />
                            <div className="min-w-0">
                               <p className="text-text-primary font-black text-sm truncate max-w-sm mb-1">{vid.title}</p>
                               <p className="text-[10px] text-text-muted font-bold uppercase tracking-widest italic">{new Date(vid.published_at).toLocaleDateString()}</p>

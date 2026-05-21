@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { formatViewCount } from '../utils/youtube';
 import { Skeleton } from '../components/ui/Skeleton';
 import { Icon } from '@iconify/react';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const CATEGORIES = [
   'All', 'Movies', 'Comedy', 'Series', 'Yoruba', 'Faith',
@@ -34,16 +35,13 @@ function ChannelCard({ channel }) {
     >
       {/* Banner */}
       <div className="h-20 w-full overflow-hidden bg-surface-2/10 relative">
-        <div className="absolute inset-0 grid-bg opacity-10 pointer-events-none"></div>
-        {channel.banner_url ? (
-          <img
-            src={channel.banner_url}
-            alt=""
-            className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-brand/10 via-transparent to-bg" />
-        )}
+        <ImageWithFallback
+          src={channel.banner_url}
+          alt=""
+          fallbackType="banner"
+          name={channel.name}
+          className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-700"
+        />
       </div>
 
       {/* Content */}
@@ -52,17 +50,13 @@ function ChannelCard({ channel }) {
         <div className="absolute -top-8 left-4">
           <div className="relative">
              <div className="absolute -inset-1 bg-brand/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            {channel.thumbnail_url ? (
-              <img
-                src={channel.thumbnail_url}
-                alt={channel.name}
-                className="relative w-16 h-16 rounded-xl border-4 border-surface object-cover shadow-xl group-hover:scale-105 transition-transform duration-500"
-              />
-            ) : (
-              <div className="relative w-16 h-16 rounded-xl border-4 border-surface bg-surface-2 flex items-center justify-center shadow-xl">
-                <span className="text-brand font-bold text-2xl font-heading">{channel.name?.charAt(0)}</span>
-              </div>
-            )}
+             <ImageWithFallback
+               src={channel.thumbnail_url}
+               alt={channel.name}
+               fallbackType="avatar"
+               name={channel.name}
+               className="relative w-16 h-16 rounded-xl border-4 border-surface object-cover shadow-xl group-hover:scale-105 transition-transform duration-500"
+             />
           </div>
         </div>
 

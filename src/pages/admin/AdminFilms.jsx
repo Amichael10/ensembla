@@ -1342,25 +1342,66 @@ export default function AdminFilms() {
         {/* Pagination Footer */}
         <div className="flex items-center justify-between px-6 py-6 border-t border-border bg-surface-2/30">
           <div className="text-xs font-bold text-text-muted uppercase tracking-widest">
-            Showing <span className="text-text-primary">{(page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Films
+            Showing <span className="text-text-primary">{totalCount === 0 ? 0 : (page - 1) * pageSize + 1}</span> to <span className="text-text-primary">{Math.min(page * pageSize, totalCount)}</span> of <span className="text-text-primary">{totalCount}</span> Films
           </div>
           <div className="flex gap-2">
             <button
+              onClick={() => setPage(1)}
+              disabled={page === 1 || loading}
+              className="px-3 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="First Page"
+            >
+              <Icon icon="solar:double-alt-arrow-left-linear" width="16" />
+            </button>
+            <button
               onClick={() => setPage(prev => Math.max(1, prev - 1))}
               disabled={page === 1 || loading}
-              className="px-4 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="px-3 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Previous Page"
             >
-              Previous
+              <Icon icon="solar:alt-arrow-left-linear" width="16" />
             </button>
-            <div className="flex items-center px-4 text-xs font-bold text-brand bg-brand/10 border border-brand/20 rounded-md">
-              Page {page}
+            <div className="flex items-center gap-2 px-3 py-1 text-xs font-bold text-brand bg-brand/10 border border-brand/20 rounded-md">
+              <span>Page</span>
+              <input 
+                key={page}
+                type="number" 
+                defaultValue={page}
+                min={1}
+                max={Math.max(1, Math.ceil(totalCount / pageSize))}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value);
+                  const maxPage = Math.max(1, Math.ceil(totalCount / pageSize));
+                  if (!isNaN(val) && val >= 1 && val <= maxPage) {
+                    setPage(val);
+                  } else {
+                    e.target.value = page;
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.target.blur();
+                  }
+                }}
+                className="w-12 px-1 py-1 text-center bg-surface border border-brand/20 rounded text-text-primary focus:outline-none focus:border-brand"
+              />
+              <span>of {Math.max(1, Math.ceil(totalCount / pageSize))}</span>
             </div>
             <button
               onClick={() => setPage(prev => (prev * pageSize < totalCount ? prev + 1 : prev))}
               disabled={page * pageSize >= totalCount || loading}
-              className="px-4 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="px-3 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Next Page"
             >
-              Next
+              <Icon icon="solar:alt-arrow-right-linear" width="16" />
+            </button>
+            <button
+              onClick={() => setPage(Math.max(1, Math.ceil(totalCount / pageSize)))}
+              disabled={page * pageSize >= totalCount || loading}
+              className="px-3 py-2 bg-surface border border-border text-xs font-bold text-text-primary rounded-md hover:bg-surface-2 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              title="Last Page"
+            >
+              <Icon icon="solar:double-alt-arrow-right-linear" width="16" />
             </button>
           </div>
         </div>

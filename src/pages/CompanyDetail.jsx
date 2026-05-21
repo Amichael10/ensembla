@@ -4,10 +4,11 @@ import { supabase } from '../lib/supabase'
 import { formatViewCount } from '../utils/youtube'
 import { Icon } from '@iconify/react'
 import ShareAction from '../components/ui/ShareAction'
+import { slugOrId } from '../utils/slug'
 
 const FilmCard = ({ film }) => (
   <Link
-    to={`/films/${film.id}`}
+    to={`/films/${film.slug || film.id}`}
     className="group block"
   >
     <div className="relative overflow-hidden rounded-xl aspect-[2/3] bg-[#13192B]">
@@ -70,7 +71,7 @@ const Description = ({ text }) => {
 
 const CompanyDetail = () => {
 
-  const { id } = useParams()
+  const { slug } = useParams()
   const navigate = useNavigate()
   const [company, setCompany] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -79,12 +80,13 @@ const CompanyDetail = () => {
 
   useEffect(() => {
     fetchCompany()
-  }, [id])
+  }, [slug])
 
   const fetchCompany = async () => {
     setLoading(true)
     setError(null)
 
+    const { col, val } = slugOrId(slug);
     const { data, error } = await supabase
       .from('companies')
       .select(`
@@ -92,13 +94,13 @@ const CompanyDetail = () => {
         film_companies(
           role,
           films(
-            id, title, year, poster_url,
+            id, title, year, poster_url, slug,
             view_count, average_rating,
             film_genres(genres(name))
           )
         )
       `)
-      .eq('id', id)
+      .eq(col, val)
       .single()
 
     if (error) {

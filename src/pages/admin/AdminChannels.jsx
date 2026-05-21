@@ -5,6 +5,7 @@ import { formatViewCount } from '../../utils/youtube';
 import { toast } from 'react-hot-toast';
 import { Icon } from '@iconify/react';
 import SyncStatusOverlay from '../../components/admin/SyncStatusOverlay';
+import ImageWithFallback from '../../components/ui/ImageWithFallback';
 
 const CATEGORIES = [
   'Movies', 'Comedy', 'Series', 'Yoruba', 'Faith',
@@ -635,7 +636,13 @@ export default function AdminChannels() {
                 <div key={ch.id} className="bg-surface border border-border rounded-2xl p-6 group hover:border-brand/30 transition-all shadow-xl">
                   <div className="flex items-start justify-between mb-4">
                     <div className="relative">
-                      <img src={ch.thumbnail_url} alt="" className="w-16 h-16 rounded-xl border border-border" />
+                      <ImageWithFallback
+                        src={ch.thumbnail_url}
+                        alt=""
+                        fallbackType="avatar"
+                        name={ch.name}
+                        className="w-16 h-16 rounded-xl border border-border object-cover"
+                      />
                       {ch.is_featured && (
                         <div className="absolute -top-2 -right-2 bg-brand text-white w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-lg border-2 border-surface">★</div>
                       )}

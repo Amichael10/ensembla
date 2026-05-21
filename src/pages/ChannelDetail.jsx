@@ -3,9 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { formatViewCount, parseDuration } from '../utils/youtube';
+import { slugOrId } from '../utils/slug';
 import { Skeleton } from '../components/ui/Skeleton';
 import ShareAction from '../components/ui/ShareAction';
 import { Icon } from '@iconify/react';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const CATEGORY_LABELS = {
   skit_maker: 'Skit Makers', movie_channel: 'Movie Channel',
@@ -108,16 +110,13 @@ function VideoCard({ video }) {
     <a href={youtubeUrl} target="_blank" rel="noopener noreferrer"
       className="group block bg-surface rounded-lg overflow-hidden border border-border hover:border-brand transition-all duration-500 shadow-sm">
       <div className="relative aspect-video bg-surface-2/10 overflow-hidden">
-        {video.thumbnail_url ? (
-          <img src={video.thumbnail_url} alt={video.title}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg className="w-10 h-10 text-brand/20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
-            </svg>
-          </div>
-        )}
+        <ImageWithFallback
+          src={video.thumbnail_url}
+          alt={video.title}
+          fallbackType="video"
+          name={video.title}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+        />
         {duration && (
           <span className="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md text-white text-[9px] font-black px-2 py-0.5 rounded border border-white/10 uppercase tracking-widest">
             {duration.formatted}
@@ -218,9 +217,10 @@ const Description = ({ text }) => {
 
 export default function ChannelDetail() {
 
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const [channel, setChannel] = useState(null);
+  const [channelId, setChannelId] = useState(null); // actual UUID for sub-queries
   const [videos, setVideos] = useState([]);
   const [owner, setOwner] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -232,26 +232,28 @@ export default function ChannelDetail() {
 
   useEffect(() => {
     fetchChannel();
-  }, [id]);
+  }, [slug]);
 
   const fetchChannel = async () => {
     setLoading(true);
     setError(null);
     try {
+      const { col, val } = slugOrId(slug);
       const { data: ch, error: chErr } = await supabase
         .from('channels')
         .select('*')
-        .eq('id', id)
+        .eq(col, val)
         .single();
       
       if (chErr || !ch) throw new Error('Channel not found');
       setChannel(ch);
+      setChannelId(ch.id);
       document.title = `Lumi | ${ch.name}`;
 
       if (ch.owner_person_id) {
         const { data: p } = await supabase
           .from('people')
-          .select('id, name, photo_url, known_for_department')
+          .select('id, name, photo_url, known_for_department, slug')
           .eq('id', ch.owner_person_id)
           .single();
         setOwner(p);
@@ -260,7 +262,7 @@ export default function ChannelDetail() {
       const { data: vids } = await supabase
         .from('channel_videos')
         .select('id, video_id, title, thumbnail_url, published_at, duration_seconds, film_id, match_status')
-        .eq('channel_id', id)
+        .eq('channel_id', ch.id)
         .order('published_at', { ascending: false });
       setVideos(vids || []);
 
@@ -298,11 +300,13 @@ export default function ChannelDetail() {
       <div className="relative border-b border-border bg-surface-2/10 overflow-hidden">
         <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none"></div>
         <div className="relative h-52 md:h-72 overflow-hidden border-b border-border">
-          {channel.banner_url ? (
-            <img src={channel.banner_url} alt="" className="w-full h-full object-cover opacity-60" />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-brand/20 via-transparent to-bg" />
-          )}
+          <ImageWithFallback
+            src={channel.banner_url}
+            alt=""
+            fallbackType="banner"
+            name={channel.name}
+            className="w-full h-full object-cover opacity-60"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-bg via-bg/20 to-transparent" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-x border-white/5 h-full relative">
             <button onClick={() => navigate('/channels')}
@@ -316,14 +320,13 @@ export default function ChannelDetail() {
           <div className="flex flex-col md:flex-row gap-8 items-end md:items-start">
             <div className="flex-shrink-0 relative">
               <div className="absolute -inset-1 bg-brand/20 blur-xl rounded-full"></div>
-              {channel.thumbnail_url ? (
-                <img src={channel.thumbnail_url} alt={channel.name}
-                  className="relative w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-bg object-cover shadow-2xl" />
-              ) : (
-                <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-bg bg-surface flex items-center justify-center shadow-2xl">
-                  <span className="text-brand font-bold text-5xl font-heading">{channel.name?.charAt(0)}</span>
-                </div>
-              )}
+              <ImageWithFallback
+                src={channel.thumbnail_url}
+                alt={channel.name}
+                fallbackType="avatar"
+                name={channel.name}
+                className="relative w-32 h-32 md:w-40 md:h-40 rounded-xl border-4 border-bg object-cover shadow-2xl"
+              />
             </div>
 
             <div className="flex-1 pt-4 md:pt-16">
@@ -439,7 +442,7 @@ export default function ChannelDetail() {
             {owner && (
               <div className="p-8">
                 <h3 className="text-text-muted text-xs font-bold mb-6">Owner</h3>
-                <Link to={`/people/${owner.id}`} className="group flex flex-col items-center text-center p-6 bg-surface-2/20 rounded-xl border border-border hover:border-brand transition-all duration-300">
+                <Link to={`/people/${owner.slug || owner.id}`} className="group flex flex-col items-center text-center p-6 bg-surface-2/20 rounded-xl border border-border hover:border-brand transition-all duration-300">
                   {owner.photo_url ? (
                     <img src={owner.photo_url} alt={owner.name}
                       className="w-20 h-20 rounded-xl object-cover border border-border mb-4 group-hover:scale-105 transition-transform" />

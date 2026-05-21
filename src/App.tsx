@@ -137,21 +137,21 @@ export default function App() {
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Home />} />
-                <Route path="/films/:id" element={<FilmDetail />} />
-                <Route path="/film/:id" element={<FilmDetail />} />
+                <Route path="/films/:slug" element={<FilmDetail />} />
+                <Route path="/film/:slug" element={<FilmDetail />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/browse" element={<Browse />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/people" element={<PeopleList />} />
-                <Route path="/people/:id" element={<PersonDetail />} />
+                <Route path="/people/:slug" element={<PersonDetail />} />
                 <Route path="/showtimes" element={<Showtimes />} />
                 <Route path="/cinemas" element={<Cinemas />} />
                 <Route path="/cinemas/:id" element={<CinemaDetail />} />
                 <Route path="/channels" element={<Channels />} />
-                <Route path="/channels/:id" element={<ChannelDetail />} />
+                <Route path="/channels/:slug" element={<ChannelDetail />} />
                 <Route path="/companies" element={<Companies />} />
-                <Route path="/companies/:id" element={<CompanyDetail />} />
+                <Route path="/companies/:slug" element={<CompanyDetail />} />
 
                 {/* Onboarding */}
                 <Route path="/waitlist" element={<Waitlist />} />
