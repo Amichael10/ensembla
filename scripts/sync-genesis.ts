@@ -107,13 +107,17 @@ async function scrapeGenesis() {
           let { data: dbFilm } = await supabase
             .from('films')
             .select('id, title')
+            .neq('source', 'youtube')
+            .neq('source', 'tmdb_youtube')
             .ilike('title', cleanTitleStr)
             .maybeSingle();
 
-          if (!dbFilm) {
+          if (!dbFilm && cleanTitleStr.length > 3) {
             const { data: fuzzyFilms } = await supabase
               .from('films')
               .select('id, title')
+              .neq('source', 'youtube')
+              .neq('source', 'tmdb_youtube')
               .ilike('title', `${cleanTitleStr}%`)
               .limit(5);
               

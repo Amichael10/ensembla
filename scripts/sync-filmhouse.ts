@@ -79,13 +79,17 @@ async function scrapeFilmhouse() {
       let { data: dbFilm } = await supabase
         .from('films')
         .select('id, title, is_in_cinemas')
+        .neq('source', 'youtube')
+        .neq('source', 'tmdb_youtube')
         .ilike('title', cleanedTitle)
         .maybeSingle();
 
-      if (!dbFilm) {
+      if (!dbFilm && cleanedTitle.length > 3) {
         const { data: fuzzy } = await supabase
           .from('films')
           .select('id, title, is_in_cinemas')
+          .neq('source', 'youtube')
+          .neq('source', 'tmdb_youtube')
           .ilike('title', `%${cleanedTitle}%`)
           .limit(1);
         dbFilm = fuzzy && fuzzy.length > 0 ? fuzzy[0] : null;
