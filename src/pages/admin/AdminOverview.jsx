@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Icon } from '@iconify/react';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 export default function AdminOverview() {
   const { user } = useAuth();
@@ -218,7 +219,6 @@ export default function AdminOverview() {
   };
 
   const handleRunScript = async (scriptName) => {
-    const toast = (await import('react-hot-toast')).default;
     const promise = (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const cronSecret = (import.meta.env && import.meta.env.VITE_CRON_SECRET) || '';
