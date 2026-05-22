@@ -29,6 +29,18 @@ export async function findAndInsertMissingFilm(supabase: any, title: string) {
     
     // Pick the most likely match (first one)
     const tmdbFilm = data.results[0];
+
+    // Fetch detailed info to check production countries
+    const detailsUrl = `https://api.themoviedb.org/3/movie/${tmdbFilm.id}?api_key=${TMDB_KEY}`;
+    const detailsRes = await fetch(detailsUrl);
+    if (!detailsRes.ok) return null;
+    const detailsData = await detailsRes.json();
+
+    const isNollywood = detailsData.production_countries?.some((c: any) => c.iso_3166_1 === 'NG');
+    if (!isNollywood) {
+      console.log(`      ⚠️ Film is not from Nigeria (Nollywood): ${tmdbFilm.title}. Skipping.`);
+      return null;
+    }
     
     const newFilm = {
       title: tmdbFilm.title,
