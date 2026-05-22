@@ -126,7 +126,7 @@ export default function AdminFilms() {
     runtime_minutes: '',
     language: 'English',
     nfvcb_rating: '18',
-    status: 'announced',
+    status: 'upcoming',
     trailer_source: 'youtube',
     trailer_youtube_id: '',
     tmdb_id: '',
@@ -1259,7 +1259,7 @@ export default function AdminFilms() {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                           film.status === 'released' ? 'bg-green-500/10 text-green-600 border-green-500/20' :
                           film.status === 'post-production' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' :
-                          film.status === 'filming' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                          film.status === 'in_production' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
                           'bg-slate-500/10 text-slate-500 border-slate-500/20'
                         }`}>
                           {(film.status || 'unknown').replace('-', ' ')}
@@ -1652,8 +1652,8 @@ export default function AdminFilms() {
                       onChange={handleChange} 
                       className="w-full bg-surface-2 border border-border rounded-md px-4 py-2.5 text-sm text-text-primary focus:border-brand focus:ring-4 focus:ring-brand/5 outline-none transition-all appearance-none cursor-pointer"
                     >
-                      <option value="announced">Announced</option>
-                      <option value="filming">Filming</option>
+                      <option value="upcoming">Upcoming / Announced</option>
+                      <option value="in_production">In Production / Filming</option>
                       <option value="post-production">Post-Production</option>
                       <option value="released">Released</option>
                     </select>

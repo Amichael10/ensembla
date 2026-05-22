@@ -4,7 +4,7 @@ import FilmCard from './FilmCard';
 import SkeletonCard from '../ui/SkeletonCard';
 import { Icon } from '@iconify/react';
 
-export default function FilmRow({ title, subtitle, films, sortKey, isLoading = false, noHeader = false }) {
+export default function FilmRow({ title, subtitle, films, sortKey, isLoading = false, noHeader = false, linkTo }) {
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -54,10 +54,10 @@ export default function FilmRow({ title, subtitle, films, sortKey, isLoading = f
               )}
             </div>
             <Link 
-              to={`/browse${sortKey ? `?sort=${sortKey}` : ''}`} 
+              to={linkTo || `/browse${sortKey ? `?sort=${sortKey}` : ''}`} 
               className="text-text-primary font-bold text-xs px-5 py-2.5 border border-border rounded-lg hover:border-brand hover:text-brand transition-all duration-300 flex items-center gap-2 w-fit bg-surface/50 backdrop-blur-sm"
             >
-              Browse all
+              {linkTo ? 'See all' : 'Browse all'}
               <Icon icon="solar:alt-arrow-right-linear" className="w-3.5 h-3.5" />
             </Link>
           </div>

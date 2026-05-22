@@ -190,13 +190,17 @@ export default function Home() {
   };
 
   const fetchComingSoon = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('films')
       .select(`*, film_genres(genres(name))`)
-      .or('coming_soon.eq.true,status.ilike.announced')
+      .in('status', ['upcoming', 'in_production', 'post-production'])
       .or('source.neq.mubi,source.is.null,countries.cs.{Nigeria}')
       .order('release_date', { ascending: true })
       .limit(20);
+    
+    if (error) {
+      console.error('Error fetching coming soon:', error);
+    }
     
     if (data) {
       setComingSoon(data.map(f => ({
@@ -325,6 +329,7 @@ export default function Home() {
               subtitle="Catch the latest Nollywood magic on the big screen"
               films={inCinemas}
               isLoading={isLoading}
+              linkTo="/showtimes"
             />
           </div>
         )}

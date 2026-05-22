@@ -729,10 +729,21 @@ export default function AdminPanel() {
                       <label className="block text-xs font-medium text-text-muted uppercase tracking-wider">Status</label>
                       <select className="w-full bg-bg border border-border text-text-primary rounded-xl px-4 py-3 focus:outline-none focus:border-gold appearance-none">
                         <option>released</option>
+                        <option>upcoming</option>
                         <option>post-production</option>
                         <option>filming</option>
                         <option>pre-production</option>
                       </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" id="inCinemas" className="w-5 h-5 accent-brand bg-bg border-border rounded" />
+                        <label htmlFor="inCinemas" className="text-sm font-medium text-text-primary">In Cinemas</label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" id="comingSoon" className="w-5 h-5 accent-brand bg-bg border-border rounded" />
+                        <label htmlFor="comingSoon" className="text-sm font-medium text-text-primary">Coming Soon</label>
+                      </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-medium text-text-muted uppercase tracking-wider">YouTube Trailer ID</label>

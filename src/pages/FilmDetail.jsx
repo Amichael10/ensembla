@@ -276,6 +276,21 @@ export default function FilmDetail() {
                 <span className="bg-brand text-white px-2 py-0.5 rounded text-[10px] font-bold">
                   {film.nfvcb_rating}
                 </span>
+                {film.is_in_cinemas && (
+                  <span className="bg-gold text-bg px-2 py-0.5 rounded text-[10px] font-bold border border-gold uppercase tracking-wider">
+                    In Cinemas
+                  </span>
+                )}
+                {(film.coming_soon || film.status === 'upcoming') && (
+                  <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-500/30 uppercase tracking-wider">
+                    Coming Soon
+                  </span>
+                )}
+                {film.status && !['released', 'upcoming'].includes(film.status) && (
+                  <span className="bg-surface-2 text-text-primary px-2 py-0.5 rounded text-[10px] font-bold border border-border capitalize">
+                    {film.status.replace('-', ' ')}
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2 mb-6">
