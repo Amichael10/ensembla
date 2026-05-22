@@ -57,15 +57,15 @@ export default function AdminPeople() {
     youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null }
   });
 
-  const draftKey = isDrawerOpen ? (editingPerson ? `lumi_draft_person_${editingPerson.id}` : 'lumi_draft_person_new') : null;
-  const draftData = useMemo(() => ({ ...formData, youtube_channel_id: youtubeChannelInput || formData.youtube_channel_id || formData.youtube_handle }), [formData, youtubeChannelInput]);
-  const { clearDraft } = useLocalStorageDraft(draftKey, draftData, isDrawerOpen);
-  const [draftRestoredMessage, setDraftRestoredMessage] = useState('');
-
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [youtubeChannelInput, setYoutubeChannelInput] = useState('');
+
+  const draftKey = isDrawerOpen ? (editingPerson ? `lumi_draft_person_${editingPerson.id}` : 'lumi_draft_person_new') : null;
+  const draftData = useMemo(() => ({ ...formData, youtube_channel_id: youtubeChannelInput || formData.youtube_channel_id || formData.youtube_handle }), [formData, youtubeChannelInput]);
+  const { clearDraft } = useLocalStorageDraft(draftKey, draftData, isDrawerOpen);
+  const [draftRestoredMessage, setDraftRestoredMessage] = useState('');
 
   // Server-Side Fetching
   const fetchPeople = async () => {
