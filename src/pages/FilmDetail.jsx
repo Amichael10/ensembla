@@ -362,13 +362,17 @@ export default function FilmDetail() {
                 <h2 className="font-heading font-bold text-2xl text-text-primary mb-6 tracking-tighter">Crew</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-0 border border-border rounded-lg overflow-hidden">
                   {crew.map((member, idx) => (
-                    <div key={idx} className="flex items-center gap-4 bg-surface p-4 border-r border-b border-border last:border-r-0 last:border-b-0">
-                      <img src={member.photo_url || `https://placehold.co/150x150/1A1A1A/FF5C00?text=${member.name.split(' ').map(n => n[0]).join('')}`} alt={member.name} className="w-10 h-10 rounded-lg object-cover border border-border" />
+                    <Link 
+                      key={idx} 
+                      to={`/people/${member.id}`}
+                      className="flex items-center gap-4 bg-surface p-4 border-r border-b border-border last:border-r-0 last:border-b-0 hover:bg-surface-2 transition-colors group"
+                    >
+                      <img src={member.photo_url || `https://placehold.co/150x150/1A1A1A/FF5C00?text=${member.name.split(' ').map(n => n[0]).join('')}`} alt={member.name} className="w-10 h-10 rounded-lg object-cover border border-border group-hover:border-gold transition-colors" />
                       <div>
-                        <div className="font-bold text-text-primary text-xs line-clamp-1 tracking-tight">{member.name}</div>
+                        <div className="font-bold text-text-primary text-xs line-clamp-1 tracking-tight group-hover:text-gold transition-colors">{member.name}</div>
                         <div className="text-text-muted text-[10px] font-bold">{member.role}</div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </section>
