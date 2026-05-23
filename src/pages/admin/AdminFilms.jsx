@@ -474,7 +474,7 @@ export default function AdminFilms() {
       setCredits(creditData.map(c => ({
         person_id: c.person_id,
         name: c.people?.name,
-        role: c.role,
+        role: c.role ? c.role.toLowerCase() : '',
         character_name: c.character_name,
         billing_order: c.billing_order,
         isCustomRole: false
