@@ -32,7 +32,13 @@ export default function AdminAI() {
         body: JSON.stringify({ task, data: payload })
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned invalid response: ${responseText.substring(0, 100)}...`);
+      }
       
       if (data.error) throw new Error(data.error);
 

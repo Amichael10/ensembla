@@ -63,13 +63,13 @@ export const fetchChannelData = async (identifier) => {
       
       if (!searchRes.ok) {
         let errorMsg = `YouTube search returned status ${searchRes.status}`;
+        const text = await searchRes.text();
         try {
-          const errorData = await searchRes.json();
+          const errorData = JSON.parse(text);
           if (errorData.error) errorMsg = errorData.error;
           else if (errorData.message) errorMsg = errorData.message;
         } catch (e) {
           // Fallback to text if JSON fails
-          const text = await searchRes.text();
           if (text) errorMsg += `: ${text.substring(0, 100)}`;
         }
         console.error('YouTube Search Failed:', searchRes.status, errorMsg);
@@ -90,12 +90,12 @@ export const fetchChannelData = async (identifier) => {
     
     if (!detailRes.ok) {
       let errorMsg = `YouTube details returned status ${detailRes.status}`;
+      const text = await detailRes.text();
       try {
-        const errorData = await detailRes.json();
+        const errorData = JSON.parse(text);
         if (errorData.error) errorMsg = errorData.error;
         else if (errorData.message) errorMsg = errorData.message;
       } catch (e) {
-        const text = await detailRes.text();
         if (text) errorMsg += `: ${text.substring(0, 100)}`;
       }
       console.error('YouTube Details Failed:', detailRes.status, errorMsg);

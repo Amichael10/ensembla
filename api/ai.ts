@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateAIContent, parseJSON } from './_lib/ai_service';
 import { supabase } from './_lib/supabase';
 
+export const maxDuration = 60;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   const { task, data } = req.body;

@@ -350,10 +350,11 @@ export default function AdminPeople() {
         }
       }
 
+      const { biography: _omitBiography, ...restFormData } = formData;
       const dataToSave = {
-        ...formData,
+        ...restFormData,
         name: toTitleCase(formData.name),
-        biography: formData.biography || null,
+        bio: formData.biography || null,
         date_of_birth: formData.date_of_birth || null,
         photo_url: formData.photo_url || null,
         popularity_score: parseInt(formData.popularity_score) || 0,
