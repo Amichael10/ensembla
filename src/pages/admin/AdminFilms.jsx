@@ -801,14 +801,37 @@ export default function AdminFilms() {
       }
 
       if (credits.length > 0) {
-        const creditPayload = credits.map(c => ({
-          film_id: filmId,
-          person_id: c.person_id,
-          role: c.role ? toTitleCase(c.role) : '',
-          character_name: c.character_name ? toTitleCase(c.character_name) : '',
-          billing_order: c.billing_order
-        }));
-        insertPromises.push(supabase.from('credits').insert(creditPayload));
+        // 1. Filter out any credits that are missing a person_id (safety guard)
+        const creditsWithId = credits.filter(c => c.person_id);
+
+        if (creditsWithId.length > 0) {
+          // 2. Verify all person_ids actually exist in the people table
+          const personIds = [...new Set(creditsWithId.map(c => c.person_id))];
+          const { data: existingPeople } = await supabase
+            .from('people')
+            .select('id')
+            .in('id', personIds);
+
+          const validIds = new Set((existingPeople || []).map(p => p.id));
+          const invalidCount = personIds.filter(id => !validIds.has(id)).length;
+
+          if (invalidCount > 0) {
+            toast.error(`${invalidCount} cast/crew member(s) no longer exist and were skipped. The rest were saved.`);
+          }
+
+          // 3. Only insert credits whose person_id is confirmed valid
+          const validCredits = creditsWithId.filter(c => validIds.has(c.person_id));
+          if (validCredits.length > 0) {
+            const creditPayload = validCredits.map(c => ({
+              film_id: filmId,
+              person_id: c.person_id,
+              role: c.role ? toTitleCase(c.role) : '',
+              character_name: c.character_name ? toTitleCase(c.character_name) : '',
+              billing_order: c.billing_order
+            }));
+            insertPromises.push(supabase.from('credits').insert(creditPayload));
+          }
+        }
       }
 
       if (showtimes.length > 0) {
