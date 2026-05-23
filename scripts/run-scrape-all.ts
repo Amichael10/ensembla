@@ -1,17 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
-import { ADAPTERS } from '../api/_lib/cinema-adapters/index.js';
-import { upsertShowtimes } from '../api/_lib/cinema-adapters/upsert.js';
-
 dotenv.config({ path: '.env.local' });
 dotenv.config();
 
-const supabase = createClient(
-  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
-);
-
 async function run() {
+  const { createClient } = await import('@supabase/supabase-js');
+  const { ADAPTERS } = await import('../api/_lib/cinema-adapters/index.js');
+  const { upsertShowtimes } = await import('../api/_lib/cinema-adapters/upsert.js');
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
+  );
+
   const { data: cinemas } = await supabase
     .from('cinemas')
     .select('id, name, chain, city, booking_url, scrape_adapter, scrape_config, showtimes_last_fetched_at, scrape_failure_count')
