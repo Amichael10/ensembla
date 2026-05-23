@@ -2,7 +2,6 @@
   "routes": [
     { "src": "/api/film/(?<id>.*)", "dest": "/api/films?id=$id" },
     { "src": "/api/channel/(?<id>.*)", "dest": "/api/channels?id=$id" },
-    { "src": "/api/youtube", "dest": "/api/external?provider=youtube" },
     { "src": "/api/tmdb", "dest": "/api/external?provider=tmdb" },
     { "src": "/api/(.*)", "dest": "/api/$1" },
     { "handle": "filesystem" },
