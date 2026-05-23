@@ -3,11 +3,12 @@ import * as dotenv from 'dotenv';
 import { ADAPTERS } from '../api/_lib/cinema-adapters/index.js';
 import { upsertShowtimes } from '../api/_lib/cinema-adapters/upsert.js';
 
+dotenv.config({ path: '.env.local' });
 dotenv.config();
 
 const supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || ''
 );
 
 async function run() {
