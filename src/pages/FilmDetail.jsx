@@ -363,7 +363,7 @@ export default function FilmDetail() {
               <section className="p-8 md:p-12 border-b border-border">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-text-muted mb-6">Cast</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                  {(showAllCast ? cast : cast.slice(0, 6)).map(person => (
+                  {(showAllCast ? cast : cast.slice(0, 5)).map(person => (
                     <Link 
                       key={person.id} 
                       to={`/people/${person.mubi_slug || person.id}`}
@@ -395,7 +395,7 @@ export default function FilmDetail() {
                   ))}
                 </div>
                 
-                {cast.length > 6 && (
+                {cast.length > 5 && (
                   <div className="mt-8 flex justify-center">
                     <button
                       onClick={() => setShowAllCast(prev => !prev)}
