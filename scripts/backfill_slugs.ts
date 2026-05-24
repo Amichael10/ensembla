@@ -40,35 +40,42 @@ async function backfillTable(tableName: string, nameColumn: string) {
 
   console.log(`Found ${data.length} records to update in ${tableName}`);
 
-  for (const record of data) {
-    const rawName = record[nameColumn];
-    if (!rawName) continue;
+  const batchSize = 3;
+  for (let i = 0; i < data.length; i += batchSize) {
+    const batch = data.slice(i, i + batchSize);
+    console.log(`Processing ${tableName} batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(data.length / batchSize)}...`);
     
-    let baseSlug = generateSlug(rawName);
-    let finalSlug = baseSlug;
-    let counter = 1;
-    let success = false;
+    await Promise.all(batch.map(async (record) => {
+      const rawName = record[nameColumn];
+      if (!rawName) return;
+      
+      let baseSlug = generateSlug(rawName);
+      let finalSlug = baseSlug;
+      let counter = 1;
+      let success = false;
 
-    while (!success) {
-      const { error: updateError } = await supabase
-        .from(tableName)
-        .update({ mubi_slug: finalSlug })
-        .eq('id', record.id);
+      while (!success) {
+        const { error: updateError } = await supabase
+          .from(tableName)
+          .update({ mubi_slug: finalSlug })
+          .eq('id', record.id);
 
-      if (updateError) {
-        if (updateError.code === '23505') { // Unique violation
-          finalSlug = `${baseSlug}-${counter}`;
-          counter++;
+        if (updateError) {
+          if (updateError.code === '23505') { // Unique violation
+            finalSlug = `${baseSlug}-${counter}`;
+            counter++;
+          } else {
+            console.error(`Error updating ${record.id}:`, updateError);
+            break; // Stop retrying on non-unique errors
+          }
         } else {
-          console.error(`Error updating ${record.id}:`, updateError);
-          break; // Stop retrying on non-unique errors
+          success = true;
         }
-      } else {
-        console.log(`Updated ${tableName} ${record.id} -> ${finalSlug}`);
-        success = true;
       }
-    }
+    }));
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
+  console.log(`Finished backfilling ${tableName}!`);
 }
 
 async function main() {
