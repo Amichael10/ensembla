@@ -491,11 +491,11 @@ const PersonDetail = () => {
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-4 pt-2 justify-center md:justify-start">
+              <div className="flex flex-row items-center gap-3 pt-2 justify-center md:justify-start w-full overflow-x-auto no-scrollbar pb-1">
                 <button
                   onClick={handleFollow}
                   disabled={followLoading}
-                  className={`px-8 py-3 rounded-lg font-bold text-xs transition-all disabled:opacity-50 min-h-[44px] ${
+                  className={`px-6 py-3 rounded-lg font-bold text-xs transition-all disabled:opacity-50 min-h-[44px] flex-shrink-0 ${
                     isFollowing
                       ? 'bg-surface border border-brand text-brand hover:bg-brand/5'
                       : 'bg-brand text-white hover:shadow-brand/20 hover:scale-[1.02]'
@@ -509,7 +509,7 @@ const PersonDetail = () => {
                     href={getPersonYoutubeChannelUrl(person)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-8 py-3 rounded-lg font-bold text-xs transition-all border border-border text-text-primary bg-surface hover:border-brand hover:text-brand min-h-[44px]"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-xs transition-all border border-border text-text-primary bg-surface hover:border-brand hover:text-brand min-h-[44px] flex-shrink-0"
                   >
                     Official Channel
                   </a>
@@ -519,7 +519,48 @@ const PersonDetail = () => {
                   title={person.name}
                   text={`Check out ${person.name}'s profile on Ensembla`}
                   className="!w-auto"
+                  containerClassName="w-auto flex-shrink-0"
                 />
+
+                {(person.instagram_url || person.facebook_url || person.twitter_url) && (
+                  <div className="h-6 w-[1px] bg-border mx-2 self-center flex-shrink-0" />
+                )}
+
+                {person.instagram_url && (
+                  <a
+                    href={person.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-[44px] h-[44px] rounded-lg border border-border flex items-center justify-center text-text-muted hover:border-brand hover:text-brand hover:bg-brand/5 transition-all flex-shrink-0"
+                    aria-label="Instagram"
+                  >
+                    <Icon icon="ri:instagram-line" className="text-lg" />
+                  </a>
+                )}
+
+                {person.facebook_url && (
+                  <a
+                    href={person.facebook_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-[44px] h-[44px] rounded-lg border border-border flex items-center justify-center text-text-muted hover:border-brand hover:text-brand hover:bg-brand/5 transition-all flex-shrink-0"
+                    aria-label="Facebook"
+                  >
+                    <Icon icon="ri:facebook-box-line" className="text-lg" />
+                  </a>
+                )}
+
+                {person.twitter_url && (
+                  <a
+                    href={person.twitter_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-[44px] h-[44px] rounded-lg border border-border flex items-center justify-center text-text-muted hover:border-brand hover:text-brand hover:bg-brand/5 transition-all flex-shrink-0"
+                    aria-label="X (Twitter)"
+                  >
+                    <Icon icon="ri:twitter-x-fill" className="text-lg" />
+                  </a>
+                )}
               </div>
             </div>
           </div>

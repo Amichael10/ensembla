@@ -54,7 +54,10 @@ export default function AdminPeople() {
     known_for_department: 'Actor', // Actor, Skit Maker, Producer, etc.
     youtube_channel_id: '',
     youtube_handle: '',
-    youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null }
+    youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null },
+    instagram_url: '',
+    facebook_url: '',
+    twitter_url: ''
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -237,7 +240,10 @@ export default function AdminPeople() {
       tmdb_id: '',
       youtube_channel_id: '',
       youtube_handle: '',
-      youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null }
+      youtube_stats: { subscribers: '0', videos: '0', thumbnail: null, banner: null },
+      instagram_url: '',
+      facebook_url: '',
+      twitter_url: ''
     });
     setIsDrawerOpen(true);
   };
@@ -276,7 +282,10 @@ export default function AdminPeople() {
       tmdb_id: p.tmdb_id || '',
       youtube_channel_id: p.youtube_channel_id || '',
       youtube_handle: p.youtube_handle || '',
-      youtube_stats: p.youtube_stats || { subscribers: '0', videos: '0', thumbnail: null, banner: null }
+      youtube_stats: p.youtube_stats || { subscribers: '0', videos: '0', thumbnail: null, banner: null },
+      instagram_url: p.instagram_url || '',
+      facebook_url: p.facebook_url || '',
+      twitter_url: p.twitter_url || ''
     });
     setYoutubeChannelInput(draft?.youtube_channel_id || draft?.youtube_handle || getPersonYoutubeChannelUrl(p) || '');
     
@@ -372,7 +381,10 @@ export default function AdminPeople() {
         mubi_slug: formData.mubi_slug || (formData.name ? formData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '') + '-' + Math.random().toString(36).substring(2, 6) : null),
         youtube_channel_id,
         youtube_handle,
-        youtube_stats
+        youtube_stats,
+        instagram_url: formData.instagram_url?.trim() || null,
+        facebook_url: formData.facebook_url?.trim() || null,
+        twitter_url: formData.twitter_url?.trim() || null
       };
 
       if (editingPerson) {
@@ -992,6 +1004,42 @@ export default function AdminPeople() {
               </div>
             </section>
           )}
+
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 pb-2 border-b border-border">
+              <span className="text-xl">🔗</span>
+              <h4 className="text-xs font-bold text-text-muted">Social Profiles</h4>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-text-primary mb-2">Instagram URL</label>
+                <input 
+                  value={formData.instagram_url || ''} 
+                  onChange={e => setFormData({...formData, instagram_url: e.target.value})} 
+                  placeholder="https://instagram.com/username"
+                  className="w-full bg-surface-2 border border-border p-3 rounded-lg text-sm focus:border-brand outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-primary mb-2">Facebook URL</label>
+                <input 
+                  value={formData.facebook_url || ''} 
+                  onChange={e => setFormData({...formData, facebook_url: e.target.value})} 
+                  placeholder="https://facebook.com/username"
+                  className="w-full bg-surface-2 border border-border p-3 rounded-lg text-sm focus:border-brand outline-none" 
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-primary mb-2">X (Twitter) URL</label>
+                <input 
+                  value={formData.twitter_url || ''} 
+                  onChange={e => setFormData({...formData, twitter_url: e.target.value})} 
+                  placeholder="https://x.com/username"
+                  className="w-full bg-surface-2 border border-border p-3 rounded-lg text-sm focus:border-brand outline-none" 
+                />
+              </div>
+            </div>
+          </section>
 
           <section className="space-y-6">
             <div className="flex items-center gap-2 pb-2 border-b border-border">

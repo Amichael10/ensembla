@@ -676,6 +676,9 @@ export type Database = {
           youtube_channel_id: string | null
           youtube_handle: string | null
           youtube_stats: Json | null
+          instagram_url: string | null
+          facebook_url: string | null
+          twitter_url: string | null
         }
         Insert: {
           bio?: string | null
@@ -701,6 +704,9 @@ export type Database = {
           youtube_channel_id?: string | null
           youtube_handle?: string | null
           youtube_stats?: Json | null
+          instagram_url?: string | null
+          facebook_url?: string | null
+          twitter_url?: string | null
         }
         Update: {
           bio?: string | null
@@ -726,6 +732,9 @@ export type Database = {
           youtube_channel_id?: string | null
           youtube_handle?: string | null
           youtube_stats?: Json | null
+          instagram_url?: string | null
+          facebook_url?: string | null
+          twitter_url?: string | null
         }
         Relationships: []
       }

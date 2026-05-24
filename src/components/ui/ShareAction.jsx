@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icon } from '@iconify/react';
 
-const ShareAction = ({ title, text, url, variant = 'default', className = '' }) => {
+const ShareAction = ({ title, text, url, variant = 'default', className = '', containerClassName = '' }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef(null);
@@ -75,7 +75,7 @@ const ShareAction = ({ title, text, url, variant = 'default', className = '' }) 
 
   if (variant === 'icon') {
     return (
-      <div className="relative" ref={menuRef}>
+      <div className={`relative ${containerClassName}`} ref={menuRef}>
         <button
           onClick={handleNativeShare}
           className={`p-2 rounded-full hover:bg-surface-2 transition-all ${className}`}
@@ -121,7 +121,7 @@ const ShareAction = ({ title, text, url, variant = 'default', className = '' }) 
   }
 
   return (
-    <div className="relative w-full" ref={menuRef}>
+    <div className={`relative ${containerClassName || 'w-full'}`} ref={menuRef}>
       <button
         onClick={handleNativeShare}
         className={`w-full flex items-center justify-center gap-2 border border-border text-text-primary hover:border-brand hover:text-brand px-6 py-4 rounded-lg font-bold text-[10px] tracking-widest transition-all duration-300 active:scale-95 min-h-[44px] ${className}`}
