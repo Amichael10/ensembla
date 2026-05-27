@@ -122,7 +122,7 @@ export default function AdminCreditsExtractor() {
     }
   };
 
-  // Convert uploaded image file to Base64
+  // Convert and compress uploaded image file to lightweight Base64
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -133,9 +133,43 @@ export default function AdminCreditsExtractor() {
     }
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setScreenshotPreview(reader.result);
-      setScreenshotBase64(reader.result);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Target maximum dimension to keep OCR highly legible but extremely lightweight
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width * MAX_HEIGHT) / height);
+            height = MAX_HEIGHT;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress to high-quality JPEG (0.8 quality yields extremely small files ~100KB-200KB)
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        setScreenshotPreview(compressedBase64);
+        setScreenshotBase64(compressedBase64);
+        
+        const sizeKB = Math.round((compressedBase64.length * 3) / 4 / 1024);
+        console.log(`[OCR Harvester] Image compressed from ${Math.round(file.size / 1024)}KB down to ${sizeKB}KB (Resolution: ${width}x${height})`);
+      };
+      img.src = event.target.result;
     };
     reader.readAsDataURL(file);
   };
